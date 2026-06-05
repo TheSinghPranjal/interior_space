@@ -1,5 +1,6 @@
 import 'enums.dart';
 import '../core/constants/room_constants.dart';
+import 'room_dimensions.dart';
 
 class DoorConfig {
   const DoorConfig({
@@ -8,6 +9,7 @@ class DoorConfig {
     this.width = RoomConstants.defaultDoorWidth,
     this.height = RoomConstants.defaultDoorHeight,
     this.positionFromEdge = 2.0,
+    this.rotation = 0,
     this.color = '#8B5E3C',
     this.material = DoorMaterial.wood,
     this.texturePath,
@@ -18,15 +20,25 @@ class DoorConfig {
   final double width;
   final double height;
   final double positionFromEdge;
+  final double rotation;
   final String color;
   final DoorMaterial material;
   final String? texturePath;
+
+  double wallLengthFt(RoomDimensions dims) => switch (wall) {
+        WallId.front || WallId.back => dims.width,
+        WallId.left || WallId.right => dims.length,
+      };
+
+  double maxPositionFromEdge(RoomDimensions dims) =>
+      (wallLengthFt(dims) - width).clamp(0, wallLengthFt(dims)).toDouble();
 
   DoorConfig copyWith({
     WallId? wall,
     double? width,
     double? height,
     double? positionFromEdge,
+    double? rotation,
     String? color,
     DoorMaterial? material,
     String? texturePath,
@@ -38,6 +50,7 @@ class DoorConfig {
       width: width ?? this.width,
       height: height ?? this.height,
       positionFromEdge: positionFromEdge ?? this.positionFromEdge,
+      rotation: rotation ?? this.rotation,
       color: color ?? this.color,
       material: material ?? this.material,
       texturePath: clearTexture ? null : (texturePath ?? this.texturePath),
@@ -50,6 +63,7 @@ class DoorConfig {
         'width': width,
         'height': height,
         'positionFromEdge': positionFromEdge,
+        'rotation': rotation,
         'color': color,
         'material': material.name,
         'texturePath': texturePath,
@@ -64,6 +78,7 @@ class DoorConfig {
       height: (json['height'] as num?)?.toDouble() ??
           RoomConstants.defaultDoorHeight,
       positionFromEdge: (json['positionFromEdge'] as num?)?.toDouble() ?? 2.0,
+      rotation: (json['rotation'] as num?)?.toDouble() ?? 0,
       color: json['color'] as String? ?? '#8B5E3C',
       material: DoorMaterial.values.byName(
         json['material'] as String? ?? 'wood',
