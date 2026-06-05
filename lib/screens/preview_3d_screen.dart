@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:screenshot/screenshot.dart';
 
+import '../providers/project_provider.dart';
 import '../providers/room_design_provider.dart';
 import '../services/export_service.dart';
 import '../services/project_storage_service.dart';
@@ -64,6 +65,7 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
 
   Future<void> _handleExport(String action) async {
     final design = ref.read(roomDesignProvider);
+    final project = ref.read(projectProvider);
     final exportService = ref.read(exportServiceProvider);
     final storage = ref.read(projectStorageProvider);
 
@@ -86,10 +88,10 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
           );
         }
       case 'project':
-        final path = await storage.exportProjectFile(design);
-        await exportService.shareProjectFile(design, path);
+        final path = await storage.exportProjectFile(project);
+        await exportService.shareProjectFile(project, path);
       case 'save':
-        await storage.saveProject(design);
+        await storage.saveProject(project);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Project saved')),

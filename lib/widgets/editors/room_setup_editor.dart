@@ -51,9 +51,9 @@ class RoomSetupEditor extends ConsumerWidget {
           ),
         ),
         SectionCard(
-          title: 'Project',
+          title: 'Room',
           child: TextField(
-            decoration: const InputDecoration(labelText: 'Project Name'),
+            decoration: const InputDecoration(labelText: 'Room Name'),
             controller: TextEditingController(text: design.name),
             onChanged: ref.read(roomDesignProvider.notifier).setName,
           ),

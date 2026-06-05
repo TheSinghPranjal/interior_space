@@ -25,7 +25,7 @@ class BlueprintView extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${design.dimensions.width}×${design.dimensions.length} ft • '
+                  '${design.name} • ${design.dimensions.width}×${design.dimensions.length} ft • '
                   '${design.furniture.length} furniture • '
                   '${design.cupboards.length} cupboards',
                   style: const TextStyle(fontSize: 13),

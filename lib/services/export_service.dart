@@ -8,16 +8,17 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
 import '../models/enums.dart';
+import '../models/project_design.dart';
 import '../models/room_design.dart';
 
 class ExportService {
-  Future<void> shareProjectFile(RoomDesign design, String? filePath) async {
+  Future<void> shareProjectFile(ProjectDesign project, String? filePath) async {
     if (filePath != null && !kIsWeb) {
-      await Share.shareXFiles([XFile(filePath)], text: design.name);
+      await Share.shareXFiles([XFile(filePath)], text: project.projectName);
       return;
     }
-    final json = const JsonEncoder.withIndent('  ').convert(design.toJson());
-    await Share.share(json, subject: '${design.name} - Interior Space');
+    final json = const JsonEncoder.withIndent('  ').convert(project.toJson());
+    await Share.share(json, subject: '${project.projectName} - Interior Space');
   }
 
   Future<String?> saveScreenshot(Uint8List bytes, String name) async {

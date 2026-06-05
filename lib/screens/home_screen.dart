@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/design_menu_action.dart';
+import '../providers/project_provider.dart';
 import '../providers/room_design_provider.dart';
 import '../services/project_storage_service.dart';
 import '../widgets/blueprint/blueprint_view.dart';
@@ -15,6 +16,7 @@ import '../widgets/editors/room_setup_editor.dart';
 import '../widgets/editors/walls_editor.dart';
 import '../widgets/editors/windows_editor.dart';
 import '../widgets/navigation/design_menu_fab.dart';
+import '../widgets/navigation/room_tabs_bar.dart';
 import 'ai_assist_screen.dart';
 import 'editor_screen.dart';
 import 'preview_3d_screen.dart';
@@ -39,7 +41,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final storage = ref.read(projectStorageProvider);
     final saved = await storage.loadCurrent();
     if (saved != null && mounted) {
-      ref.read(roomDesignProvider.notifier).load(saved);
+      ref.read(projectProvider.notifier).load(saved);
     }
   }
 
@@ -128,9 +130,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final design = ref.watch(roomDesignProvider);
+    final project = ref.watch(projectProvider);
+    final activeRoom = ref.watch(roomDesignProvider);
 
-    ref.listen(roomDesignProvider, (_, next) {
+    ref.listen(projectProvider, (_, next) {
       ref.read(projectStorageProvider).saveCurrent(next);
     });
 
@@ -139,7 +142,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         title: Column(
           children: [
             const Text('Interior Space'),
-            Text(design.name, style: Theme.of(context).textTheme.bodySmall),
+            Text(
+              activeRoom.name,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ],
         ),
         actions: [
@@ -147,7 +153,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             icon: const Icon(Icons.save_outlined),
             tooltip: 'Save',
             onPressed: () async {
-              await ref.read(projectStorageProvider).saveProject(design);
+              await ref.read(projectStorageProvider).saveProject(project);
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Project saved')),
@@ -157,12 +163,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Reset',
-            onPressed: () => _confirmReset(context),
+            tooltip: 'Reset current room',
+            onPressed: () => _confirmReset(context, activeRoom.name),
           ),
         ],
       ),
-      body: _buildBody(),
+      body: Column(
+        children: [
+          const RoomTabsBar(),
+          Expanded(child: _buildBody()),
+        ],
+      ),
       floatingActionButton: DesignMenuFab(onAction: _onDesignMenuAction),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedTab.index,
@@ -202,12 +213,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     };
   }
 
-  void _confirmReset(BuildContext context) {
+  void _confirmReset(BuildContext context, String roomName) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Reset Room?'),
-        content: const Text('This will reset all customizations to defaults.'),
+        content: Text(
+          'This will reset "$roomName" to defaults. Other rooms are not affected.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
