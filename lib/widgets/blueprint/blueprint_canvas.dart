@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/utils/color_utils.dart';
 import '../../models/cupboard_config.dart';
+import '../../models/door_config.dart';
 import '../../models/enums.dart';
 import '../../models/furniture_item.dart';
 import '../../models/room_design.dart';
@@ -98,6 +99,14 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
                 scale: scale,
               );
             }),
+            ...design.doors.map((door) {
+              return _buildDoorItem(
+                door: door,
+                design: design,
+                roomRect: roomRect,
+                scale: scale,
+              );
+            }),
             if (_selectedId != null)
               _buildSelectionToolbar(design: design, roomRect: roomRect, scale: scale),
           ],
@@ -166,6 +175,9 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       notifier.updateCupboard(
         cupboard.copyWith(blueprintX: _tempBlueprintX!, blueprintY: _tempBlueprintY!),
       );
+    } else if (_selectedType == 'door_wall' && _tempPositionFromEdge != null) {
+      final door = design.doors.firstWhere((d) => d.id == _selectedId);
+      notifier.updateDoor(door.copyWith(positionFromEdge: _tempPositionFromEdge!));
     }
 
     setState(() {
@@ -191,6 +203,10 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       final cupboard = design.cupboards.firstWhere((c) => c.id == _selectedId);
       final next = (cupboard.rotation + degrees) % 360;
       notifier.updateCupboard(cupboard.copyWith(rotation: next < 0 ? next + 360 : next));
+    } else if (_selectedType == 'door_wall') {
+      final door = design.doors.firstWhere((d) => d.id == _selectedId);
+      final next = (door.rotation + degrees) % 360;
+      notifier.updateDoor(door.copyWith(rotation: next < 0 ? next + 360 : next));
     }
   }
 
@@ -301,6 +317,43 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     );
   }
 
+  Widget _buildDoorItem({
+    required DoorConfig door,
+    required RoomDesign design,
+    required Rect roomRect,
+    required double scale,
+  }) {
+    final edge = (_isDragging && _selectedId == door.id && _tempPositionFromEdge != null)
+        ? _tempPositionFromEdge!
+        : door.positionFromEdge;
+    final tempDoor = door.copyWith(positionFromEdge: edge);
+    final rect = _doorRect(tempDoor, roomRect, scale);
+
+    return _itemBox(
+      id: door.id,
+      dragType: 'door_wall',
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+      label: 'Door',
+      color: ColorUtils.fromHex(door.color),
+      rotation: door.rotation,
+      design: design,
+      roomRect: roomRect,
+      scale: scale,
+      onWallDrag: (Offset center) {
+        final wall = door.wall;
+        final edgePos = switch (wall) {
+          WallId.front || WallId.back => (center.dx - roomRect.left) / scale - door.width / 2,
+          WallId.left || WallId.right => (center.dy - roomRect.top) / scale - door.width / 2,
+        };
+        _tempPositionFromEdge =
+            edgePos.clamp(0, door.maxPositionFromEdge(design.dimensions)).toDouble();
+      },
+    );
+  }
+
   Widget _buildCupboardItem({
     required CupboardConfig cupboard,
     required RoomDesign design,
@@ -349,7 +402,9 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     required Rect roomRect,
     required double scale,
   }) {
-    final canRotate = _selectedType == 'furniture_floor' || _selectedType == 'cupboard_floor';
+    final canRotate = _selectedType == 'furniture_floor' ||
+        _selectedType == 'cupboard_floor' ||
+        _selectedType == 'door_wall';
 
     Rect? itemRect;
     if (_selectedType == 'furniture_floor') {
@@ -379,6 +434,10 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     } else if (_selectedType == 'furniture_wall') {
       final item = design.furniture.firstWhere((f) => f.id == _selectedId);
       itemRect = _wallItemRect(item, roomRect, scale);
+    } else if (_selectedType == 'door_wall') {
+      final door = design.doors.firstWhere((d) => d.id == _selectedId);
+      final edge = _tempPositionFromEdge ?? door.positionFromEdge;
+      itemRect = _doorRect(door.copyWith(positionFromEdge: edge), roomRect, scale);
     }
 
     if (itemRect == null) return const SizedBox.shrink();
@@ -420,6 +479,39 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
         ),
       ),
     );
+  }
+
+  Rect _doorRect(DoorConfig door, Rect roomRect, double scale) {
+    const visualDepth = 14.0;
+    final along = door.positionFromEdge * scale;
+    final alongSize = door.width * scale;
+
+    return switch (door.wall) {
+      WallId.front => Rect.fromLTWH(
+          roomRect.left + along,
+          roomRect.top - visualDepth / 2,
+          alongSize,
+          visualDepth,
+        ),
+      WallId.back => Rect.fromLTWH(
+          roomRect.left + along,
+          roomRect.bottom - visualDepth / 2,
+          alongSize,
+          visualDepth,
+        ),
+      WallId.left => Rect.fromLTWH(
+          roomRect.left - visualDepth / 2,
+          roomRect.top + along,
+          visualDepth,
+          alongSize,
+        ),
+      WallId.right => Rect.fromLTWH(
+          roomRect.right - visualDepth / 2,
+          roomRect.top + along,
+          visualDepth,
+          alongSize,
+        ),
+    };
   }
 
   Rect _wallItemRect(FurnitureItem item, Rect roomRect, double scale) {
@@ -583,26 +675,9 @@ class _BlueprintPainter extends CustomPainter {
       canvas.drawLine(Offset(roomRect.left, y), Offset(roomRect.right, y), gridLinePaint);
     }
 
-    _drawDoors(canvas);
     _drawWindows(canvas);
     _drawDimensions(canvas);
     _drawWallLabels(canvas);
-  }
-
-  void _drawDoors(Canvas canvas) {
-    for (final door in design.doors) {
-      final paint = Paint()..color = ColorUtils.fromHex(door.color);
-      final dw = door.width * scale;
-      final offset = door.positionFromEdge * scale;
-
-      final rect = switch (door.wall) {
-        WallId.front => Rect.fromLTWH(roomRect.left + offset, roomRect.top - 4, dw, 8),
-        WallId.back => Rect.fromLTWH(roomRect.left + offset, roomRect.bottom - 4, dw, 8),
-        WallId.left => Rect.fromLTWH(roomRect.left - 4, roomRect.top + offset, 8, dw),
-        WallId.right => Rect.fromLTWH(roomRect.right - 4, roomRect.top + offset, 8, dw),
-      };
-      canvas.drawRect(rect, paint);
-    }
   }
 
   void _drawWindows(Canvas canvas) {
