@@ -84,7 +84,8 @@ class BlueprintView extends ConsumerWidget {
       builder: (context) => AlertDialog(
         title: const Text('Blueprint Mode'),
         content: const Text(
-          'Place beds, wardrobes, and cupboards on the floor plan by dragging them. '
+          'Press and hold an item to select it, then drag to move it smoothly. '
+          'While selected, use the rotate buttons above the item to turn it. '
           'Adjust dimensions via the Design menu (tune icon). '
           'Tap "Show 3D Model" to see the realistic room with exact placement and sizes.',
         ),
