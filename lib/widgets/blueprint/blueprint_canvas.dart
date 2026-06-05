@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/utils/color_utils.dart';
+import '../../models/cupboard_config.dart';
 import '../../models/enums.dart';
 import '../../models/furniture_item.dart';
 import '../../providers/room_design_provider.dart';
@@ -36,27 +37,15 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
         final roomH = design.dimensions.length * scale;
         final offsetX = (constraints.maxWidth - roomW) / 2;
         final offsetY = (constraints.maxHeight - roomH) / 2;
+        final roomRect = Rect.fromLTWH(offsetX, offsetY, roomW, roomH);
 
         return GestureDetector(
-          onPanUpdate: (details) {
-            if (_draggingId == null) return;
-            final localX = details.localPosition.dx - offsetX;
-            final localY = details.localPosition.dy - offsetY;
-            final bx = (localX / roomW).clamp(0.05, 0.95);
-            final by = (localY / roomH).clamp(0.05, 0.95);
-
-            if (_draggingType == 'furniture') {
-              final item = design.furniture.firstWhere((f) => f.id == _draggingId);
-              ref.read(roomDesignProvider.notifier).updateFurniture(
-                    item.copyWith(blueprintX: bx, blueprintY: by),
-                  );
-            } else if (_draggingType == 'cupboard') {
-              final cupboard = design.cupboards.firstWhere((c) => c.id == _draggingId);
-              ref.read(roomDesignProvider.notifier).updateCupboard(
-                    cupboard.copyWith(blueprintX: bx, blueprintY: by),
-                  );
-            }
-          },
+          onPanUpdate: (details) => _handleDrag(
+            details.localPosition,
+            roomRect,
+            scale,
+            design,
+          ),
           onPanEnd: (_) {
             setState(() {
               _draggingId = null;
@@ -67,38 +56,31 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
             size: Size(constraints.maxWidth, constraints.maxHeight),
             painter: _BlueprintPainter(
               design: design,
-              roomRect: Rect.fromLTWH(offsetX, offsetY, roomW, roomH),
+              roomRect: roomRect,
               scale: scale,
               selectedId: _draggingId,
             ),
             child: Stack(
               children: [
-                ...design.furniture.map((item) {
-                  return _buildDraggableItem(
+                ...design.furniture.where((f) => !f.isWallMounted).map((item) {
+                  return _buildFloorItem(
                     item: item,
-                    offsetX: offsetX,
-                    offsetY: offsetY,
-                    roomW: roomW,
-                    roomH: roomH,
+                    roomRect: roomRect,
                     scale: scale,
-                    type: 'furniture',
-                    label: item.type.label,
-                    color: ColorUtils.fromHex(item.color),
+                  );
+                }),
+                ...design.furniture.where((f) => f.isWallMounted).map((item) {
+                  return _buildWallItem(
+                    item: item,
+                    roomRect: roomRect,
+                    scale: scale,
                   );
                 }),
                 ...design.cupboards.map((cupboard) {
-                  return _buildDraggableItem(
-                    item: cupboard,
-                    offsetX: offsetX,
-                    offsetY: offsetY,
-                    roomW: roomW,
-                    roomH: roomH,
+                  return _buildCupboardItem(
+                    cupboard: cupboard,
+                    roomRect: roomRect,
                     scale: scale,
-                    type: 'cupboard',
-                    label: 'Cupboard',
-                    color: ColorUtils.fromHex(cupboard.color),
-                    width: cupboard.width,
-                    depth: cupboard.depth,
                   );
                 }),
               ],
@@ -109,40 +91,203 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     );
   }
 
-  Widget _buildDraggableItem({
-    required dynamic item,
-    required double offsetX,
-    required double offsetY,
-    required double roomW,
-    required double roomH,
+  void _handleDrag(
+    Offset localPos,
+    Rect roomRect,
+    double scale,
+    dynamic design,
+  ) {
+    if (_draggingId == null) return;
+
+    if (_draggingType == 'furniture_floor') {
+      final item = design.furniture.firstWhere((f) => f.id == _draggingId) as FurnitureItem;
+      final localX = localPos.dx - roomRect.left;
+      final localY = localPos.dy - roomRect.top;
+      final halfWNorm = (item.width / design.dimensions.width) / 2;
+      final halfDNorm = (item.depth / design.dimensions.length) / 2;
+      final bx = (localX / roomRect.width).clamp(halfWNorm, 1 - halfWNorm);
+      final by = (localY / roomRect.height).clamp(halfDNorm, 1 - halfDNorm);
+      ref.read(roomDesignProvider.notifier).updateFurniture(
+            item.copyWith(blueprintX: bx, blueprintY: by),
+          );
+    } else if (_draggingType == 'furniture_wall') {
+      final item = design.furniture.firstWhere((f) => f.id == _draggingId) as FurnitureItem;
+      final wall = item.wall ?? WallId.left;
+      final edge = switch (wall) {
+        WallId.front || WallId.back =>
+          (localPos.dx - roomRect.left) / scale - item.width / 2,
+        WallId.left || WallId.right =>
+          (localPos.dy - roomRect.top) / scale - item.width / 2,
+      };
+      final maxEdge = switch (wall) {
+        WallId.front || WallId.back => roomRect.width / scale - item.width,
+        WallId.left || WallId.right => roomRect.height / scale - item.width,
+      };
+      ref.read(roomDesignProvider.notifier).updateFurniture(
+            item.copyWith(positionFromEdge: edge.clamp(0, maxEdge.clamp(0, double.infinity))),
+          );
+    } else if (_draggingType == 'cupboard') {
+      final cupboard = design.cupboards.firstWhere((c) => c.id == _draggingId) as CupboardConfig;
+      final edge = _dragCupboardEdge(cupboard, localPos, roomRect, scale);
+      ref.read(roomDesignProvider.notifier).updateCupboard(
+            cupboard.copyWith(positionFromEdge: edge),
+          );
+    }
+  }
+
+  double _dragCupboardEdge(
+    CupboardConfig cupboard,
+    Offset localPos,
+    Rect roomRect,
+    double scale,
+  ) {
+    final wall = cupboard.wall;
+    double edge;
+    switch (wall) {
+      case WallId.front:
+      case WallId.back:
+        edge = (localPos.dx - roomRect.left) / scale - cupboard.width / 2;
+      case WallId.left:
+      case WallId.right:
+        edge = (localPos.dy - roomRect.top) / scale - cupboard.width / 2;
+    }
+    final maxEdge = switch (wall) {
+      WallId.front || WallId.back => roomRect.width / scale - cupboard.width,
+      WallId.left || WallId.right => roomRect.height / scale - cupboard.width,
+    };
+    return edge.clamp(0, maxEdge.clamp(0, double.infinity));
+  }
+
+  Widget _buildFloorItem({
+    required FurnitureItem item,
+    required Rect roomRect,
     required double scale,
-    required String type,
+  }) {
+    final w = item.width * scale;
+    final d = item.depth * scale;
+    final left = roomRect.left + item.blueprintX * roomRect.width - w / 2;
+    final top = roomRect.top + item.blueprintY * roomRect.height - d / 2;
+
+    return _itemBox(
+      id: item.id,
+      dragType: 'furniture_floor',
+      left: left,
+      top: top,
+      width: w,
+      height: d,
+      label: item.type.label,
+      color: ColorUtils.fromHex(item.color),
+    );
+  }
+
+  Widget _buildWallItem({
+    required FurnitureItem item,
+    required Rect roomRect,
+    required double scale,
+  }) {
+    final rect = _wallItemRect(item, roomRect, scale);
+    return _itemBox(
+      id: item.id,
+      dragType: 'furniture_wall',
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+      label: item.type.label,
+      color: ColorUtils.fromHex(item.color),
+    );
+  }
+
+  Widget _buildCupboardItem({
+    required CupboardConfig cupboard,
+    required Rect roomRect,
+    required double scale,
+  }) {
+    final item = FurnitureItem(
+      id: cupboard.id,
+      type: FurnitureType.cupboard,
+      width: cupboard.width,
+      depth: cupboard.depth,
+      wall: cupboard.wall,
+      positionFromEdge: cupboard.positionFromEdge,
+      color: cupboard.color,
+    );
+    final rect = _wallItemRect(item, roomRect, scale);
+    return _itemBox(
+      id: cupboard.id,
+      dragType: 'cupboard',
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+      label: 'Cupboard',
+      color: ColorUtils.fromHex(cupboard.color),
+    );
+  }
+
+  Rect _wallItemRect(FurnitureItem item, Rect roomRect, double scale) {
+    final wall = item.wall ?? WallId.left;
+    final along = item.positionFromEdge * scale;
+    final into = item.depth * scale;
+    final alongSize = item.width * scale;
+
+    switch (wall) {
+      case WallId.front:
+        return Rect.fromLTWH(
+          roomRect.left + along,
+          roomRect.top,
+          alongSize,
+          into,
+        );
+      case WallId.back:
+        return Rect.fromLTWH(
+          roomRect.left + along,
+          roomRect.bottom - into,
+          alongSize,
+          into,
+        );
+      case WallId.left:
+        return Rect.fromLTWH(
+          roomRect.left,
+          roomRect.top + along,
+          into,
+          alongSize,
+        );
+      case WallId.right:
+        return Rect.fromLTWH(
+          roomRect.right - into,
+          roomRect.top + along,
+          into,
+          alongSize,
+        );
+    }
+  }
+
+  Widget _itemBox({
+    required String id,
+    required String dragType,
+    required double left,
+    required double top,
+    required double width,
+    required double height,
     required String label,
     required Color color,
-    double? width,
-    double? depth,
   }) {
-    final w = (width ?? (item as FurnitureItem).width) * scale;
-    final d = (depth ?? (item as FurnitureItem).depth) * scale;
-    final bx = item.blueprintX as double;
-    final by = item.blueprintY as double;
-    final id = item.id as String;
-
     return Positioned(
-      left: offsetX + bx * roomW - w / 2,
-      top: offsetY + by * roomH - d / 2,
+      left: left,
+      top: top,
       child: GestureDetector(
         onPanStart: (_) {
           setState(() {
             _draggingId = id;
-            _draggingType = type;
+            _draggingType = dragType;
           });
         },
         child: Container(
-          width: w,
-          height: d,
+          width: width,
+          height: height,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.7),
+            color: color.withValues(alpha: 0.75),
             border: Border.all(
               color: _draggingId == id ? Colors.orange : Colors.black54,
               width: _draggingId == id ? 2 : 1,

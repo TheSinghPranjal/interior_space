@@ -56,7 +56,15 @@ class RoomSceneBuilder {
       'windows': design.windows.map((w) => w.toJson()).toList(),
       'cupboards': cupboards,
       'lights': design.lights.map((l) => l.toJson()).toList(),
-      'furniture': design.furniture.map((f) => f.toJson()).toList(),
+      'furniture': await Future.wait(
+        design.furniture.map((f) async {
+          return {
+            ...f.toJson(),
+            'textureDataUrl':
+                await _textureService.resolveTextureDataUrl(f.texturePath),
+          };
+        }),
+      ),
     };
 
     return jsonEncode(scene);

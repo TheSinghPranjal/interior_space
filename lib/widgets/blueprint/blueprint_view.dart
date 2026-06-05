@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../models/enums.dart';
 import '../../providers/room_design_provider.dart';
 import '../../screens/preview_3d_screen.dart';
+import 'add_furniture_sheet.dart';
 import 'blueprint_canvas.dart';
 
 class BlueprintView extends ConsumerWidget {
@@ -98,42 +98,8 @@ class BlueprintView extends ConsumerWidget {
   void _showAddFurnitureSheet(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Add to Blueprint', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: FurnitureType.values.map((type) {
-                  return ActionChip(
-                    avatar: Icon(type.icon, size: 18),
-                    label: Text(type.label),
-                    onPressed: () {
-                      ref.read(roomDesignProvider.notifier).addFurniture(type);
-                      Navigator.pop(context);
-                    },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: () {
-                  ref.read(roomDesignProvider.notifier).addCupboard();
-                  Navigator.pop(context);
-                },
-                icon: const Icon(Icons.kitchen),
-                label: const Text('Add Cupboard'),
-              ),
-            ],
-          ),
-        ),
-      ),
+      isScrollControlled: true,
+      builder: (context) => const AddFurnitureSheet(),
     );
   }
 }

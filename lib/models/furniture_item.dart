@@ -1,4 +1,5 @@
 import 'enums.dart';
+import 'room_dimensions.dart';
 
 class FurnitureItem {
   const FurnitureItem({
@@ -11,6 +12,9 @@ class FurnitureItem {
     this.blueprintX = 0.5,
     this.blueprintY = 0.5,
     this.color = '#795548',
+    this.wall,
+    this.positionFromEdge = 1.0,
+    this.texturePath,
   });
 
   final String id;
@@ -22,6 +26,17 @@ class FurnitureItem {
   final double blueprintX;
   final double blueprintY;
   final String color;
+  final WallId? wall;
+  final double positionFromEdge;
+  final String? texturePath;
+
+  bool get isWallMounted => type.isWallMounted;
+
+  double positionFromLeftFt(RoomDimensions dims) =>
+      blueprintX * dims.width - width / 2;
+
+  double positionFromFrontFt(RoomDimensions dims) =>
+      blueprintY * dims.length - depth / 2;
 
   FurnitureItem copyWith({
     FurnitureType? type,
@@ -32,6 +47,11 @@ class FurnitureItem {
     double? blueprintX,
     double? blueprintY,
     String? color,
+    WallId? wall,
+    double? positionFromEdge,
+    String? texturePath,
+    bool clearTexture = false,
+    bool clearWall = false,
   }) {
     return FurnitureItem(
       id: id,
@@ -43,11 +63,19 @@ class FurnitureItem {
       blueprintX: blueprintX ?? this.blueprintX,
       blueprintY: blueprintY ?? this.blueprintY,
       color: color ?? this.color,
+      wall: clearWall ? null : (wall ?? this.wall),
+      positionFromEdge: positionFromEdge ?? this.positionFromEdge,
+      texturePath: clearTexture ? null : (texturePath ?? this.texturePath),
     );
   }
 
-  static FurnitureItem defaultForType(FurnitureType type, String id) {
-    return switch (type) {
+  static FurnitureItem defaultForType(
+    FurnitureType type,
+    String id, {
+    int index = 0,
+    RoomDimensions? dimensions,
+  }) {
+    final base = switch (type) {
       FurnitureType.bed => FurnitureItem(
           id: id,
           type: type,
@@ -63,6 +91,8 @@ class FurnitureItem {
           height: 3.0,
           depth: 3.0,
           color: '#455A64',
+          wall: WallId.back,
+          positionFromEdge: 2.0,
         ),
       FurnitureType.table => FurnitureItem(
           id: id,
@@ -79,6 +109,8 @@ class FurnitureItem {
           height: 2.0,
           depth: 1.5,
           color: '#37474F',
+          wall: WallId.front,
+          positionFromEdge: 3.0,
         ),
       FurnitureType.chair => FurnitureItem(
           id: id,
@@ -95,6 +127,8 @@ class FurnitureItem {
           height: 7.0,
           depth: 2.0,
           color: '#6D4C41',
+          wall: WallId.left,
+          positionFromEdge: 1.0,
         ),
       FurnitureType.cupboard => FurnitureItem(
           id: id,
@@ -103,8 +137,27 @@ class FurnitureItem {
           height: 3.0,
           depth: 1.5,
           color: '#8D6E63',
+          wall: WallId.right,
+          positionFromEdge: 1.0,
         ),
     };
+
+    if (base.isWallMounted) {
+      return base.copyWith(
+        positionFromEdge: base.positionFromEdge + index * 1.5,
+      );
+    }
+
+    final cols = 3;
+    final row = index ~/ cols;
+    final col = index % cols;
+    final bx = 0.22 + col * 0.28;
+    final by = 0.28 + row * 0.22;
+
+    return base.copyWith(
+      blueprintX: bx.clamp(0.12, 0.88),
+      blueprintY: by.clamp(0.12, 0.88),
+    );
   }
 
   Map<String, dynamic> toJson() => {
@@ -117,6 +170,9 @@ class FurnitureItem {
         'blueprintX': blueprintX,
         'blueprintY': blueprintY,
         'color': color,
+        'wall': wall?.name,
+        'positionFromEdge': positionFromEdge,
+        'texturePath': texturePath,
       };
 
   factory FurnitureItem.fromJson(Map<String, dynamic> json) {
@@ -130,6 +186,11 @@ class FurnitureItem {
       blueprintX: (json['blueprintX'] as num?)?.toDouble() ?? 0.5,
       blueprintY: (json['blueprintY'] as num?)?.toDouble() ?? 0.5,
       color: json['color'] as String? ?? '#795548',
+      wall: json['wall'] != null
+          ? WallId.values.byName(json['wall'] as String)
+          : null,
+      positionFromEdge: (json['positionFromEdge'] as num?)?.toDouble() ?? 1.0,
+      texturePath: json['texturePath'] as String?,
     );
   }
 }

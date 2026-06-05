@@ -123,7 +123,13 @@ class RoomDesignNotifier extends StateNotifier<RoomDesign> {
   }
 
   void addFurniture(FurnitureType type) {
-    final item = FurnitureItem.defaultForType(type, _uuid.v4());
+    final sameTypeCount = state.furniture.where((f) => f.type == type).length;
+    final item = FurnitureItem.defaultForType(
+      type,
+      _uuid.v4(),
+      index: sameTypeCount,
+      dimensions: state.dimensions,
+    );
     state = state.copyWith(furniture: [...state.furniture, item]);
   }
 

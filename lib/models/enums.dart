@@ -48,6 +48,18 @@ enum CameraMode {
 
 enum FurnitureType { bed, sofa, table, tvUnit, chair, wardrobe, cupboard }
 
+extension FurnitureTypePlacement on FurnitureType {
+  bool get isWallMounted => switch (this) {
+        FurnitureType.wardrobe => true,
+        FurnitureType.cupboard => true,
+        FurnitureType.sofa => true,
+        FurnitureType.tvUnit => true,
+        FurnitureType.bed => false,
+        FurnitureType.table => false,
+        FurnitureType.chair => false,
+      };
+}
+
 extension WallIdLabel on WallId {
   String get label => switch (this) {
         WallId.front => 'Front Wall',

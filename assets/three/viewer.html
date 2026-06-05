@@ -1681,10 +1681,9 @@
     }
 
     _buildFurniture(furniture, w, l) {
+      const wallTypes = ['wardrobe', 'cupboard', 'sofa', 'tvUnit'];
       furniture.forEach((item) => {
-        const x = (item.blueprintX - 0.5) * w;
-        const z = (item.blueprintY - 0.5) * l;
-        const rot = (item.rotation || 0) * Math.PI / 180;
+        const tex = item.textureDataUrl || null;
         let group;
 
         switch (item.type) {
@@ -1698,21 +1697,38 @@
               item.height * FT,
               item.depth * FT,
               item.color,
-              null
+              tex
             );
             break;
           case 'sofa':
-            group = this._buildSofaGroup(item);
+            group = this._buildSofaGroup(item, tex);
             break;
           case 'table':
             group = this._buildTableGroup(item);
+            break;
+          case 'tvUnit':
+            group = this._buildTvUnitGroup(item, tex);
             break;
           default:
             group = this._buildGenericFurniture(item);
         }
 
-        group.position.set(x, 0, z);
-        group.rotation.y = rot;
+        if (item.wall && wallTypes.indexOf(item.type) >= 0) {
+          const cw = item.width * FT;
+          const cd = item.depth * FT;
+          const pos = this._wallMountedPosition(item.wall, item.positionFromEdge || 0, cw, cd, w, l);
+          group.position.set(pos.x, 0, pos.z);
+          if (item.wall === 'left') group.position.x += cd / 2;
+          if (item.wall === 'right') group.position.x -= cd / 2;
+          if (item.wall === 'front') group.position.z += cd / 2;
+          if (item.wall === 'back') group.position.z -= cd / 2;
+          if (item.wall === 'left' || item.wall === 'right') group.rotation.y = Math.PI / 2;
+        } else {
+          const x = (item.blueprintX - 0.5) * w;
+          const z = (item.blueprintY - 0.5) * l;
+          group.position.set(x, 0, z);
+          group.rotation.y = (item.rotation || 0) * Math.PI / 180;
+        }
         this.roomGroup.add(group);
       });
     }
@@ -1780,12 +1796,34 @@
       return group;
     }
 
-    _buildSofaGroup(item) {
+    _buildTvUnitGroup(item, textureUrl) {
       const fw = item.width * FT;
       const fh = item.height * FT;
       const fd = item.depth * FT;
       const group = new THREE.Group();
-      const mat = this._makeMaterial(item.color, 0.85, 0.02, null, 'fabric', 1, 1);
+      const mat = this._makeMaterial(item.color, 0.5, 0.1, textureUrl, 'wood', 1, 1);
+
+      const body = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, fd), mat);
+      body.position.y = fh / 2;
+      group.add(body);
+
+      const screen = new THREE.Mesh(
+        new THREE.BoxGeometry(fw * 0.7, fh * 0.55, 0.04),
+        new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2, metalness: 0.5 })
+      );
+      screen.position.set(0, fh * 0.65, fd / 2 + 0.02);
+      group.add(screen);
+
+      group.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+      return group;
+    }
+
+    _buildSofaGroup(item, textureUrl) {
+      const fw = item.width * FT;
+      const fh = item.height * FT;
+      const fd = item.depth * FT;
+      const group = new THREE.Group();
+      const mat = this._makeMaterial(item.color, 0.85, 0.02, textureUrl, 'fabric', 1, 1);
 
       const base = new THREE.Mesh(new THREE.BoxGeometry(fw, fh * 0.45, fd), mat);
       base.position.y = fh * 0.25;
