@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/room_constants.dart';
+import '../../providers/project_provider.dart';
 import '../../providers/room_design_provider.dart';
 import '../common/section_card.dart';
 
@@ -50,13 +51,9 @@ class RoomSetupEditor extends ConsumerWidget {
             ],
           ),
         ),
-        SectionCard(
+        const SectionCard(
           title: 'Room',
-          child: TextField(
-            decoration: const InputDecoration(labelText: 'Room Name'),
-            controller: TextEditingController(text: design.name),
-            onChanged: ref.read(roomDesignProvider.notifier).setName,
-          ),
+          child: _RoomNameField(),
         ),
         SectionCard(
           title: 'AI Assistant (Future Ready)',
@@ -71,6 +68,46 @@ class RoomSetupEditor extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _RoomNameField extends ConsumerStatefulWidget {
+  const _RoomNameField();
+
+  @override
+  ConsumerState<_RoomNameField> createState() => _RoomNameFieldState();
+}
+
+class _RoomNameFieldState extends ConsumerState<_RoomNameField> {
+  TextEditingController? _controller;
+  int? _trackedRoomIndex;
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final design = ref.watch(roomDesignProvider);
+    final roomIndex = ref.watch(projectProvider).safeActiveIndex;
+
+    _controller ??= TextEditingController(text: design.name);
+    _trackedRoomIndex ??= roomIndex;
+
+    if (_trackedRoomIndex != roomIndex) {
+      _trackedRoomIndex = roomIndex;
+      _controller!
+        ..text = design.name
+        ..selection = TextSelection.collapsed(offset: design.name.length);
+    }
+
+    return TextField(
+      controller: _controller,
+      decoration: const InputDecoration(labelText: 'Room Name'),
+      onChanged: ref.read(roomDesignProvider.notifier).setName,
     );
   }
 }
