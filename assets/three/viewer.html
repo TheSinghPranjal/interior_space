@@ -1284,6 +1284,31 @@
       }
     }
 
+    _orbitZoom(scale) {
+      if (!this.controls.enabled) return;
+      const offset = new THREE.Vector3();
+      offset.copy(this.camera.position).sub(this.controls.target);
+      let distance = offset.length();
+      if (distance === 0) return;
+      distance = THREE.MathUtils.clamp(
+        distance * scale,
+        this.controls.minDistance,
+        this.controls.maxDistance
+      );
+      offset.setLength(distance);
+      this.camera.position.copy(this.controls.target).add(offset);
+      this.controls.update();
+      this._updateWallVisibility();
+    }
+
+    orbitZoomIn() {
+      this._orbitZoom(0.82);
+    }
+
+    orbitZoomOut() {
+      this._orbitZoom(1.22);
+    }
+
     captureScreenshot() {
       this.renderer.render(this.scene, this.camera);
       return this.renderer.domElement.toDataURL('image/png');
@@ -1995,6 +2020,14 @@
 
   window.setWalkInput = function (key, active) {
     if (window.roomRenderer) window.roomRenderer.setWalkInput(key, active);
+  };
+
+  window.orbitZoomIn = function () {
+    if (window.roomRenderer) window.roomRenderer.orbitZoomIn();
+  };
+
+  window.orbitZoomOut = function () {
+    if (window.roomRenderer) window.roomRenderer.orbitZoomOut();
   };
 
   window.captureScreenshot = function () {

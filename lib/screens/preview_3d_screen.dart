@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:screenshot/screenshot.dart';
@@ -17,6 +19,7 @@ class Preview3DScreen extends ConsumerStatefulWidget {
 
 class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
   final _screenshotController = ScreenshotController();
+  Future<Uint8List?> Function()? _capture3dRender;
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +50,10 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
       ),
       body: Screenshot(
         controller: _screenshotController,
-        child: const Room3DViewer(showControls: true),
+        child: Room3DViewer(
+          showControls: true,
+          onCaptureReady: (capture) => _capture3dRender = capture,
+        ),
       ),
       bottomNavigationBar: Container(
         color: Colors.black87,
@@ -81,7 +87,14 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
           }
         }
       case 'pdf':
-        final path = await exportService.generatePdf(design);
+        final render3d = await _capture3dRender?.call();
+        final activeIndex = ref.read(projectProvider).safeActiveIndex;
+        final path = await exportService.generatePdf(
+          project,
+          render3dImagesByRoomIndex: render3d != null
+              ? {activeIndex: render3d}
+              : null,
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(path != null ? 'PDF saved to $path' : 'PDF export unavailable on web')),

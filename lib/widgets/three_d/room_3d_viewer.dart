@@ -10,13 +10,19 @@ import '../../providers/room_design_provider.dart';
 import '../../services/room_scene_builder.dart';
 import '../../services/room_viewer_html_loader.dart';
 
+typedef Room3DControllerCallback = void Function(
+  Future<Uint8List?> Function() captureRender,
+);
+
 class Room3DViewer extends ConsumerStatefulWidget {
   const Room3DViewer({
     super.key,
     this.showControls = true,
+    this.onCaptureReady,
   });
 
   final bool showControls;
+  final Room3DControllerCallback? onCaptureReady;
 
   @override
   ConsumerState<Room3DViewer> createState() => _Room3DViewerState();
@@ -101,8 +107,41 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     );
   }
 
+  Future<void> _orbitZoom({required bool zoomIn}) async {
+    if (_controller == null) return;
+    await _controller!.evaluateJavascript(
+      source: zoomIn ? 'orbitZoomIn();' : 'orbitZoomOut();',
+    );
+  }
+
+  Future<Uint8List?> _captureRender() async {
+    if (_controller == null || !_isReady) return null;
+    try {
+      final result = await _controller!.evaluateJavascript(
+        source: 'captureScreenshot();',
+      );
+      if (result == null) return null;
+      var dataUrl = result.toString();
+      if (dataUrl.startsWith('"') && dataUrl.endsWith('"')) {
+        dataUrl = dataUrl.substring(1, dataUrl.length - 1);
+      }
+      if (!dataUrl.startsWith('data:image')) return null;
+      final base64 = dataUrl.split(',').last;
+      return base64Decode(base64);
+    } catch (e) {
+      if (kDebugMode) debugPrint('3D capture failed: $e');
+      return null;
+    }
+  }
+
+  void _notifyCaptureReady() {
+    widget.onCaptureReady?.call(_captureRender);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final cameraMode = ref.watch(cameraModeProvider);
+
     ref.listen(roomDesignProvider, (_, _) {
       if (_isReady) _pushScene();
     });
@@ -189,6 +228,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
                   });
                 }
                 _setCameraMode(ref.read(cameraModeProvider));
+                _notifyCaptureReady();
                 return null;
               },
             );
@@ -199,6 +239,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
             await _pushScene();
             if (mounted) {
               await _setCameraMode(ref.read(cameraModeProvider));
+              _notifyCaptureReady();
             }
           },
           onConsoleMessage: (controller, msg) {
@@ -247,6 +288,12 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
             left: 16,
             child: _WalkControls(onInput: _setWalkInput),
           ),
+          if (cameraMode == CameraMode.orbit)
+            Positioned(
+              right: 16,
+              bottom: 80,
+              child: _OrbitZoomControls(onZoom: _orbitZoom),
+            ),
         ],
       ],
     );
@@ -285,6 +332,64 @@ class _CameraModeBar extends StatelessWidget {
         CameraMode.side => 'Side',
         CameraMode.isometric => 'Isometric',
       };
+}
+
+class _OrbitZoomControls extends StatelessWidget {
+  const _OrbitZoomControls({required this.onZoom});
+
+  final Future<void> Function({required bool zoomIn}) onZoom;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _ZoomButton(
+          icon: Icons.add,
+          tooltip: 'Zoom in',
+          onPressed: () => onZoom(zoomIn: true),
+        ),
+        const SizedBox(height: 8),
+        _ZoomButton(
+          icon: Icons.remove,
+          tooltip: 'Zoom out',
+          onPressed: () => onZoom(zoomIn: false),
+        ),
+      ],
+    );
+  }
+}
+
+class _ZoomButton extends StatelessWidget {
+  const _ZoomButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.black54,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(icon, color: Colors.white, size: 22),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _WalkControls extends StatelessWidget {
