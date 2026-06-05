@@ -109,8 +109,6 @@ class FurnitureItem {
           height: 2.0,
           depth: 1.5,
           color: '#37474F',
-          wall: WallId.front,
-          positionFromEdge: 3.0,
         ),
       FurnitureType.chair => FurnitureItem(
           id: id,
@@ -127,8 +125,6 @@ class FurnitureItem {
           height: 7.0,
           depth: 2.0,
           color: '#6D4C41',
-          wall: WallId.left,
-          positionFromEdge: 1.0,
         ),
       FurnitureType.cupboard => FurnitureItem(
           id: id,
@@ -137,8 +133,6 @@ class FurnitureItem {
           height: 3.0,
           depth: 1.5,
           color: '#8D6E63',
-          wall: WallId.right,
-          positionFromEdge: 1.0,
         ),
     };
 

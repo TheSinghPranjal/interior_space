@@ -86,8 +86,19 @@ class RoomDesignNotifier extends StateNotifier<RoomDesign> {
     );
   }
 
-  void addCupboard({WallId wall = WallId.left}) {
-    final cupboard = CupboardConfig(id: _uuid.v4(), wall: wall);
+  void addCupboard() {
+    final index = state.cupboards.length;
+    final cols = 3;
+    final row = index ~/ cols;
+    final col = index % cols;
+    final bx = 0.22 + col * 0.28;
+    final by = 0.28 + row * 0.22;
+    final cupboard = CupboardConfig(
+      id: _uuid.v4(),
+      wall: WallId.left,
+      blueprintX: bx.clamp(0.12, 0.88),
+      blueprintY: by.clamp(0.12, 0.88),
+    );
     state = state.copyWith(cupboards: [...state.cupboards, cupboard]);
   }
 

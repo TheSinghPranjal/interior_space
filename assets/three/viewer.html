@@ -1621,13 +1621,10 @@
         const cd = c.depth * FT;
         const group = this._buildWardrobeGroup(cw, ch, cd, c.color, c.textureDataUrl);
 
-        const pos = this._wallMountedPosition(c.wall, c.positionFromEdge, cw, cd, w, l);
-        group.position.set(pos.x, 0, pos.z);
-        if (c.wall === 'left') group.position.x += cd / 2;
-        if (c.wall === 'right') group.position.x -= cd / 2;
-        if (c.wall === 'front') group.position.z += cd / 2;
-        if (c.wall === 'back') group.position.z -= cd / 2;
-        if (c.wall === 'left' || c.wall === 'right') group.rotation.y = Math.PI / 2;
+        const x = ((c.blueprintX ?? 0.5) - 0.5) * w;
+        const z = ((c.blueprintY ?? 0.5) - 0.5) * l;
+        group.position.set(x, 0, z);
+        group.rotation.y = (c.rotation || 0) * Math.PI / 180;
         this.roomGroup.add(group);
       });
     }
@@ -1681,7 +1678,7 @@
     }
 
     _buildFurniture(furniture, w, l) {
-      const wallTypes = ['wardrobe', 'cupboard', 'sofa', 'tvUnit'];
+      const wallTypes = ['sofa'];
       furniture.forEach((item) => {
         const tex = item.textureDataUrl || null;
         let group;

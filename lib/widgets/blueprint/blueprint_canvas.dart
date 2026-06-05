@@ -126,36 +126,18 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       ref.read(roomDesignProvider.notifier).updateFurniture(
             item.copyWith(positionFromEdge: edge.clamp(0, maxEdge.clamp(0, double.infinity))),
           );
-    } else if (_draggingType == 'cupboard') {
+    } else if (_draggingType == 'cupboard_floor') {
       final cupboard = design.cupboards.firstWhere((c) => c.id == _draggingId) as CupboardConfig;
-      final edge = _dragCupboardEdge(cupboard, localPos, roomRect, scale);
+      final localX = localPos.dx - roomRect.left;
+      final localY = localPos.dy - roomRect.top;
+      final halfWNorm = (cupboard.width / design.dimensions.width) / 2;
+      final halfDNorm = (cupboard.depth / design.dimensions.length) / 2;
+      final bx = (localX / roomRect.width).clamp(halfWNorm, 1 - halfWNorm);
+      final by = (localY / roomRect.height).clamp(halfDNorm, 1 - halfDNorm);
       ref.read(roomDesignProvider.notifier).updateCupboard(
-            cupboard.copyWith(positionFromEdge: edge),
+            cupboard.copyWith(blueprintX: bx, blueprintY: by),
           );
     }
-  }
-
-  double _dragCupboardEdge(
-    CupboardConfig cupboard,
-    Offset localPos,
-    Rect roomRect,
-    double scale,
-  ) {
-    final wall = cupboard.wall;
-    double edge;
-    switch (wall) {
-      case WallId.front:
-      case WallId.back:
-        edge = (localPos.dx - roomRect.left) / scale - cupboard.width / 2;
-      case WallId.left:
-      case WallId.right:
-        edge = (localPos.dy - roomRect.top) / scale - cupboard.width / 2;
-    }
-    final maxEdge = switch (wall) {
-      WallId.front || WallId.back => roomRect.width / scale - cupboard.width,
-      WallId.left || WallId.right => roomRect.height / scale - cupboard.width,
-    };
-    return edge.clamp(0, maxEdge.clamp(0, double.infinity));
   }
 
   Widget _buildFloorItem({
@@ -203,23 +185,18 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     required Rect roomRect,
     required double scale,
   }) {
-    final item = FurnitureItem(
-      id: cupboard.id,
-      type: FurnitureType.cupboard,
-      width: cupboard.width,
-      depth: cupboard.depth,
-      wall: cupboard.wall,
-      positionFromEdge: cupboard.positionFromEdge,
-      color: cupboard.color,
-    );
-    final rect = _wallItemRect(item, roomRect, scale);
+    final w = cupboard.width * scale;
+    final d = cupboard.depth * scale;
+    final left = roomRect.left + cupboard.blueprintX * roomRect.width - w / 2;
+    final top = roomRect.top + cupboard.blueprintY * roomRect.height - d / 2;
+
     return _itemBox(
       id: cupboard.id,
-      dragType: 'cupboard',
-      left: rect.left,
-      top: rect.top,
-      width: rect.width,
-      height: rect.height,
+      dragType: 'cupboard_floor',
+      left: left,
+      top: top,
+      width: w,
+      height: d,
       label: 'Cupboard',
       color: ColorUtils.fromHex(cupboard.color),
     );

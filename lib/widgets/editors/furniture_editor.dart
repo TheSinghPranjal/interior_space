@@ -21,7 +21,7 @@ class FurnitureEditor extends ConsumerWidget {
       children: [
         SectionCard(
           title: 'Furniture Placement',
-          subtitle: 'Wall items attach to walls • Bed/Table/Chair go anywhere',
+          subtitle: 'Sofa attaches to walls • Everything else goes anywhere',
           child: Wrap(
             spacing: 8,
             runSpacing: 8,

@@ -1,4 +1,5 @@
 import 'enums.dart';
+import 'room_dimensions.dart';
 
 class CupboardConfig {
   const CupboardConfig({
@@ -8,6 +9,7 @@ class CupboardConfig {
     this.height = 7.0,
     this.depth = 2.0,
     this.positionFromEdge = 1.0,
+    this.rotation = 0,
     this.color = '#6D4C41',
     this.texture = CupboardTexture.laminate,
     this.texturePath,
@@ -21,11 +23,18 @@ class CupboardConfig {
   final double height;
   final double depth;
   final double positionFromEdge;
+  final double rotation;
   final String color;
   final CupboardTexture texture;
   final String? texturePath;
   final double blueprintX;
   final double blueprintY;
+
+  double positionFromLeftFt(RoomDimensions dims) =>
+      blueprintX * dims.width - width / 2;
+
+  double positionFromFrontFt(RoomDimensions dims) =>
+      blueprintY * dims.length - depth / 2;
 
   CupboardConfig copyWith({
     WallId? wall,
@@ -33,6 +42,7 @@ class CupboardConfig {
     double? height,
     double? depth,
     double? positionFromEdge,
+    double? rotation,
     String? color,
     CupboardTexture? texture,
     String? texturePath,
@@ -47,6 +57,7 @@ class CupboardConfig {
       height: height ?? this.height,
       depth: depth ?? this.depth,
       positionFromEdge: positionFromEdge ?? this.positionFromEdge,
+      rotation: rotation ?? this.rotation,
       color: color ?? this.color,
       texture: texture ?? this.texture,
       texturePath: clearTexture ? null : (texturePath ?? this.texturePath),
@@ -62,6 +73,7 @@ class CupboardConfig {
         'height': height,
         'depth': depth,
         'positionFromEdge': positionFromEdge,
+        'rotation': rotation,
         'color': color,
         'texture': texture.name,
         'texturePath': texturePath,
@@ -77,6 +89,7 @@ class CupboardConfig {
       height: (json['height'] as num?)?.toDouble() ?? 7.0,
       depth: (json['depth'] as num?)?.toDouble() ?? 2.0,
       positionFromEdge: (json['positionFromEdge'] as num?)?.toDouble() ?? 1.0,
+      rotation: (json['rotation'] as num?)?.toDouble() ?? 0,
       color: json['color'] as String? ?? '#6D4C41',
       texture: CupboardTexture.values.byName(
         json['texture'] as String? ?? 'laminate',

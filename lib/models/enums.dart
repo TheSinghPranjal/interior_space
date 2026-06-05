@@ -50,13 +50,13 @@ enum FurnitureType { bed, sofa, table, tvUnit, chair, wardrobe, cupboard }
 
 extension FurnitureTypePlacement on FurnitureType {
   bool get isWallMounted => switch (this) {
-        FurnitureType.wardrobe => true,
-        FurnitureType.cupboard => true,
         FurnitureType.sofa => true,
-        FurnitureType.tvUnit => true,
         FurnitureType.bed => false,
         FurnitureType.table => false,
         FurnitureType.chair => false,
+        FurnitureType.tvUnit => false,
+        FurnitureType.wardrobe => false,
+        FurnitureType.cupboard => false,
       };
 }
 
