@@ -1,0 +1,359 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../models/enums.dart';
+import '../../providers/room_design_provider.dart';
+import '../../services/room_scene_builder.dart';
+import '../../services/room_viewer_html_loader.dart';
+
+class Room3DViewer extends ConsumerStatefulWidget {
+  const Room3DViewer({
+    super.key,
+    this.showControls = true,
+  });
+
+  final bool showControls;
+
+  @override
+  ConsumerState<Room3DViewer> createState() => _Room3DViewerState();
+}
+
+class _Room3DViewerState extends ConsumerState<Room3DViewer> {
+  InAppWebViewController? _controller;
+  bool _isReady = false;
+  bool _isLoading = true;
+  String? _loadError;
+  String? _htmlContent;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHtml();
+  }
+
+  Future<void> _loadHtml() async {
+    try {
+      final html = await RoomViewerHtmlLoader.load();
+      if (mounted) {
+        setState(() => _htmlContent = html);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loadError = 'Failed to load 3D engine: $e');
+      }
+    }
+  }
+
+  Future<void> _pushScene() async {
+    if (_controller == null) return;
+    try {
+      final design = ref.read(roomDesignProvider);
+      final builder = ref.read(roomSceneBuilderProvider);
+      final json = await builder.buildSceneJson(design);
+      final escaped = jsonEncode(json);
+
+      final result = await _controller!.evaluateJavascript(
+        source: '''
+          (function() {
+            try {
+              if (typeof updateRoomScene === 'function') {
+                updateRoomScene($escaped);
+                return 'ok';
+              }
+              return 'no_handler';
+            } catch(e) {
+              return 'error:' + e.message;
+            }
+          })();
+        ''',
+      );
+
+      if (result != null && result.toString().startsWith('error:')) {
+        if (mounted) setState(() => _loadError = result.toString());
+      } else if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadError = 'Scene update failed: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _setCameraMode(CameraMode mode) async {
+    if (_controller == null) return;
+    await _controller!.evaluateJavascript(
+      source: "setCameraMode('${mode.name}');",
+    );
+  }
+
+  Future<void> _setWalkInput(String key, bool active) async {
+    if (_controller == null) return;
+    await _controller!.evaluateJavascript(
+      source: 'setWalkInput("$key", $active);',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(roomDesignProvider, (_, _) {
+      if (_isReady) _pushScene();
+    });
+
+    ref.listen(cameraModeProvider, (_, next) {
+      if (_isReady) _setCameraMode(next);
+    });
+
+    if (_loadError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                _loadError!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () {
+                  setState(() {
+                    _loadError = null;
+                    _isLoading = true;
+                    _isReady = false;
+                    _htmlContent = null;
+                  });
+                  _loadHtml();
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_htmlContent == null) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 12),
+            Text('Preparing 3D engine...', style: TextStyle(color: Colors.white70)),
+          ],
+        ),
+      );
+    }
+
+    return Stack(
+      children: [
+        InAppWebView(
+          initialSettings: InAppWebViewSettings(
+            transparentBackground: true,
+            javaScriptEnabled: true,
+            mediaPlaybackRequiresUserGesture: false,
+            allowsInlineMediaPlayback: true,
+            useHybridComposition: true,
+            allowsBackForwardNavigationGestures: false,
+            supportZoom: false,
+            isInspectable: kDebugMode,
+            domStorageEnabled: true,
+          ),
+          initialData: InAppWebViewInitialData(
+            data: _htmlContent!,
+            mimeType: 'text/html',
+            encoding: 'utf-8',
+            baseUrl: WebUri('about:blank'),
+          ),
+          onWebViewCreated: (controller) {
+            _controller = controller;
+            controller.addJavaScriptHandler(
+              handlerName: 'onSceneReady',
+              callback: (args) {
+                if (mounted) {
+                  setState(() {
+                    _isReady = true;
+                    _isLoading = false;
+                  });
+                }
+                _setCameraMode(ref.read(cameraModeProvider));
+                return null;
+              },
+            );
+          },
+          onLoadStop: (controller, url) async {
+            if (mounted) setState(() => _isReady = true);
+            await Future.delayed(const Duration(milliseconds: 300));
+            await _pushScene();
+            if (mounted) {
+              await _setCameraMode(ref.read(cameraModeProvider));
+            }
+          },
+          onConsoleMessage: (controller, msg) {
+            if (kDebugMode) {
+              debugPrint('3D WebView: ${msg.message}');
+            }
+          },
+          onReceivedError: (controller, request, error) {
+            if (mounted) {
+              setState(() {
+                _loadError = 'WebView error: ${error.description}';
+                _isLoading = false;
+              });
+            }
+          },
+        ),
+        if (_isLoading)
+          const Center(
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 12),
+                    Text('Building 3D room...'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        if (widget.showControls) ...[
+          Positioned(
+            top: 8,
+            left: 8,
+            right: 8,
+            child: _CameraModeBar(
+              onModeSelected: (mode) {
+                ref.read(cameraModeProvider.notifier).state = mode;
+              },
+            ),
+          ),
+          Positioned(
+            bottom: 16,
+            left: 16,
+            child: _WalkControls(onInput: _setWalkInput),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _CameraModeBar extends StatelessWidget {
+  const _CameraModeBar({required this.onModeSelected});
+
+  final ValueChanged<CameraMode> onModeSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: CameraMode.values.map((mode) {
+          return Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: ActionChip(
+              label: Text(_label(mode)),
+              onPressed: () => onModeSelected(mode),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  String _label(CameraMode mode) => switch (mode) {
+        CameraMode.orbit => 'Orbit',
+        CameraMode.walk => 'Walk',
+        CameraMode.firstPerson => 'First Person',
+        CameraMode.top => 'Top',
+        CameraMode.front => 'Front',
+        CameraMode.side => 'Side',
+        CameraMode.isometric => 'Isometric',
+      };
+}
+
+class _WalkControls extends StatelessWidget {
+  const _WalkControls({required this.onInput});
+
+  final Future<void> Function(String key, bool active) onInput;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _WalkButton(
+          icon: Icons.arrow_upward,
+          onPressed: () => onInput('forward', true),
+          onReleased: () => onInput('forward', false),
+        ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _WalkButton(
+              icon: Icons.arrow_back,
+              onPressed: () => onInput('left', true),
+              onReleased: () => onInput('left', false),
+            ),
+            const SizedBox(width: 40),
+            _WalkButton(
+              icon: Icons.arrow_forward,
+              onPressed: () => onInput('right', true),
+              onReleased: () => onInput('right', false),
+            ),
+          ],
+        ),
+        _WalkButton(
+          icon: Icons.arrow_downward,
+          onPressed: () => onInput('backward', true),
+          onReleased: () => onInput('backward', false),
+        ),
+      ],
+    );
+  }
+}
+
+class _WalkButton extends StatelessWidget {
+  const _WalkButton({
+    required this.icon,
+    required this.onPressed,
+    required this.onReleased,
+  });
+
+  final IconData icon;
+  final VoidCallback onPressed;
+  final VoidCallback onReleased;
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: (_) => onPressed(),
+      onPointerUp: (_) => onReleased(),
+      onPointerCancel: (_) => onReleased(),
+      child: Material(
+        color: Colors.black54,
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Icon(icon, color: Colors.white, size: 20),
+        ),
+      ),
+    );
+  }
+}

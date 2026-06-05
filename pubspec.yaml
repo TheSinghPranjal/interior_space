@@ -1,0 +1,36 @@
+name: interior_space
+description: "3D Room Designer & Visualizer - Design and explore rooms in real-time 3D."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^2.6.1
+  flutter_inappwebview: ^6.1.5
+  image_picker: ^1.1.2
+  file_picker: ^8.1.7
+  path_provider: ^2.1.5
+  shared_preferences: ^2.3.5
+  uuid: ^4.5.1
+  flutter_colorpicker: ^1.1.0
+  screenshot: ^3.0.0
+  pdf: ^3.11.1
+  share_plus: ^10.1.4
+  intl: ^0.20.2
+  collection: ^1.19.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/three/viewer.html
+    - assets/textures/
