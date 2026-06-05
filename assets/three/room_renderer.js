@@ -515,6 +515,7 @@
         const pos = this._wallItemPosition(door.wall, door.positionFromEdge, dw, w, l);
         mesh.position.set(pos.x, dh / 2, pos.z);
         if (door.wall === 'left' || door.wall === 'right') mesh.rotation.y = Math.PI / 2;
+        mesh.rotation.y += (door.rotation || 0) * Math.PI / 180;
         this.roomGroup.add(mesh);
       });
     }
