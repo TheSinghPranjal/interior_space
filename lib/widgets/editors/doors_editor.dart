@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/room_constants.dart';
+import '../../models/door_config.dart';
 import '../../models/enums.dart';
 import '../../providers/room_design_provider.dart';
 import '../../services/texture_service.dart';
@@ -19,6 +20,7 @@ class DoorsEditor extends ConsumerWidget {
       children: [
         SectionCard(
           title: 'Doors',
+          subtitle: 'Long-press doors in Blueprint to move and rotate',
           trailing: IconButton(
             icon: const Icon(Icons.add),
             onPressed: () => ref.read(roomDesignProvider.notifier).addDoor(),
@@ -37,10 +39,21 @@ class DoorsEditor extends ConsumerWidget {
 class _DoorCard extends ConsumerWidget {
   const _DoorCard({required this.door});
 
-  final dynamic door;
+  final DoorConfig door;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final design = ref.watch(roomDesignProvider);
+    final notifier = ref.read(roomDesignProvider.notifier);
+    final maxEdge = door.maxPositionFromEdge(design.dimensions);
+    final clampedPosition = door.positionFromEdge.clamp(0, maxEdge).toDouble();
+
+    if (clampedPosition != door.positionFromEdge) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notifier.updateDoor(door.copyWith(positionFromEdge: clampedPosition));
+      });
+    }
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       color: Colors.grey.shade50,
@@ -54,7 +67,7 @@ class _DoorCard extends ConsumerWidget {
                 const Expanded(child: Text('Door', style: TextStyle(fontWeight: FontWeight.w600))),
                 IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  onPressed: () => ref.read(roomDesignProvider.notifier).removeDoor(door.id),
+                  onPressed: () => notifier.removeDoor(door.id),
                 ),
               ],
             ),
@@ -66,7 +79,14 @@ class _DoorCard extends ConsumerWidget {
                   .toList(),
               onChanged: (w) {
                 if (w != null) {
-                  ref.read(roomDesignProvider.notifier).updateDoor(door.copyWith(wall: w));
+                  final updated = door.copyWith(wall: w);
+                  notifier.updateDoor(
+                    updated.copyWith(
+                      positionFromEdge: updated.positionFromEdge
+                          .clamp(0, updated.maxPositionFromEdge(design.dimensions))
+                          .toDouble(),
+                    ),
+                  );
                 }
               },
             ),
@@ -75,28 +95,52 @@ class _DoorCard extends ConsumerWidget {
               value: door.width,
               min: 2,
               max: 6,
-              onChanged: (v) => ref.read(roomDesignProvider.notifier).updateDoor(door.copyWith(width: v)),
+              suffix: 'ft',
+              onChanged: (v) {
+                final updated = door.copyWith(width: v);
+                notifier.updateDoor(
+                  updated.copyWith(
+                    positionFromEdge: updated.positionFromEdge
+                        .clamp(0, updated.maxPositionFromEdge(design.dimensions))
+                        .toDouble(),
+                  ),
+                );
+              },
             ),
             _Slider(
               label: 'Height',
               value: door.height,
               min: 5,
-              max: RoomConstants.defaultHeight,
-              onChanged: (v) => ref.read(roomDesignProvider.notifier).updateDoor(door.copyWith(height: v)),
+              max: design.dimensions.height.clamp(5, RoomConstants.maxHeight).toDouble(),
+              suffix: 'ft',
+              onChanged: (v) => notifier.updateDoor(door.copyWith(height: v)),
             ),
             _Slider(
               label: 'Position from edge',
-              value: door.positionFromEdge,
+              value: clampedPosition,
               min: 0,
-              max: 10,
-              onChanged: (v) => ref.read(roomDesignProvider.notifier).updateDoor(
-                    door.copyWith(positionFromEdge: v),
-                  ),
+              max: maxEdge,
+              suffix: 'ft',
+              onChanged: maxEdge <= 0
+                  ? null
+                  : (v) => notifier.updateDoor(door.copyWith(positionFromEdge: v)),
+            ),
+            _Slider(
+              label: 'Rotation',
+              value: door.rotation,
+              min: 0,
+              max: 360,
+              suffix: '°',
+              onChanged: (v) => notifier.updateDoor(door.copyWith(rotation: v)),
+            ),
+            Text(
+              'Wall length: ${door.wallLengthFt(design.dimensions).toStringAsFixed(1)} ft',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
             ColorPickerField(
               label: 'Door Color',
               colorHex: door.color,
-              onChanged: (c) => ref.read(roomDesignProvider.notifier).updateDoor(door.copyWith(color: c)),
+              onChanged: (c) => notifier.updateDoor(door.copyWith(color: c)),
             ),
             DropdownButtonFormField<DoorMaterial>(
               value: door.material,
@@ -105,16 +149,14 @@ class _DoorCard extends ConsumerWidget {
                   .map((m) => DropdownMenuItem(value: m, child: Text(m.name)))
                   .toList(),
               onChanged: (m) {
-                if (m != null) {
-                  ref.read(roomDesignProvider.notifier).updateDoor(door.copyWith(material: m));
-                }
+                if (m != null) notifier.updateDoor(door.copyWith(material: m));
               },
             ),
             FilledButton.icon(
               onPressed: () async {
                 final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
                 if (path != null) {
-                  ref.read(roomDesignProvider.notifier).updateDoor(door.copyWith(texturePath: path));
+                  notifier.updateDoor(door.copyWith(texturePath: path));
                 }
               },
               icon: const Icon(Icons.upload_file),
@@ -133,6 +175,7 @@ class _Slider extends StatelessWidget {
     required this.value,
     required this.min,
     required this.max,
+    required this.suffix,
     required this.onChanged,
   });
 
@@ -140,15 +183,22 @@ class _Slider extends StatelessWidget {
   final double value;
   final double min;
   final double max;
-  final ValueChanged<double> onChanged;
+  final String suffix;
+  final ValueChanged<double>? onChanged;
 
   @override
   Widget build(BuildContext context) {
+    final clampedMax = max < min ? min : max;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('$label: ${value.toStringAsFixed(1)} ft'),
-        Slider(value: value.clamp(min, max), min: min, max: max, onChanged: onChanged),
+        Text('$label: ${value.toStringAsFixed(1)} $suffix'),
+        Slider(
+          value: value.clamp(min, clampedMax).toDouble(),
+          min: min,
+          max: clampedMax,
+          onChanged: onChanged,
+        ),
       ],
     );
   }
