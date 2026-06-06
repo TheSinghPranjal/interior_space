@@ -1,3 +1,4 @@
+import '../core/utils/blueprint_placement.dart';
 import 'enums.dart';
 import 'room_dimensions.dart';
 
@@ -30,11 +31,45 @@ class CupboardConfig {
   final double blueprintX;
   final double blueprintY;
 
+  double effectiveWidthFt() =>
+      BlueprintPlacement.effectiveWidthFt(width, depth, rotation);
+
+  double effectiveDepthFt() =>
+      BlueprintPlacement.effectiveDepthFt(width, depth, rotation);
+
   double positionFromLeftFt(RoomDimensions dims) =>
-      blueprintX * dims.width - width / 2;
+      blueprintX * dims.width - effectiveWidthFt() / 2;
 
   double positionFromFrontFt(RoomDimensions dims) =>
-      blueprintY * dims.length - depth / 2;
+      blueprintY * dims.length - effectiveDepthFt() / 2;
+
+  double maxPositionFromLeftFt(RoomDimensions dims) =>
+      (dims.width - effectiveWidthFt()).clamp(0, dims.width).toDouble();
+
+  double maxPositionFromFrontFt(RoomDimensions dims) =>
+      (dims.length - effectiveDepthFt()).clamp(0, dims.length).toDouble();
+
+  double blueprintXFromLeftFt(double leftFt, RoomDimensions dims) {
+    final half = BlueprintPlacement.normalizedHalfExtents(
+      widthFt: width,
+      depthFt: depth,
+      rotationDeg: rotation,
+      roomWidthFt: dims.width,
+      roomLengthFt: dims.length,
+    ).halfX;
+    return ((leftFt + effectiveWidthFt() / 2) / dims.width).clamp(half, 1 - half);
+  }
+
+  double blueprintYFromFrontFt(double frontFt, RoomDimensions dims) {
+    final half = BlueprintPlacement.normalizedHalfExtents(
+      widthFt: width,
+      depthFt: depth,
+      rotationDeg: rotation,
+      roomWidthFt: dims.width,
+      roomLengthFt: dims.length,
+    ).halfY;
+    return ((frontFt + effectiveDepthFt() / 2) / dims.length).clamp(half, 1 - half);
+  }
 
   CupboardConfig copyWith({
     WallId? wall,
