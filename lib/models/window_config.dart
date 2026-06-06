@@ -1,4 +1,5 @@
 import 'enums.dart';
+import 'room_dimensions.dart';
 
 class WindowConfig {
   const WindowConfig({
@@ -8,6 +9,7 @@ class WindowConfig {
     this.height = 4.0,
     this.positionFromEdge = 3.0,
     this.positionFromFloor = 3.0,
+    this.rotation = 0,
     this.glassColor = '#B3E5FC',
     this.frameColor = '#FFFFFF',
   });
@@ -18,8 +20,17 @@ class WindowConfig {
   final double height;
   final double positionFromEdge;
   final double positionFromFloor;
+  final double rotation;
   final String glassColor;
   final String frameColor;
+
+  double wallLengthFt(RoomDimensions dims) => switch (wall) {
+        WallId.front || WallId.back => dims.width,
+        WallId.left || WallId.right => dims.length,
+      };
+
+  double maxPositionFromEdge(RoomDimensions dims) =>
+      (wallLengthFt(dims) - width).clamp(0, wallLengthFt(dims)).toDouble();
 
   WindowConfig copyWith({
     WallId? wall,
@@ -27,6 +38,7 @@ class WindowConfig {
     double? height,
     double? positionFromEdge,
     double? positionFromFloor,
+    double? rotation,
     String? glassColor,
     String? frameColor,
   }) {
@@ -37,6 +49,7 @@ class WindowConfig {
       height: height ?? this.height,
       positionFromEdge: positionFromEdge ?? this.positionFromEdge,
       positionFromFloor: positionFromFloor ?? this.positionFromFloor,
+      rotation: rotation ?? this.rotation,
       glassColor: glassColor ?? this.glassColor,
       frameColor: frameColor ?? this.frameColor,
     );
@@ -49,6 +62,7 @@ class WindowConfig {
         'height': height,
         'positionFromEdge': positionFromEdge,
         'positionFromFloor': positionFromFloor,
+        'rotation': rotation,
         'glassColor': glassColor,
         'frameColor': frameColor,
       };
@@ -61,6 +75,7 @@ class WindowConfig {
       height: (json['height'] as num?)?.toDouble() ?? 4.0,
       positionFromEdge: (json['positionFromEdge'] as num?)?.toDouble() ?? 3.0,
       positionFromFloor: (json['positionFromFloor'] as num?)?.toDouble() ?? 3.0,
+      rotation: (json['rotation'] as num?)?.toDouble() ?? 0,
       glassColor: json['glassColor'] as String? ?? '#B3E5FC',
       frameColor: json['frameColor'] as String? ?? '#FFFFFF',
     );
