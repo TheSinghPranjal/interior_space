@@ -14,6 +14,7 @@ import '../widgets/editors/furniture_editor.dart';
 import '../widgets/editors/lighting_editor.dart';
 import '../widgets/editors/room_setup_editor.dart';
 import '../widgets/editors/walls_editor.dart';
+import '../widgets/editors/wall_tv_units_editor.dart';
 import '../widgets/editors/windows_editor.dart';
 import '../widgets/navigation/design_menu_fab.dart';
 import '../widgets/navigation/room_tabs_bar.dart';
@@ -108,6 +109,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           title: 'Windows',
           icon: Icons.window,
           child: WindowsEditor(),
+        ),
+      DesignMenuAction.wallTvUnits => const EditorScreen(
+          title: 'Wall TV Units',
+          icon: Icons.tv,
+          child: WallTvUnitsEditor(),
         ),
       DesignMenuAction.cupboards => const EditorScreen(
           title: 'Cupboards',
