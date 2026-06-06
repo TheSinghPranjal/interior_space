@@ -24,15 +24,24 @@ class AddFurnitureSheet extends ConsumerWidget {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: FurnitureType.values.map((type) {
-                return ActionChip(
-                  avatar: Icon(type.icon, size: 18),
-                  label: Text(type.label),
+              children: [
+                ...FurnitureType.values.map((type) {
+                  return ActionChip(
+                    avatar: Icon(type.icon, size: 18),
+                    label: Text(type.label),
+                    onPressed: () {
+                      ref.read(roomDesignProvider.notifier).addFurniture(type);
+                    },
+                  );
+                }),
+                ActionChip(
+                  avatar: const Icon(Icons.tv, size: 18),
+                  label: const Text('Wall TV Unit'),
                   onPressed: () {
-                    ref.read(roomDesignProvider.notifier).addFurniture(type);
+                    ref.read(roomDesignProvider.notifier).addWallTvUnit();
                   },
-                );
-              }).toList(),
+                ),
+              ],
             ),
             if (furniture.isNotEmpty) ...[
               const SizedBox(height: 20),
