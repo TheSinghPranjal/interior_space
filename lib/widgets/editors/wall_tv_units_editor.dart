@@ -146,6 +146,14 @@ class _WallTvUnitCardState extends ConsumerState<_WallTvUnitCard> {
                   : null,
             ),
             DimensionSlider(
+              label: 'From floor',
+              value: unit.positionFromFloor,
+              min: 1,
+              max: design.dimensions.height.clamp(1, RoomConstants.maxHeight).toDouble(),
+              suffix: 'ft',
+              onChanged: enabled ? (v) => notifier.updateWallTvUnit(unit.copyWith(positionFromFloor: v)) : null,
+            ),
+            DimensionSlider(
               label: 'Rotation',
               value: unit.rotation,
               min: 0,
