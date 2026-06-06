@@ -85,7 +85,7 @@ class BlueprintView extends ConsumerWidget {
         title: const Text('Blueprint Mode'),
         content: const Text(
           'Pinch with two fingers to zoom the blueprint. '
-          'Press and hold furniture, doors, or windows to select them, then drag to move. '
+          'Press and hold furniture, doors, windows, or wall TV units to select them, then drag to move. '
           'While selected, use the rotate buttons above the item to turn it. '
           'Adjust dimensions via the Design menu (tune icon). '
           'Tap "Show 3D Model" to see the realistic room with exact placement and sizes.',

@@ -59,6 +59,7 @@ class _BlueprintExportPainter {
     _drawGrid(canvas);
     _drawDoors(canvas);
     _drawWindows(canvas);
+    _drawWallTvUnits(canvas);
     _drawFurniture(canvas);
     _drawCupboards(canvas);
     _drawDimensions(canvas);
@@ -132,6 +133,21 @@ class _BlueprintExportPainter {
         WallId.back => Rect.fromLTWH(_roomRect.left + offset, _roomRect.bottom - 3, ww, 6),
         WallId.left => Rect.fromLTWH(_roomRect.left - 3, _roomRect.top + offset, 6, ww),
         WallId.right => Rect.fromLTWH(_roomRect.right - 3, _roomRect.top + offset, 6, ww),
+      };
+      canvas.drawRect(rect, paint);
+    }
+  }
+
+  void _drawWallTvUnits(Canvas canvas) {
+    for (final unit in design.wallTvUnits) {
+      final paint = Paint()..color = ColorUtils.fromHex(unit.color);
+      final uw = unit.width * _scale;
+      final offset = unit.positionFromEdge * _scale;
+      final rect = switch (unit.wall) {
+        WallId.front => Rect.fromLTWH(_roomRect.left + offset, _roomRect.top - 4, uw, 8),
+        WallId.back => Rect.fromLTWH(_roomRect.left + offset, _roomRect.bottom - 4, uw, 8),
+        WallId.left => Rect.fromLTWH(_roomRect.left - 4, _roomRect.top + offset, 8, uw),
+        WallId.right => Rect.fromLTWH(_roomRect.right - 4, _roomRect.top + offset, 8, uw),
       };
       canvas.drawRect(rect, paint);
     }
