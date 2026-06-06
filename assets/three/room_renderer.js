@@ -344,6 +344,7 @@
       this._buildWalls(w, l, h, cfg);
       this._buildDoors(cfg.doors, w, l, h);
       this._buildWindows(cfg.windows, w, l, h);
+      this._buildWallTvUnits(cfg.wallTvUnits || [], w, l, h);
       this._buildCupboards(cfg.cupboards, w, l, h);
       this._buildFurniture(cfg.furniture, w, l);
       this._buildLights(cfg.lights, w, l, h);
@@ -470,7 +471,6 @@
         });
       };
       cfg.doors.forEach(d => addOpening(d, true));
-      cfg.windows.forEach(win => addOpening(win, false));
       return openings;
     }
 
@@ -524,20 +524,27 @@
       windows.forEach(win => {
         const ww = win.width * FT;
         const wh = win.height * FT;
-        const frameGeo = new THREE.BoxGeometry(ww + 0.1, wh + 0.1, 0.06);
-        const frameMat = new THREE.MeshStandardMaterial({ color: hexColor(win.frameColor), roughness: 0.5 });
+        const frameMat = new THREE.MeshStandardMaterial({
+          color: hexColor(win.frameColor),
+          roughness: 0.5,
+        });
+        const frameGeo = new THREE.BoxGeometry(ww + 0.08, wh + 0.08, 0.05);
         const frame = new THREE.Mesh(frameGeo, frameMat);
+        frame.castShadow = false;
+        frame.receiveShadow = false;
 
-        const glassGeo = new THREE.BoxGeometry(ww, wh, 0.02);
         const glassMat = new THREE.MeshPhysicalMaterial({
           color: hexColor(win.glassColor),
           transparent: true,
-          opacity: 0.4,
+          opacity: 0.55,
           roughness: 0.05,
           metalness: 0.1,
-          transmission: 0.6,
+          transmission: 0.35,
+          depthWrite: false,
         });
-        const glass = new THREE.Mesh(glassGeo, glassMat);
+        const glass = new THREE.Mesh(new THREE.BoxGeometry(ww, wh, 0.02), glassMat);
+        glass.castShadow = false;
+        glass.receiveShadow = false;
 
         const group = new THREE.Group();
         group.add(frame);
@@ -547,6 +554,36 @@
         group.position.set(pos.x, (win.positionFromFloor * FT) + wh / 2, pos.z);
         if (win.wall === 'left' || win.wall === 'right') group.rotation.y = Math.PI / 2;
         group.rotation.y += (win.rotation || 0) * Math.PI / 180;
+        this.roomGroup.add(group);
+      });
+    }
+
+    _buildWallTvUnits(units, w, l, h) {
+      units.forEach((unit) => {
+        const uw = unit.width * FT;
+        const uh = unit.height * FT;
+        const group = new THREE.Group();
+        const bodyMat = this._makeMaterial(unit.color, 0.5, 0.1, null, 'wood', 1, 1);
+
+        const body = new THREE.Mesh(new THREE.BoxGeometry(uw, uh, 0.08), bodyMat);
+        body.position.z = 0.04;
+        body.castShadow = false;
+        body.receiveShadow = false;
+        group.add(body);
+
+        const screen = new THREE.Mesh(
+          new THREE.BoxGeometry(uw * 0.82, uh * 0.72, 0.02),
+          new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2, metalness: 0.5 })
+        );
+        screen.position.set(0, uh * 0.06, 0.09);
+        screen.castShadow = false;
+        screen.receiveShadow = false;
+        group.add(screen);
+
+        const pos = this._wallItemPosition(unit.wall, unit.positionFromEdge, uw, w, l);
+        group.position.set(pos.x, uh / 2, pos.z);
+        if (unit.wall === 'left' || unit.wall === 'right') group.rotation.y = Math.PI / 2;
+        group.rotation.y += (unit.rotation || 0) * Math.PI / 180;
         this.roomGroup.add(group);
       });
     }
