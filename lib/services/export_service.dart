@@ -211,7 +211,7 @@ class ExportService {
         pw.Text('None')
       else
         _detailTable(
-          headers: const ['Wall', 'Width', 'Height', 'From edge', 'Rotation', 'Color'],
+          headers: const ['Wall', 'Width', 'Height', 'From edge', 'From floor', 'Rotation', 'Color'],
           rows: room.wallTvUnits.map(_wallTvUnitRow).toList(),
         ),
       pw.SizedBox(height: 10),
@@ -299,6 +299,7 @@ class ExportService {
         '${unit.width.toStringAsFixed(1)} ft',
         '${unit.height.toStringAsFixed(1)} ft',
         '${unit.positionFromEdge.toStringAsFixed(1)} ft',
+        '${unit.positionFromFloor.toStringAsFixed(1)} ft',
         '${unit.rotation.toStringAsFixed(0)}°',
         unit.color,
       ];
