@@ -471,6 +471,7 @@
         });
       };
       cfg.doors.forEach(d => addOpening(d, true));
+      cfg.windows.forEach(w => addOpening(w, false));
       return openings;
     }
 
@@ -524,31 +525,65 @@
       windows.forEach(win => {
         const ww = win.width * FT;
         const wh = win.height * FT;
+        const frameW = 0.06;
+        const frameD = 0.08;
+        const frameColor = hexColor(win.frameColor);
         const frameMat = new THREE.MeshStandardMaterial({
-          color: hexColor(win.frameColor),
-          roughness: 0.5,
+          color: frameColor,
+          roughness: 0.45,
+          metalness: 0.15,
         });
-        const frameGeo = new THREE.BoxGeometry(ww + 0.08, wh + 0.08, 0.05);
-        const frame = new THREE.Mesh(frameGeo, frameMat);
-        frame.castShadow = false;
-        frame.receiveShadow = false;
-
-        const glassMat = new THREE.MeshPhysicalMaterial({
-          color: hexColor(win.glassColor),
-          transparent: true,
-          opacity: 0.55,
-          roughness: 0.05,
-          metalness: 0.1,
-          transmission: 0.35,
-          depthWrite: false,
-        });
-        const glass = new THREE.Mesh(new THREE.BoxGeometry(ww, wh, 0.02), glassMat);
-        glass.castShadow = false;
-        glass.receiveShadow = false;
 
         const group = new THREE.Group();
-        group.add(frame);
+
+        const addFrameBar = (geo, px, py, pz) => {
+          const mesh = new THREE.Mesh(geo, frameMat);
+          mesh.position.set(px, py, pz);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          group.add(mesh);
+        };
+
+        addFrameBar(new THREE.BoxGeometry(ww + frameW * 2, frameW, frameD), 0, wh / 2 + frameW / 2, 0);
+        addFrameBar(new THREE.BoxGeometry(ww + frameW * 2, frameW, frameD), 0, -wh / 2 - frameW / 2, 0);
+        addFrameBar(new THREE.BoxGeometry(frameW, wh, frameD), -ww / 2 - frameW / 2, 0, 0);
+        addFrameBar(new THREE.BoxGeometry(frameW, wh, frameD), ww / 2 + frameW / 2, 0, 0);
+        addFrameBar(new THREE.BoxGeometry(ww, frameW * 0.7, frameD * 0.85), 0, 0, 0.005);
+        addFrameBar(new THREE.BoxGeometry(frameW * 0.7, wh, frameD * 0.85), 0, 0, 0.005);
+
+        const sill = new THREE.Mesh(new THREE.BoxGeometry(ww + 0.16, 0.05, 0.12), frameMat);
+        sill.position.set(0, -wh / 2 - frameW - 0.025, 0.04);
+        sill.castShadow = true;
+        group.add(sill);
+
+        const glassHex = hexColor(win.glassColor);
+        const glassMat = new THREE.MeshPhysicalMaterial({
+          color: glassHex,
+          transparent: true,
+          opacity: 0.85,
+          roughness: 0.05,
+          metalness: 0,
+          transmission: 0.25,
+          ior: 1.45,
+          thickness: 0.02,
+          attenuationColor: new THREE.Color(glassHex),
+          attenuationDistance: 0.3,
+          side: THREE.DoubleSide,
+        });
+        const glass = new THREE.Mesh(
+          new THREE.BoxGeometry(ww - frameW * 0.4, wh - frameW * 0.4, 0.018),
+          glassMat
+        );
+        glass.castShadow = false;
+        glass.receiveShadow = false;
         group.add(glass);
+
+        const sky = new THREE.Mesh(
+          new THREE.PlaneGeometry(ww - frameW, wh - frameW),
+          new THREE.MeshBasicMaterial({ color: 0x87CEEB, transparent: true, opacity: 0.35 })
+        );
+        sky.position.z = -0.02;
+        group.add(sky);
 
         const pos = this._wallItemPosition(win.wall, win.positionFromEdge, ww, w, l);
         group.position.set(pos.x, (win.positionFromFloor * FT) + wh / 2, pos.z);
@@ -581,7 +616,7 @@
         group.add(screen);
 
         const pos = this._wallItemPosition(unit.wall, unit.positionFromEdge, uw, w, l);
-        group.position.set(pos.x, uh / 2, pos.z);
+        group.position.set(pos.x, ((unit.positionFromFloor || 0) * FT) + uh / 2, pos.z);
         if (unit.wall === 'left' || unit.wall === 'right') group.rotation.y = Math.PI / 2;
         group.rotation.y += (unit.rotation || 0) * Math.PI / 180;
         this.roomGroup.add(group);
