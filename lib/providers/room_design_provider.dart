@@ -12,6 +12,7 @@ import '../models/project_design.dart';
 import '../models/room_design.dart';
 import '../models/room_dimensions.dart';
 import '../models/wall_config.dart';
+import '../models/wall_tv_unit_config.dart';
 import '../models/window_config.dart';
 import 'project_provider.dart';
 
@@ -104,6 +105,27 @@ class RoomDesignNotifier extends StateNotifier<RoomDesign> {
   void removeWindow(String id) {
     _mutate(
       (r) => r.copyWith(windows: r.windows.where((w) => w.id != id).toList()),
+    );
+  }
+
+  void addWallTvUnit({WallId wall = WallId.front}) {
+    final unit = WallTvUnitConfig(id: _uuid.v4(), wall: wall);
+    _mutate((r) => r.copyWith(wallTvUnits: [...r.wallTvUnits, unit]));
+  }
+
+  void updateWallTvUnit(WallTvUnitConfig unit) {
+    _mutate(
+      (r) => r.copyWith(
+        wallTvUnits: r.wallTvUnits.map((t) => t.id == unit.id ? unit : t).toList(),
+      ),
+    );
+  }
+
+  void removeWallTvUnit(String id) {
+    _mutate(
+      (r) => r.copyWith(
+        wallTvUnits: r.wallTvUnits.where((t) => t.id != id).toList(),
+      ),
     );
   }
 

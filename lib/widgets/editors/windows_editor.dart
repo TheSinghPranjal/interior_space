@@ -135,7 +135,7 @@ class _WindowCardState extends ConsumerState<_WindowCard> {
               onChanged: enabled ? (v) => notifier.updateWindow(window.copyWith(height: v)) : null,
             ),
             DimensionSlider(
-              label: 'From edge',
+              label: 'Position from edge',
               value: clampedPosition,
               min: 0,
               max: maxEdge,
