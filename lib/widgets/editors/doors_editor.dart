@@ -7,6 +7,8 @@ import '../../models/enums.dart';
 import '../../providers/room_design_provider.dart';
 import '../../services/texture_service.dart';
 import '../common/color_picker_field.dart';
+import '../common/dimension_slider.dart';
+import '../common/item_editor_header.dart';
 import '../common/section_card.dart';
 
 class DoorsEditor extends ConsumerWidget {
@@ -20,7 +22,7 @@ class DoorsEditor extends ConsumerWidget {
       children: [
         SectionCard(
           title: 'Doors',
-          subtitle: 'Long-press doors in Blueprint to move and rotate',
+          subtitle: 'Tap edit icon to adjust parameters • Drag in Blueprint',
           trailing: IconButton(
             icon: const Icon(Icons.add),
             onPressed: () => ref.read(roomDesignProvider.notifier).addDoor(),
@@ -36,15 +38,24 @@ class DoorsEditor extends ConsumerWidget {
   }
 }
 
-class _DoorCard extends ConsumerWidget {
+class _DoorCard extends ConsumerStatefulWidget {
   const _DoorCard({required this.door});
 
   final DoorConfig door;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_DoorCard> createState() => _DoorCardState();
+}
+
+class _DoorCardState extends ConsumerState<_DoorCard> {
+  bool _editingEnabled = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final door = widget.door;
     final design = ref.watch(roomDesignProvider);
     final notifier = ref.read(roomDesignProvider.notifier);
+    final enabled = _editingEnabled;
     final maxEdge = door.maxPositionFromEdge(design.dimensions);
     final clampedPosition = door.positionFromEdge.clamp(0, maxEdge).toDouble();
 
@@ -62,76 +73,86 @@ class _DoorCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Expanded(child: Text('Door', style: TextStyle(fontWeight: FontWeight.w600))),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  onPressed: () => notifier.removeDoor(door.id),
-                ),
-              ],
+            ItemEditorHeader(
+              title: 'Door',
+              icon: Icons.door_front_door,
+              editingEnabled: _editingEnabled,
+              onToggleEdit: () => setState(() => _editingEnabled = !_editingEnabled),
+              onDelete: () => notifier.removeDoor(door.id),
             ),
+            if (!enabled)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Tap edit to change parameters, or drag in Blueprint view',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
+              ),
             DropdownButtonFormField<WallId>(
               value: door.wall,
               decoration: const InputDecoration(labelText: 'Wall'),
               items: WallId.values
                   .map((w) => DropdownMenuItem(value: w, child: Text(w.label)))
                   .toList(),
-              onChanged: (w) {
-                if (w != null) {
-                  final updated = door.copyWith(wall: w);
-                  notifier.updateDoor(
-                    updated.copyWith(
-                      positionFromEdge: updated.positionFromEdge
-                          .clamp(0, updated.maxPositionFromEdge(design.dimensions))
-                          .toDouble(),
-                    ),
-                  );
-                }
-              },
+              onChanged: enabled
+                  ? (w) {
+                      if (w != null) {
+                        final updated = door.copyWith(wall: w);
+                        notifier.updateDoor(
+                          updated.copyWith(
+                            positionFromEdge: updated.positionFromEdge
+                                .clamp(0, updated.maxPositionFromEdge(design.dimensions))
+                                .toDouble(),
+                          ),
+                        );
+                      }
+                    }
+                  : null,
             ),
-            _Slider(
+            DimensionSlider(
               label: 'Width',
               value: door.width,
               min: 2,
               max: 6,
               suffix: 'ft',
-              onChanged: (v) {
-                final updated = door.copyWith(width: v);
-                notifier.updateDoor(
-                  updated.copyWith(
-                    positionFromEdge: updated.positionFromEdge
-                        .clamp(0, updated.maxPositionFromEdge(design.dimensions))
-                        .toDouble(),
-                  ),
-                );
-              },
+              onChanged: enabled
+                  ? (v) {
+                      final updated = door.copyWith(width: v);
+                      notifier.updateDoor(
+                        updated.copyWith(
+                          positionFromEdge: updated.positionFromEdge
+                              .clamp(0, updated.maxPositionFromEdge(design.dimensions))
+                              .toDouble(),
+                        ),
+                      );
+                    }
+                  : null,
             ),
-            _Slider(
+            DimensionSlider(
               label: 'Height',
               value: door.height,
               min: 5,
               max: design.dimensions.height.clamp(5, RoomConstants.maxHeight).toDouble(),
               suffix: 'ft',
-              onChanged: (v) => notifier.updateDoor(door.copyWith(height: v)),
+              onChanged: enabled ? (v) => notifier.updateDoor(door.copyWith(height: v)) : null,
             ),
-            _Slider(
+            DimensionSlider(
               label: 'Position from edge',
               value: clampedPosition,
               min: 0,
               max: maxEdge,
               suffix: 'ft',
-              onChanged: maxEdge <= 0
-                  ? null
-                  : (v) => notifier.updateDoor(door.copyWith(positionFromEdge: v)),
+              onChanged: enabled && maxEdge > 0
+                  ? (v) => notifier.updateDoor(door.copyWith(positionFromEdge: v))
+                  : null,
             ),
-            _Slider(
+            DimensionSlider(
               label: 'Rotation',
               value: door.rotation,
               min: 0,
               max: 360,
               suffix: '°',
-              onChanged: (v) => notifier.updateDoor(door.copyWith(rotation: v)),
+              onChanged: enabled ? (v) => notifier.updateDoor(door.copyWith(rotation: v)) : null,
             ),
             Text(
               'Wall length: ${door.wallLengthFt(design.dimensions).toStringAsFixed(1)} ft',
@@ -140,6 +161,7 @@ class _DoorCard extends ConsumerWidget {
             ColorPickerField(
               label: 'Door Color',
               colorHex: door.color,
+              enabled: enabled,
               onChanged: (c) => notifier.updateDoor(door.copyWith(color: c)),
             ),
             DropdownButtonFormField<DoorMaterial>(
@@ -148,58 +170,26 @@ class _DoorCard extends ConsumerWidget {
               items: DoorMaterial.values
                   .map((m) => DropdownMenuItem(value: m, child: Text(m.name)))
                   .toList(),
-              onChanged: (m) {
-                if (m != null) notifier.updateDoor(door.copyWith(material: m));
-              },
+              onChanged: enabled
+                  ? (m) {
+                      if (m != null) notifier.updateDoor(door.copyWith(material: m));
+                    }
+                  : null,
             ),
-            FilledButton.icon(
-              onPressed: () async {
-                final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
-                if (path != null) {
-                  notifier.updateDoor(door.copyWith(texturePath: path));
-                }
-              },
-              icon: const Icon(Icons.upload_file),
-              label: const Text('Upload Door Texture'),
-            ),
+            if (enabled)
+              FilledButton.icon(
+                onPressed: () async {
+                  final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
+                  if (path != null) {
+                    notifier.updateDoor(door.copyWith(texturePath: path));
+                  }
+                },
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Upload Door Texture'),
+              ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _Slider extends StatelessWidget {
-  const _Slider({
-    required this.label,
-    required this.value,
-    required this.min,
-    required this.max,
-    required this.suffix,
-    required this.onChanged,
-  });
-
-  final String label;
-  final double value;
-  final double min;
-  final double max;
-  final String suffix;
-  final ValueChanged<double>? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final clampedMax = max < min ? min : max;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('$label: ${value.toStringAsFixed(1)} $suffix'),
-        Slider(
-          value: value.clamp(min, clampedMax).toDouble(),
-          min: min,
-          max: clampedMax,
-          onChanged: onChanged,
-        ),
-      ],
     );
   }
 }
