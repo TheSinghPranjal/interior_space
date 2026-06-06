@@ -15,6 +15,7 @@ import '../models/furniture_item.dart';
 import '../models/light_config.dart';
 import '../models/project_design.dart';
 import '../models/room_design.dart';
+import '../models/wall_tv_unit_config.dart';
 import '../models/window_config.dart';
 import 'blueprint_image_exporter.dart';
 
@@ -205,6 +206,15 @@ class ExportService {
           rows: room.windows.map(_windowRow).toList(),
         ),
       pw.SizedBox(height: 10),
+      _sectionTitle('Wall TV Units (${room.wallTvUnits.length})'),
+      if (room.wallTvUnits.isEmpty)
+        pw.Text('None')
+      else
+        _detailTable(
+          headers: const ['Wall', 'Width', 'Height', 'From edge', 'Rotation', 'Color'],
+          rows: room.wallTvUnits.map(_wallTvUnitRow).toList(),
+        ),
+      pw.SizedBox(height: 10),
       _sectionTitle('Furniture (${room.furniture.length})'),
       if (room.furniture.isEmpty)
         pw.Text('None')
@@ -282,6 +292,15 @@ class ExportService {
         '${window.positionFromFloor.toStringAsFixed(1)} ft',
         '${window.rotation.toStringAsFixed(0)}°',
         window.glassColor,
+      ];
+
+  List<String> _wallTvUnitRow(WallTvUnitConfig unit) => [
+        unit.wall.label,
+        '${unit.width.toStringAsFixed(1)} ft',
+        '${unit.height.toStringAsFixed(1)} ft',
+        '${unit.positionFromEdge.toStringAsFixed(1)} ft',
+        '${unit.rotation.toStringAsFixed(0)}°',
+        unit.color,
       ];
 
   List<String> _furnitureRow(FurnitureItem item, RoomDesign room) {
