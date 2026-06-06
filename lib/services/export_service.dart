@@ -201,7 +201,7 @@ class ExportService {
         pw.Text('None')
       else
         _detailTable(
-          headers: const ['Wall', 'Width', 'Height', 'From edge', 'From floor', 'Color'],
+          headers: const ['Wall', 'Width', 'Height', 'From edge', 'From floor', 'Rotation', 'Color'],
           rows: room.windows.map(_windowRow).toList(),
         ),
       pw.SizedBox(height: 10),
@@ -280,6 +280,7 @@ class ExportService {
         '${window.height.toStringAsFixed(1)} ft',
         '${window.positionFromEdge.toStringAsFixed(1)} ft',
         '${window.positionFromFloor.toStringAsFixed(1)} ft',
+        '${window.rotation.toStringAsFixed(0)}°',
         window.glassColor,
       ];
 
