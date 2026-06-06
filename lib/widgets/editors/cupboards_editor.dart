@@ -7,6 +7,8 @@ import '../../models/room_design.dart';
 import '../../providers/room_design_provider.dart';
 import '../../services/texture_service.dart';
 import '../common/color_picker_field.dart';
+import '../common/dimension_slider.dart';
+import '../common/item_editor_header.dart';
 import '../common/section_card.dart';
 
 class CupboardsEditor extends ConsumerWidget {
@@ -21,7 +23,7 @@ class CupboardsEditor extends ConsumerWidget {
       children: [
         SectionCard(
           title: 'Cupboards / Wardrobes',
-          subtitle: 'Place anywhere • Drag to reposition in Blueprint view',
+          subtitle: 'Tap edit icon to adjust parameters • Drag in Blueprint',
           trailing: IconButton(
             icon: const Icon(Icons.add),
             onPressed: () => ref.read(roomDesignProvider.notifier).addCupboard(),
@@ -30,12 +32,7 @@ class CupboardsEditor extends ConsumerWidget {
               ? const Text('No cupboards added. Tap + to add.')
               : Column(
                   children: cupboards
-                      .map(
-                        (c) => _CupboardCard(
-                          cupboard: c,
-                          design: design,
-                        ),
-                      )
+                      .map((c) => _CupboardCard(cupboard: c, design: design))
                       .toList(),
                 ),
         ),
@@ -44,21 +41,25 @@ class CupboardsEditor extends ConsumerWidget {
   }
 }
 
-class _CupboardCard extends ConsumerWidget {
-  const _CupboardCard({
-    required this.cupboard,
-    required this.design,
-  });
+class _CupboardCard extends ConsumerStatefulWidget {
+  const _CupboardCard({required this.cupboard, required this.design});
 
   final CupboardConfig cupboard;
   final RoomDesign design;
 
-  double get roomWidth => design.dimensions.width;
-  double get roomLength => design.dimensions.length;
+  @override
+  ConsumerState<_CupboardCard> createState() => _CupboardCardState();
+}
+
+class _CupboardCardState extends ConsumerState<_CupboardCard> {
+  bool _editingEnabled = false;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final cupboard = widget.cupboard;
+    final design = widget.design;
     final notifier = ref.read(roomDesignProvider.notifier);
+    final enabled = _editingEnabled;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -67,78 +68,85 @@ class _CupboardCard extends ConsumerWidget {
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Text('Cupboard', style: TextStyle(fontWeight: FontWeight.w600)),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  onPressed: () => notifier.removeCupboard(cupboard.id),
-                ),
-              ],
+            ItemEditorHeader(
+              title: 'Cupboard',
+              icon: Icons.kitchen,
+              editingEnabled: _editingEnabled,
+              onToggleEdit: () => setState(() => _editingEnabled = !_editingEnabled),
+              onDelete: () => notifier.removeCupboard(cupboard.id),
             ),
-            _Slider(
+            if (!enabled)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Tap edit to change parameters, or drag in Blueprint view',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
+              ),
+            DimensionSlider(
               label: 'Distance from left wall',
               value: cupboard.positionFromLeftFt(design.dimensions),
               min: 0,
-              max: (roomWidth - cupboard.width).clamp(0, roomWidth),
+              max: cupboard.maxPositionFromLeftFt(design.dimensions),
               suffix: 'ft',
-              onChanged: (v) {
-                final bx = (v + cupboard.width / 2) / roomWidth;
-                notifier.updateCupboard(cupboard.copyWith(blueprintX: bx.clamp(0.05, 0.95)));
-              },
+              onChanged: enabled
+                  ? (v) => notifier.updateCupboard(
+                        cupboard.copyWith(
+                          blueprintX: cupboard.blueprintXFromLeftFt(v, design.dimensions),
+                        ),
+                      )
+                  : null,
             ),
-            _Slider(
+            DimensionSlider(
               label: 'Distance from front wall',
               value: cupboard.positionFromFrontFt(design.dimensions),
               min: 0,
-              max: (roomLength - cupboard.depth).clamp(0, roomLength),
+              max: cupboard.maxPositionFromFrontFt(design.dimensions),
               suffix: 'ft',
-              onChanged: (v) {
-                final by = (v + cupboard.depth / 2) / roomLength;
-                notifier.updateCupboard(cupboard.copyWith(blueprintY: by.clamp(0.05, 0.95)));
-              },
+              onChanged: enabled
+                  ? (v) => notifier.updateCupboard(
+                        cupboard.copyWith(
+                          blueprintY: cupboard.blueprintYFromFrontFt(v, design.dimensions),
+                        ),
+                      )
+                  : null,
             ),
-            _Slider(
+            DimensionSlider(
               label: 'Rotation',
               value: cupboard.rotation,
               min: 0,
               max: 360,
               suffix: '°',
-              onChanged: (v) => notifier.updateCupboard(cupboard.copyWith(rotation: v)),
+              onChanged: enabled ? (v) => notifier.updateCupboard(cupboard.copyWith(rotation: v)) : null,
             ),
-            Text(
-              'Or drag freely in Blueprint view',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-            ),
-            _Slider(
+            DimensionSlider(
               label: 'Width',
               value: cupboard.width,
               min: 2,
               max: 12,
               suffix: 'ft',
-              onChanged: (v) => notifier.updateCupboard(cupboard.copyWith(width: v)),
+              onChanged: enabled ? (v) => notifier.updateCupboard(cupboard.copyWith(width: v)) : null,
             ),
-            _Slider(
+            DimensionSlider(
               label: 'Height',
               value: cupboard.height,
               min: 3,
               max: 9,
               suffix: 'ft',
-              onChanged: (v) => notifier.updateCupboard(cupboard.copyWith(height: v)),
+              onChanged: enabled ? (v) => notifier.updateCupboard(cupboard.copyWith(height: v)) : null,
             ),
-            _Slider(
+            DimensionSlider(
               label: 'Depth',
               value: cupboard.depth,
               min: 1,
               max: 4,
               suffix: 'ft',
-              onChanged: (v) => notifier.updateCupboard(cupboard.copyWith(depth: v)),
+              onChanged: enabled ? (v) => notifier.updateCupboard(cupboard.copyWith(depth: v)) : null,
             ),
             ColorPickerField(
               label: 'Color',
               colorHex: cupboard.color,
+              enabled: enabled,
               onChanged: (c) => notifier.updateCupboard(cupboard.copyWith(color: c)),
             ),
             DropdownButtonFormField<CupboardTexture>(
@@ -147,60 +155,26 @@ class _CupboardCard extends ConsumerWidget {
               items: CupboardTexture.values
                   .map((t) => DropdownMenuItem(value: t, child: Text(t.name)))
                   .toList(),
-              onChanged: (t) {
-                if (t != null) {
-                  notifier.updateCupboard(cupboard.copyWith(texture: t));
-                }
-              },
+              onChanged: enabled
+                  ? (t) {
+                      if (t != null) notifier.updateCupboard(cupboard.copyWith(texture: t));
+                    }
+                  : null,
             ),
-            FilledButton.icon(
-              onPressed: () async {
-                final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
-                if (path != null) {
-                  notifier.updateCupboard(cupboard.copyWith(texturePath: path));
-                }
-              },
-              icon: const Icon(Icons.upload_file),
-              label: const Text('Upload Texture'),
-            ),
+            if (enabled)
+              FilledButton.icon(
+                onPressed: () async {
+                  final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
+                  if (path != null) {
+                    notifier.updateCupboard(cupboard.copyWith(texturePath: path));
+                  }
+                },
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Upload Texture'),
+              ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _Slider extends StatelessWidget {
-  const _Slider({
-    required this.label,
-    required this.value,
-    required this.min,
-    required this.max,
-    required this.suffix,
-    required this.onChanged,
-  });
-
-  final String label;
-  final double value;
-  final double min;
-  final double max;
-  final String suffix;
-  final ValueChanged<double> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final clampedMax = max < min ? min : max;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('$label: ${value.toStringAsFixed(1)} $suffix'),
-        Slider(
-          value: value.clamp(min, clampedMax),
-          min: min,
-          max: clampedMax,
-          onChanged: onChanged,
-        ),
-      ],
     );
   }
 }
