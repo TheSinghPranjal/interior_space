@@ -9,36 +9,43 @@ class ColorPickerField extends StatelessWidget {
     required this.label,
     required this.colorHex,
     required this.onChanged,
+    this.enabled = true,
   });
 
   final String label;
   final String colorHex;
   final ValueChanged<String> onChanged;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     final color = ColorUtils.fromHex(colorHex);
 
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(label),
-      subtitle: Text(
-        '${ColorUtils.toHex(color)}  •  '
-        'RGB(${(color.r * 255).round()}, ${(color.g * 255).round()}, ${(color.b * 255).round()})',
-      ),
-      trailing: GestureDetector(
-        onTap: () => _showPicker(context, color),
-        child: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade300),
+    return Opacity(
+      opacity: enabled ? 1 : 0.55,
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text(label),
+        subtitle: Text(
+          '${ColorUtils.toHex(color)}  •  '
+              'RGB(${(color.r * 255).round()}, ${(color.g * 255).round()}, ${(color.b * 255).round()})',
+        ),
+        trailing: GestureDetector(
+          onTap: enabled ? () => _showPicker(context, color) : null,
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.grey.shade300,
+              ),
+            ),
           ),
         ),
+        onTap: enabled ? () => _showPicker(context, color) : null,
       ),
-      onTap: () => _showPicker(context, color),
     );
   }
 
