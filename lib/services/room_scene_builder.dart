@@ -54,6 +54,7 @@ class RoomSceneBuilder {
       },
       'doors': doors,
       'windows': design.windows.map((w) => w.toJson()).toList(),
+      'wallTvUnits': design.wallTvUnits.map((t) => t.toJson()).toList(),
       'cupboards': cupboards,
       'lights': design.lights.map((l) => l.toJson()).toList(),
       'furniture': await Future.wait(
