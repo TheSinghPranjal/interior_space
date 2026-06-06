@@ -12,6 +12,7 @@ import '../../models/door_config.dart';
 import '../../models/enums.dart';
 import '../../models/furniture_item.dart';
 import '../../models/room_design.dart';
+import '../../models/wall_tv_unit_config.dart';
 import '../../models/window_config.dart';
 import '../../providers/room_design_provider.dart';
 
@@ -124,6 +125,14 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
                 scale: scale,
               );
             }),
+            ...design.wallTvUnits.map((unit) {
+              return _buildWallTvUnitItem(
+                unit: unit,
+                design: design,
+                roomRect: roomRect,
+                scale: scale,
+              );
+            }),
             if (_selectedId != null)
               _buildSelectionToolbar(design: design, roomRect: roomRect, scale: scale),
               ],
@@ -200,6 +209,9 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     } else if (_selectedType == 'window_wall' && _tempPositionFromEdge != null) {
       final window = design.windows.firstWhere((w) => w.id == _selectedId);
       notifier.updateWindow(window.copyWith(positionFromEdge: _tempPositionFromEdge!));
+    } else if (_selectedType == 'wall_tv_wall' && _tempPositionFromEdge != null) {
+      final unit = design.wallTvUnits.firstWhere((t) => t.id == _selectedId);
+      notifier.updateWallTvUnit(unit.copyWith(positionFromEdge: _tempPositionFromEdge!));
     }
 
     setState(() {
@@ -233,6 +245,10 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       final window = design.windows.firstWhere((w) => w.id == _selectedId);
       final next = (window.rotation + degrees) % 360;
       notifier.updateWindow(window.copyWith(rotation: next < 0 ? next + 360 : next));
+    } else if (_selectedType == 'wall_tv_wall') {
+      final unit = design.wallTvUnits.firstWhere((t) => t.id == _selectedId);
+      final next = (unit.rotation + degrees) % 360;
+      notifier.updateWallTvUnit(unit.copyWith(rotation: next < 0 ? next + 360 : next));
     }
   }
 
@@ -365,8 +381,13 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     final edge = (_isDragging && _selectedId == door.id && _tempPositionFromEdge != null)
         ? _tempPositionFromEdge!
         : door.positionFromEdge;
-    final tempDoor = door.copyWith(positionFromEdge: edge);
-    final rect = _doorRect(tempDoor, roomRect, scale);
+    final rect = _wallStripRect(
+      wall: door.wall,
+      positionFromEdge: edge,
+      widthFt: door.width,
+      roomRect: roomRect,
+      scale: scale,
+    );
 
     return _itemBox(
       id: door.id,
@@ -382,13 +403,14 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       roomRect: roomRect,
       scale: scale,
       onWallDrag: (Offset center) {
-        final wall = door.wall;
-        final edgePos = switch (wall) {
-          WallId.front || WallId.back => (center.dx - roomRect.left) / scale - door.width / 2,
-          WallId.left || WallId.right => (center.dy - roomRect.top) / scale - door.width / 2,
-        };
-        _tempPositionFromEdge =
-            edgePos.clamp(0, door.maxPositionFromEdge(design.dimensions)).toDouble();
+        _tempPositionFromEdge = _edgeFromCenter(
+          wall: door.wall,
+          center: center,
+          itemWidthFt: door.width,
+          roomRect: roomRect,
+          scale: scale,
+          maxEdge: door.maxPositionFromEdge(design.dimensions),
+        );
       },
     );
   }
@@ -403,7 +425,13 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
         ? _tempPositionFromEdge!
         : window.positionFromEdge;
     final tempWindow = window.copyWith(positionFromEdge: edge);
-    final rect = _windowRect(tempWindow, roomRect, scale);
+    final rect = _wallStripRect(
+      wall: window.wall,
+      positionFromEdge: tempWindow.positionFromEdge,
+      widthFt: window.width,
+      roomRect: roomRect,
+      scale: scale,
+    );
 
     return _itemBox(
       id: window.id,
@@ -419,13 +447,57 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       roomRect: roomRect,
       scale: scale,
       onWallDrag: (Offset center) {
-        final wall = window.wall;
-        final edgePos = switch (wall) {
-          WallId.front || WallId.back => (center.dx - roomRect.left) / scale - window.width / 2,
-          WallId.left || WallId.right => (center.dy - roomRect.top) / scale - window.width / 2,
-        };
-        _tempPositionFromEdge =
-            edgePos.clamp(0, window.maxPositionFromEdge(design.dimensions)).toDouble();
+        _tempPositionFromEdge = _edgeFromCenter(
+          wall: window.wall,
+          center: center,
+          itemWidthFt: window.width,
+          roomRect: roomRect,
+          scale: scale,
+          maxEdge: window.maxPositionFromEdge(design.dimensions),
+        );
+      },
+    );
+  }
+
+  Widget _buildWallTvUnitItem({
+    required WallTvUnitConfig unit,
+    required RoomDesign design,
+    required Rect roomRect,
+    required double scale,
+  }) {
+    final edge = (_isDragging && _selectedId == unit.id && _tempPositionFromEdge != null)
+        ? _tempPositionFromEdge!
+        : unit.positionFromEdge;
+    final rect = _wallStripRect(
+      wall: unit.wall,
+      positionFromEdge: edge,
+      widthFt: unit.width,
+      roomRect: roomRect,
+      scale: scale,
+    );
+
+    return _itemBox(
+      id: unit.id,
+      dragType: 'wall_tv_wall',
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+      label: 'Wall TV',
+      color: ColorUtils.fromHex(unit.color),
+      rotation: unit.rotation,
+      design: design,
+      roomRect: roomRect,
+      scale: scale,
+      onWallDrag: (Offset center) {
+        _tempPositionFromEdge = _edgeFromCenter(
+          wall: unit.wall,
+          center: center,
+          itemWidthFt: unit.width,
+          roomRect: roomRect,
+          scale: scale,
+          maxEdge: unit.maxPositionFromEdge(design.dimensions),
+        );
       },
     );
   }
@@ -488,7 +560,8 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     final canRotate = _selectedType == 'furniture_floor' ||
         _selectedType == 'cupboard_floor' ||
         _selectedType == 'door_wall' ||
-        _selectedType == 'window_wall';
+        _selectedType == 'window_wall' ||
+        _selectedType == 'wall_tv_wall';
 
     Rect? itemRect;
     if (_selectedType == 'furniture_floor') {
@@ -525,11 +598,33 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     } else if (_selectedType == 'door_wall') {
       final door = design.doors.firstWhere((d) => d.id == _selectedId);
       final edge = _tempPositionFromEdge ?? door.positionFromEdge;
-      itemRect = _doorRect(door.copyWith(positionFromEdge: edge), roomRect, scale);
+      itemRect = _wallStripRect(
+        wall: door.wall,
+        positionFromEdge: edge,
+        widthFt: door.width,
+        roomRect: roomRect,
+        scale: scale,
+      );
     } else if (_selectedType == 'window_wall') {
       final window = design.windows.firstWhere((w) => w.id == _selectedId);
       final edge = _tempPositionFromEdge ?? window.positionFromEdge;
-      itemRect = _windowRect(window.copyWith(positionFromEdge: edge), roomRect, scale);
+      itemRect = _wallStripRect(
+        wall: window.wall,
+        positionFromEdge: edge,
+        widthFt: window.width,
+        roomRect: roomRect,
+        scale: scale,
+      );
+    } else if (_selectedType == 'wall_tv_wall') {
+      final unit = design.wallTvUnits.firstWhere((t) => t.id == _selectedId);
+      final edge = _tempPositionFromEdge ?? unit.positionFromEdge;
+      itemRect = _wallStripRect(
+        wall: unit.wall,
+        positionFromEdge: edge,
+        widthFt: unit.width,
+        roomRect: roomRect,
+        scale: scale,
+      );
     }
 
     if (itemRect == null) return const SizedBox.shrink();
@@ -573,45 +668,33 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     );
   }
 
-  Rect _windowRect(WindowConfig window, Rect roomRect, double scale) {
-    const visualDepth = 14.0;
-    final along = window.positionFromEdge * scale;
-    final alongSize = window.width * scale;
-
-    return switch (window.wall) {
-      WallId.front => Rect.fromLTWH(
-          roomRect.left + along,
-          roomRect.top - visualDepth / 2,
-          alongSize,
-          visualDepth,
-        ),
-      WallId.back => Rect.fromLTWH(
-          roomRect.left + along,
-          roomRect.bottom - visualDepth / 2,
-          alongSize,
-          visualDepth,
-        ),
-      WallId.left => Rect.fromLTWH(
-          roomRect.left - visualDepth / 2,
-          roomRect.top + along,
-          visualDepth,
-          alongSize,
-        ),
-      WallId.right => Rect.fromLTWH(
-          roomRect.right - visualDepth / 2,
-          roomRect.top + along,
-          visualDepth,
-          alongSize,
-        ),
+  double _edgeFromCenter({
+    required WallId wall,
+    required Offset center,
+    required double itemWidthFt,
+    required Rect roomRect,
+    required double scale,
+    required double maxEdge,
+  }) {
+    final edgePos = switch (wall) {
+      WallId.front || WallId.back => (center.dx - roomRect.left) / scale - itemWidthFt / 2,
+      WallId.left || WallId.right => (center.dy - roomRect.top) / scale - itemWidthFt / 2,
     };
+    return edgePos.clamp(0, maxEdge).toDouble();
   }
 
-  Rect _doorRect(DoorConfig door, Rect roomRect, double scale) {
+  Rect _wallStripRect({
+    required WallId wall,
+    required double positionFromEdge,
+    required double widthFt,
+    required Rect roomRect,
+    required double scale,
+  }) {
     const visualDepth = 14.0;
-    final along = door.positionFromEdge * scale;
-    final alongSize = door.width * scale;
+    final along = positionFromEdge * scale;
+    final alongSize = widthFt * scale;
 
-    return switch (door.wall) {
+    return switch (wall) {
       WallId.front => Rect.fromLTWH(
           roomRect.left + along,
           roomRect.top - visualDepth / 2,
