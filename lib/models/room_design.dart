@@ -7,6 +7,7 @@ import 'furniture_item.dart';
 import 'light_config.dart';
 import 'room_dimensions.dart';
 import 'wall_config.dart';
+import 'wall_tv_unit_config.dart';
 import 'window_config.dart';
 
 class RoomDesign {
@@ -18,6 +19,7 @@ class RoomDesign {
     this.ceiling = const CeilingConfig(),
     this.doors = const [],
     this.windows = const [],
+    this.wallTvUnits = const [],
     this.cupboards = const [],
     this.lights = const [],
     this.furniture = const [],
@@ -31,6 +33,7 @@ class RoomDesign {
   final CeilingConfig ceiling;
   final List<DoorConfig> doors;
   final List<WindowConfig> windows;
+  final List<WallTvUnitConfig> wallTvUnits;
   final List<CupboardConfig> cupboards;
   final List<LightConfig> lights;
   final List<FurnitureItem> furniture;
@@ -44,6 +47,7 @@ class RoomDesign {
     CeilingConfig? ceiling,
     List<DoorConfig>? doors,
     List<WindowConfig>? windows,
+    List<WallTvUnitConfig>? wallTvUnits,
     List<CupboardConfig>? cupboards,
     List<LightConfig>? lights,
     List<FurnitureItem>? furniture,
@@ -57,6 +61,7 @@ class RoomDesign {
       ceiling: ceiling ?? this.ceiling,
       doors: doors ?? this.doors,
       windows: windows ?? this.windows,
+      wallTvUnits: wallTvUnits ?? this.wallTvUnits,
       cupboards: cupboards ?? this.cupboards,
       lights: lights ?? this.lights,
       furniture: furniture ?? this.furniture,
@@ -72,6 +77,7 @@ class RoomDesign {
         'ceiling': ceiling.toJson(),
         'doors': doors.map((d) => d.toJson()).toList(),
         'windows': windows.map((w) => w.toJson()).toList(),
+        'wallTvUnits': wallTvUnits.map((t) => t.toJson()).toList(),
         'cupboards': cupboards.map((c) => c.toJson()).toList(),
         'lights': lights.map((l) => l.toJson()).toList(),
         'furniture': furniture.map((f) => f.toJson()).toList(),
@@ -100,6 +106,10 @@ class RoomDesign {
           [],
       windows: (json['windows'] as List<dynamic>?)
               ?.map((e) => WindowConfig.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      wallTvUnits: (json['wallTvUnits'] as List<dynamic>?)
+              ?.map((e) => WallTvUnitConfig.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
       cupboards: (json['cupboards'] as List<dynamic>?)
