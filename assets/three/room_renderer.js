@@ -546,6 +546,7 @@
         const pos = this._wallItemPosition(win.wall, win.positionFromEdge, ww, w, l);
         group.position.set(pos.x, (win.positionFromFloor * FT) + wh / 2, pos.z);
         if (win.wall === 'left' || win.wall === 'right') group.rotation.y = Math.PI / 2;
+        group.rotation.y += (win.rotation || 0) * Math.PI / 180;
         this.roomGroup.add(group);
       });
     }
