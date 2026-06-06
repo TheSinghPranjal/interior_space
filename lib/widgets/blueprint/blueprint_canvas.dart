@@ -5,12 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/utils/blueprint_placement.dart';
 import '../../core/utils/color_utils.dart';
 import '../../models/cupboard_config.dart';
 import '../../models/door_config.dart';
 import '../../models/enums.dart';
 import '../../models/furniture_item.dart';
 import '../../models/room_design.dart';
+import '../../models/window_config.dart';
 import '../../providers/room_design_provider.dart';
 
 class BlueprintCanvas extends ConsumerStatefulWidget {
@@ -60,21 +62,28 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
         final offsetY = (constraints.maxHeight - roomH) / 2;
         final roomRect = Rect.fromLTWH(offsetX, offsetY, roomW, roomH);
 
-        return Stack(
-          children: [
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _deselect,
-              child: CustomPaint(
-                size: Size(constraints.maxWidth, constraints.maxHeight),
-                painter: _BlueprintPainter(
-                  design: design,
-                  roomRect: roomRect,
-                  scale: scale,
-                  selectedId: _selectedId,
+        return InteractiveViewer(
+          minScale: 0.5,
+          maxScale: 4.0,
+          boundaryMargin: const EdgeInsets.all(120),
+          child: SizedBox(
+            width: constraints.maxWidth,
+            height: constraints.maxHeight,
+            child: Stack(
+              children: [
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _deselect,
+                  child: CustomPaint(
+                    size: Size(constraints.maxWidth, constraints.maxHeight),
+                    painter: _BlueprintPainter(
+                      design: design,
+                      roomRect: roomRect,
+                      scale: scale,
+                      selectedId: _selectedId,
+                    ),
+                  ),
                 ),
-              ),
-            ),
             ...design.furniture.where((f) => !f.isWallMounted).map((item) {
               return _buildFloorItem(
                 item: item,
@@ -107,9 +116,19 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
                 scale: scale,
               );
             }),
+            ...design.windows.map((window) {
+              return _buildWindowItem(
+                window: window,
+                design: design,
+                roomRect: roomRect,
+                scale: scale,
+              );
+            }),
             if (_selectedId != null)
               _buildSelectionToolbar(design: design, roomRect: roomRect, scale: scale),
-          ],
+              ],
+            ),
+          ),
         );
       },
     );
@@ -178,6 +197,9 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     } else if (_selectedType == 'door_wall' && _tempPositionFromEdge != null) {
       final door = design.doors.firstWhere((d) => d.id == _selectedId);
       notifier.updateDoor(door.copyWith(positionFromEdge: _tempPositionFromEdge!));
+    } else if (_selectedType == 'window_wall' && _tempPositionFromEdge != null) {
+      final window = design.windows.firstWhere((w) => w.id == _selectedId);
+      notifier.updateWindow(window.copyWith(positionFromEdge: _tempPositionFromEdge!));
     }
 
     setState(() {
@@ -207,6 +229,10 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       final door = design.doors.firstWhere((d) => d.id == _selectedId);
       final next = (door.rotation + degrees) % 360;
       notifier.updateDoor(door.copyWith(rotation: next < 0 ? next + 360 : next));
+    } else if (_selectedType == 'window_wall') {
+      final window = design.windows.firstWhere((w) => w.id == _selectedId);
+      final next = (window.rotation + degrees) % 360;
+      notifier.updateWindow(window.copyWith(rotation: next < 0 ? next + 360 : next));
     }
   }
 
@@ -220,13 +246,19 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
   }) {
     final width = item?.width ?? cupboard!.width;
     final depth = item?.depth ?? cupboard!.depth;
+    final rotation = item?.rotation ?? cupboard!.rotation;
     final center = (_dragStartCenter ?? Offset.zero) + _dragDelta;
-    final halfWNorm = (width / design.dimensions.width) / 2;
-    final halfDNorm = (depth / design.dimensions.length) / 2;
-    final bx = ((center.dx - roomRect.left) / roomRect.width).clamp(halfWNorm, 1 - halfWNorm);
-    final by = ((center.dy - roomRect.top) / roomRect.height).clamp(halfDNorm, 1 - halfDNorm);
-    _tempBlueprintX = _isDragging ? bx : defaultBx;
-    _tempBlueprintY = _isDragging ? by : defaultBy;
+    final clamped = BlueprintPlacement.clampBlueprintCenter(
+      centerXNorm: (center.dx - roomRect.left) / roomRect.width,
+      centerYNorm: (center.dy - roomRect.top) / roomRect.height,
+      widthFt: width,
+      depthFt: depth,
+      rotationDeg: rotation,
+      roomWidthFt: design.dimensions.width,
+      roomLengthFt: design.dimensions.length,
+    );
+    _tempBlueprintX = _isDragging ? clamped.bx : defaultBx;
+    _tempBlueprintY = _isDragging ? clamped.by : defaultBy;
   }
 
   Widget _buildFloorItem({
@@ -235,24 +267,31 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     required Rect roomRect,
     required double scale,
   }) {
-    final w = item.width * scale;
-    final d = item.depth * scale;
     final bx = (_isDragging && _selectedId == item.id && _tempBlueprintX != null)
         ? _tempBlueprintX!
         : item.blueprintX;
     final by = (_isDragging && _selectedId == item.id && _tempBlueprintY != null)
         ? _tempBlueprintY!
         : item.blueprintY;
-    final left = roomRect.left + bx * roomRect.width - w / 2;
-    final top = roomRect.top + by * roomRect.height - d / 2;
+    final layout = BlueprintPlacement.layoutPixels(
+      blueprintX: bx,
+      blueprintY: by,
+      widthFt: item.width,
+      depthFt: item.depth,
+      rotationDeg: item.rotation,
+      roomRect: roomRect,
+      scale: scale,
+    );
 
     return _itemBox(
       id: item.id,
       dragType: 'furniture_floor',
-      left: left,
-      top: top,
-      width: w,
-      height: d,
+      left: layout.left,
+      top: layout.top,
+      width: layout.bboxW,
+      height: layout.bboxH,
+      innerWidth: layout.innerW,
+      innerHeight: layout.innerH,
       label: item.type.label,
       color: ColorUtils.fromHex(item.color),
       rotation: item.rotation,
@@ -354,30 +393,74 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     );
   }
 
+  Widget _buildWindowItem({
+    required WindowConfig window,
+    required RoomDesign design,
+    required Rect roomRect,
+    required double scale,
+  }) {
+    final edge = (_isDragging && _selectedId == window.id && _tempPositionFromEdge != null)
+        ? _tempPositionFromEdge!
+        : window.positionFromEdge;
+    final tempWindow = window.copyWith(positionFromEdge: edge);
+    final rect = _windowRect(tempWindow, roomRect, scale);
+
+    return _itemBox(
+      id: window.id,
+      dragType: 'window_wall',
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+      label: 'Window',
+      color: ColorUtils.fromHex(window.glassColor),
+      rotation: window.rotation,
+      design: design,
+      roomRect: roomRect,
+      scale: scale,
+      onWallDrag: (Offset center) {
+        final wall = window.wall;
+        final edgePos = switch (wall) {
+          WallId.front || WallId.back => (center.dx - roomRect.left) / scale - window.width / 2,
+          WallId.left || WallId.right => (center.dy - roomRect.top) / scale - window.width / 2,
+        };
+        _tempPositionFromEdge =
+            edgePos.clamp(0, window.maxPositionFromEdge(design.dimensions)).toDouble();
+      },
+    );
+  }
+
   Widget _buildCupboardItem({
     required CupboardConfig cupboard,
     required RoomDesign design,
     required Rect roomRect,
     required double scale,
   }) {
-    final w = cupboard.width * scale;
-    final d = cupboard.depth * scale;
     final bx = (_isDragging && _selectedId == cupboard.id && _tempBlueprintX != null)
         ? _tempBlueprintX!
         : cupboard.blueprintX;
     final by = (_isDragging && _selectedId == cupboard.id && _tempBlueprintY != null)
         ? _tempBlueprintY!
         : cupboard.blueprintY;
-    final left = roomRect.left + bx * roomRect.width - w / 2;
-    final top = roomRect.top + by * roomRect.height - d / 2;
+    final layout = BlueprintPlacement.layoutPixels(
+      blueprintX: bx,
+      blueprintY: by,
+      widthFt: cupboard.width,
+      depthFt: cupboard.depth,
+      rotationDeg: cupboard.rotation,
+      roomRect: roomRect,
+      scale: scale,
+    );
 
     return _itemBox(
       id: cupboard.id,
       dragType: 'cupboard_floor',
-      left: left,
-      top: top,
-      width: w,
-      height: d,
+      left: layout.left,
+      top: layout.top,
+      width: layout.bboxW,
+      height: layout.bboxH,
+      innerWidth: layout.innerW,
+      innerHeight: layout.innerH,
       label: 'Cupboard',
       color: ColorUtils.fromHex(cupboard.color),
       rotation: cupboard.rotation,
@@ -404,33 +487,38 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
   }) {
     final canRotate = _selectedType == 'furniture_floor' ||
         _selectedType == 'cupboard_floor' ||
-        _selectedType == 'door_wall';
+        _selectedType == 'door_wall' ||
+        _selectedType == 'window_wall';
 
     Rect? itemRect;
     if (_selectedType == 'furniture_floor') {
       final item = design.furniture.firstWhere((f) => f.id == _selectedId);
-      final w = item.width * scale;
-      final d = item.depth * scale;
       final bx = _tempBlueprintX ?? item.blueprintX;
       final by = _tempBlueprintY ?? item.blueprintY;
-      itemRect = Rect.fromLTWH(
-        roomRect.left + bx * roomRect.width - w / 2,
-        roomRect.top + by * roomRect.height - d / 2,
-        w,
-        d,
+      final layout = BlueprintPlacement.layoutPixels(
+        blueprintX: bx,
+        blueprintY: by,
+        widthFt: item.width,
+        depthFt: item.depth,
+        rotationDeg: item.rotation,
+        roomRect: roomRect,
+        scale: scale,
       );
+      itemRect = Rect.fromLTWH(layout.left, layout.top, layout.bboxW, layout.bboxH);
     } else if (_selectedType == 'cupboard_floor') {
       final cupboard = design.cupboards.firstWhere((c) => c.id == _selectedId);
-      final w = cupboard.width * scale;
-      final d = cupboard.depth * scale;
       final bx = _tempBlueprintX ?? cupboard.blueprintX;
       final by = _tempBlueprintY ?? cupboard.blueprintY;
-      itemRect = Rect.fromLTWH(
-        roomRect.left + bx * roomRect.width - w / 2,
-        roomRect.top + by * roomRect.height - d / 2,
-        w,
-        d,
+      final layout = BlueprintPlacement.layoutPixels(
+        blueprintX: bx,
+        blueprintY: by,
+        widthFt: cupboard.width,
+        depthFt: cupboard.depth,
+        rotationDeg: cupboard.rotation,
+        roomRect: roomRect,
+        scale: scale,
       );
+      itemRect = Rect.fromLTWH(layout.left, layout.top, layout.bboxW, layout.bboxH);
     } else if (_selectedType == 'furniture_wall') {
       final item = design.furniture.firstWhere((f) => f.id == _selectedId);
       itemRect = _wallItemRect(item, roomRect, scale);
@@ -438,6 +526,10 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       final door = design.doors.firstWhere((d) => d.id == _selectedId);
       final edge = _tempPositionFromEdge ?? door.positionFromEdge;
       itemRect = _doorRect(door.copyWith(positionFromEdge: edge), roomRect, scale);
+    } else if (_selectedType == 'window_wall') {
+      final window = design.windows.firstWhere((w) => w.id == _selectedId);
+      final edge = _tempPositionFromEdge ?? window.positionFromEdge;
+      itemRect = _windowRect(window.copyWith(positionFromEdge: edge), roomRect, scale);
     }
 
     if (itemRect == null) return const SizedBox.shrink();
@@ -479,6 +571,39 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
         ),
       ),
     );
+  }
+
+  Rect _windowRect(WindowConfig window, Rect roomRect, double scale) {
+    const visualDepth = 14.0;
+    final along = window.positionFromEdge * scale;
+    final alongSize = window.width * scale;
+
+    return switch (window.wall) {
+      WallId.front => Rect.fromLTWH(
+          roomRect.left + along,
+          roomRect.top - visualDepth / 2,
+          alongSize,
+          visualDepth,
+        ),
+      WallId.back => Rect.fromLTWH(
+          roomRect.left + along,
+          roomRect.bottom - visualDepth / 2,
+          alongSize,
+          visualDepth,
+        ),
+      WallId.left => Rect.fromLTWH(
+          roomRect.left - visualDepth / 2,
+          roomRect.top + along,
+          visualDepth,
+          alongSize,
+        ),
+      WallId.right => Rect.fromLTWH(
+          roomRect.right - visualDepth / 2,
+          roomRect.top + along,
+          visualDepth,
+          alongSize,
+        ),
+    };
   }
 
   Rect _doorRect(DoorConfig door, Rect roomRect, double scale) {
@@ -545,11 +670,15 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     required RoomDesign design,
     required Rect roomRect,
     required double scale,
+    double? innerWidth,
+    double? innerHeight,
     VoidCallback? onFloorDrag,
     void Function(Offset center)? onWallDrag,
   }) {
     final isSelected = _selectedId == id;
     final isDragging = isSelected && _isDragging;
+    final innerW = innerWidth ?? width;
+    final innerH = innerHeight ?? height;
 
     final itemCenter = Offset(left + width / 2, top + height / 2);
 
@@ -591,39 +720,45 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
             _commitDrag(design, roomRect, scale);
           }
         },
-        child: Transform.rotate(
-          angle: rotation * math.pi / 180,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            curve: Curves.easeOut,
-            width: width,
-            height: height,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: isDragging ? 0.9 : 0.75),
-              border: Border.all(
-                color: isSelected ? Colors.orange : Colors.black54,
-                width: isSelected ? 2.5 : 1,
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: Center(
+            child: Transform.rotate(
+              angle: rotation * math.pi / 180,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 120),
+                curve: Curves.easeOut,
+                width: innerW,
+                height: innerH,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: isDragging ? 0.9 : 0.75),
+                  border: Border.all(
+                    color: isSelected ? Colors.orange : Colors.black54,
+                    width: isSelected ? 2.5 : 1,
+                  ),
+                  borderRadius: BorderRadius.circular(4),
+                  boxShadow: isDragging
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.25),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
-              borderRadius: BorderRadius.circular(4),
-              boxShadow: isDragging
-                  ? [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.25),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : null,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
             ),
           ),
         ),
@@ -675,25 +810,8 @@ class _BlueprintPainter extends CustomPainter {
       canvas.drawLine(Offset(roomRect.left, y), Offset(roomRect.right, y), gridLinePaint);
     }
 
-    _drawWindows(canvas);
     _drawDimensions(canvas);
     _drawWallLabels(canvas);
-  }
-
-  void _drawWindows(Canvas canvas) {
-    for (final window in design.windows) {
-      final paint = Paint()..color = ColorUtils.fromHex(window.glassColor);
-      final ww = window.width * scale;
-      final offset = window.positionFromEdge * scale;
-
-      final rect = switch (window.wall) {
-        WallId.front => Rect.fromLTWH(roomRect.left + offset, roomRect.top - 3, ww, 6),
-        WallId.back => Rect.fromLTWH(roomRect.left + offset, roomRect.bottom - 3, ww, 6),
-        WallId.left => Rect.fromLTWH(roomRect.left - 3, roomRect.top + offset, 6, ww),
-        WallId.right => Rect.fromLTWH(roomRect.right - 3, roomRect.top + offset, 6, ww),
-      };
-      canvas.drawRect(rect, paint);
-    }
   }
 
   void _drawDimensions(Canvas canvas) {
