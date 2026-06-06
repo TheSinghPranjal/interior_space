@@ -7,6 +7,8 @@ import '../../models/room_design.dart';
 import '../../providers/room_design_provider.dart';
 import '../../services/texture_service.dart';
 import '../common/color_picker_field.dart';
+import '../common/dimension_slider.dart';
+import '../common/item_editor_header.dart';
 import '../common/section_card.dart';
 
 class FurnitureEditor extends ConsumerWidget {
@@ -21,7 +23,7 @@ class FurnitureEditor extends ConsumerWidget {
       children: [
         SectionCard(
           title: 'Furniture Placement',
-          subtitle: 'Sofa attaches to walls • Everything else goes anywhere',
+          subtitle: 'Tap edit icon to adjust parameters • Drag in Blueprint',
           child: Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -53,7 +55,7 @@ class FurnitureEditor extends ConsumerWidget {
   }
 }
 
-class _FurnitureCard extends ConsumerWidget {
+class _FurnitureCard extends ConsumerStatefulWidget {
   const _FurnitureCard({
     required this.item,
     required this.design,
@@ -62,12 +64,20 @@ class _FurnitureCard extends ConsumerWidget {
   final FurnitureItem item;
   final RoomDesign design;
 
-  double get roomWidth => design.dimensions.width;
-  double get roomLength => design.dimensions.length;
+  @override
+  ConsumerState<_FurnitureCard> createState() => _FurnitureCardState();
+}
+
+class _FurnitureCardState extends ConsumerState<_FurnitureCard> {
+  bool _editingEnabled = false;
+
+  FurnitureItem get item => widget.item;
+  RoomDesign get design => widget.design;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final notifier = ref.read(roomDesignProvider.notifier);
+    final enabled = _editingEnabled;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -77,22 +87,21 @@ class _FurnitureCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(item.type.icon),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    item.type.label,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  onPressed: () => notifier.removeFurniture(item.id),
-                ),
-              ],
+            ItemEditorHeader(
+              title: item.type.label,
+              icon: item.type.icon,
+              editingEnabled: _editingEnabled,
+              onToggleEdit: () => setState(() => _editingEnabled = !_editingEnabled),
+              onDelete: () => notifier.removeFurniture(item.id),
             ),
+            if (!enabled)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Tap edit to change parameters, or drag in Blueprint view',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
+              ),
             if (item.isWallMounted) ...[
               DropdownButtonFormField<WallId>(
                 value: item.wall ?? WallId.left,
@@ -100,84 +109,93 @@ class _FurnitureCard extends ConsumerWidget {
                 items: WallId.values
                     .map((w) => DropdownMenuItem(value: w, child: Text(w.label)))
                     .toList(),
-                onChanged: (w) {
-                  if (w != null) notifier.updateFurniture(item.copyWith(wall: w));
-                },
+                onChanged: enabled
+                    ? (w) {
+                        if (w != null) notifier.updateFurniture(item.copyWith(wall: w));
+                      }
+                    : null,
               ),
-              _Slider(
+              DimensionSlider(
                 label: 'Position from wall edge',
                 value: item.positionFromEdge,
                 min: 0,
                 max: 12,
                 suffix: 'ft',
-                onChanged: (v) => notifier.updateFurniture(item.copyWith(positionFromEdge: v)),
+                onChanged: enabled
+                    ? (v) => notifier.updateFurniture(item.copyWith(positionFromEdge: v))
+                    : null,
               ),
             ] else ...[
-              _Slider(
+              DimensionSlider(
                 label: 'Distance from left wall',
                 value: item.positionFromLeftFt(design.dimensions),
                 min: 0,
-                max: (roomWidth - item.width).clamp(0, roomWidth),
+                max: item.maxPositionFromLeftFt(design.dimensions),
                 suffix: 'ft',
-                onChanged: (v) {
-                  final bx = (v + item.width / 2) / roomWidth;
-                  notifier.updateFurniture(item.copyWith(blueprintX: bx.clamp(0.05, 0.95)));
-                },
+                onChanged: enabled
+                    ? (v) => notifier.updateFurniture(
+                          item.copyWith(
+                            blueprintX: item.blueprintXFromLeftFt(v, design.dimensions),
+                          ),
+                        )
+                    : null,
               ),
-              _Slider(
+              DimensionSlider(
                 label: 'Distance from front wall',
                 value: item.positionFromFrontFt(design.dimensions),
                 min: 0,
-                max: (roomLength - item.depth).clamp(0, roomLength),
+                max: item.maxPositionFromFrontFt(design.dimensions),
                 suffix: 'ft',
-                onChanged: (v) {
-                  final by = (v + item.depth / 2) / roomLength;
-                  notifier.updateFurniture(item.copyWith(blueprintY: by.clamp(0.05, 0.95)));
-                },
+                onChanged: enabled
+                    ? (v) => notifier.updateFurniture(
+                          item.copyWith(
+                            blueprintY: item.blueprintYFromFrontFt(v, design.dimensions),
+                          ),
+                        )
+                    : null,
               ),
-              _Slider(
+              DimensionSlider(
                 label: 'Rotation',
                 value: item.rotation,
                 min: 0,
                 max: 360,
                 suffix: '°',
-                onChanged: (v) => notifier.updateFurniture(item.copyWith(rotation: v)),
-              ),
-              Text(
-                'Or drag freely in Blueprint view',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                onChanged: enabled
+                    ? (v) => notifier.updateFurniture(item.copyWith(rotation: v))
+                    : null,
               ),
             ],
-            _Slider(
+            DimensionSlider(
               label: 'Width',
               value: item.width,
               min: 1,
               max: 12,
               suffix: 'ft',
-              onChanged: (v) => notifier.updateFurniture(item.copyWith(width: v)),
+              onChanged: enabled ? (v) => notifier.updateFurniture(item.copyWith(width: v)) : null,
             ),
-            _Slider(
+            DimensionSlider(
               label: 'Height',
               value: item.height,
               min: 1,
               max: 9,
               suffix: 'ft',
-              onChanged: (v) => notifier.updateFurniture(item.copyWith(height: v)),
+              onChanged: enabled ? (v) => notifier.updateFurniture(item.copyWith(height: v)) : null,
             ),
-            _Slider(
+            DimensionSlider(
               label: 'Depth',
               value: item.depth,
               min: 1,
               max: 8,
               suffix: 'ft',
-              onChanged: (v) => notifier.updateFurniture(item.copyWith(depth: v)),
+              onChanged: enabled ? (v) => notifier.updateFurniture(item.copyWith(depth: v)) : null,
             ),
             ColorPickerField(
               label: 'Color',
               colorHex: item.color,
+              enabled: enabled,
               onChanged: (c) => notifier.updateFurniture(item.copyWith(color: c)),
             ),
-            if (item.isWallMounted)
+            if (item.isWallMounted && enabled)
               FilledButton.icon(
                 onPressed: () async {
                   final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
@@ -191,41 +209,6 @@ class _FurnitureCard extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _Slider extends StatelessWidget {
-  const _Slider({
-    required this.label,
-    required this.value,
-    required this.min,
-    required this.max,
-    required this.suffix,
-    required this.onChanged,
-  });
-
-  final String label;
-  final double value;
-  final double min;
-  final double max;
-  final String suffix;
-  final ValueChanged<double> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final clampedMax = max < min ? min : max;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('$label: ${value.toStringAsFixed(1)} $suffix'),
-        Slider(
-          value: value.clamp(min, clampedMax),
-          min: min,
-          max: clampedMax,
-          onChanged: onChanged,
-        ),
-      ],
     );
   }
 }
