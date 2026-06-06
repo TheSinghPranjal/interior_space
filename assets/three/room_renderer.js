@@ -626,7 +626,6 @@
     }
 
     _buildFurniture(furniture, w, l) {
-      const wallTypes = ['sofa'];
       furniture.forEach((item) => {
         const tex = item.textureDataUrl || null;
         let group;
@@ -651,6 +650,9 @@
           case 'table':
             group = this._buildTableGroup(item);
             break;
+          case 'chair':
+            group = this._buildChairGroup(item);
+            break;
           case 'tvUnit':
             group = this._buildTvUnitGroup(item, tex);
             break;
@@ -658,22 +660,10 @@
             group = this._buildGenericFurniture(item);
         }
 
-        if (item.wall && wallTypes.indexOf(item.type) >= 0) {
-          const cw = item.width * FT;
-          const cd = item.depth * FT;
-          const pos = this._wallMountedPosition(item.wall, item.positionFromEdge || 0, cw, cd, w, l);
-          group.position.set(pos.x, 0, pos.z);
-          if (item.wall === 'left') group.position.x += cd / 2;
-          if (item.wall === 'right') group.position.x -= cd / 2;
-          if (item.wall === 'front') group.position.z += cd / 2;
-          if (item.wall === 'back') group.position.z -= cd / 2;
-          if (item.wall === 'left' || item.wall === 'right') group.rotation.y = Math.PI / 2;
-        } else {
-          const x = (item.blueprintX - 0.5) * w;
-          const z = (item.blueprintY - 0.5) * l;
-          group.position.set(x, 0, z);
-          group.rotation.y = (item.rotation || 0) * Math.PI / 180;
-        }
+        const x = (item.blueprintX - 0.5) * w;
+        const z = (item.blueprintY - 0.5) * l;
+        group.position.set(x, 0, z);
+        group.rotation.y = (item.rotation || 0) * Math.PI / 180;
         this.roomGroup.add(group);
       });
     }
@@ -801,6 +791,54 @@
       });
 
       group.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+      return group;
+    }
+
+    _buildChairGroup(item) {
+      const cw = item.width * FT;
+      const ch = item.height * FT;
+      const cd = item.depth * FT;
+      const group = new THREE.Group();
+      const fabricMat = this._makeMaterial(item.color, 0.82, 0.04, null, 'fabric', 1, 1);
+      const frameMat = this._makeMaterial(item.color, 0.55, 0.12, null, 'wood', 1, 1);
+
+      const seatHeight = ch * 0.42;
+      const seatThickness = 0.07 * FT;
+
+      const seat = new THREE.Mesh(
+        new THREE.BoxGeometry(cw * 0.88, seatThickness, cd * 0.82),
+        fabricMat
+      );
+      seat.position.y = seatHeight;
+      group.add(seat);
+
+      const backrest = new THREE.Mesh(
+        new THREE.BoxGeometry(cw * 0.88, ch * 0.42, 0.07 * FT),
+        fabricMat
+      );
+      backrest.position.set(0, seatHeight + ch * 0.18, -cd * 0.36);
+      group.add(backrest);
+
+      const legGeo = new THREE.BoxGeometry(0.05 * FT, seatHeight, 0.05 * FT);
+      [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => {
+        const leg = new THREE.Mesh(legGeo, frameMat);
+        leg.position.set(sx * cw * 0.36, seatHeight / 2, sz * cd * 0.34);
+        group.add(leg);
+      });
+
+      const armGeo = new THREE.BoxGeometry(0.06 * FT, ch * 0.22, cd * 0.55);
+      [-1, 1].forEach((side) => {
+        const arm = new THREE.Mesh(armGeo, frameMat);
+        arm.position.set(side * cw * 0.4, seatHeight + ch * 0.08, 0);
+        group.add(arm);
+      });
+
+      group.traverse((c) => {
+        if (c.isMesh) {
+          c.castShadow = true;
+          c.receiveShadow = true;
+        }
+      });
       return group;
     }
 

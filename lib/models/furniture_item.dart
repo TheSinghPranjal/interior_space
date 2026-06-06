@@ -123,8 +123,6 @@ class FurnitureItem {
           height: 3.0,
           depth: 3.0,
           color: '#455A64',
-          wall: WallId.back,
-          positionFromEdge: 2.0,
         ),
       FurnitureType.table => FurnitureItem(
           id: id,
