@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/design_menu_action.dart';
+import '../providers/app_mode_provider.dart';
 import '../providers/project_provider.dart';
 import '../providers/room_design_provider.dart';
 import '../services/project_storage_service.dart';
+import '../widgets/apartment/apartment_space_view.dart';
 import '../widgets/blueprint/blueprint_view.dart';
 import '../widgets/editors/ceiling_editor.dart';
 import '../widgets/editors/cupboards_editor.dart';
@@ -47,12 +49,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _onTabSelected(int index) {
     final tab = MainNavTab.values[index];
+    final isApartment = ref.read(appSpaceModeProvider) == AppSpaceMode.apartment;
 
     if (tab == MainNavTab.preview3d) {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => const Preview3DScreen(),
+          builder: (_) => Preview3DScreen(apartmentMode: isApartment),
           fullscreenDialog: true,
         ),
       );
@@ -60,6 +63,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     setState(() => _selectedTab = tab);
+  }
+
+  void _toggleAppSpaceMode() {
+    final current = ref.read(appSpaceModeProvider);
+    ref.read(appSpaceModeProvider.notifier).state =
+        current == AppSpaceMode.interior ? AppSpaceMode.apartment : AppSpaceMode.interior;
   }
 
   void _onDesignMenuAction(DesignMenuAction action) {
@@ -132,6 +141,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final project = ref.watch(projectProvider);
     final activeRoom = ref.watch(roomDesignProvider);
+    final appMode = ref.watch(appSpaceModeProvider);
+    final isApartment = appMode == AppSpaceMode.apartment;
 
     ref.listen(projectProvider, (_, next) {
       ref.read(projectStorageProvider).saveCurrent(next);
@@ -141,14 +152,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       appBar: AppBar(
         title: Column(
           children: [
-            const Text('Interior Space'),
+            Text(appMode.title),
             Text(
-              activeRoom.name,
+              isApartment
+                  ? '${project.apartmentLayout.placements.length} rooms on plan'
+                  : activeRoom.name,
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
         ),
         actions: [
+          IconButton(
+            icon: Icon(isApartment ? Icons.meeting_room_outlined : Icons.apartment_outlined),
+            tooltip: isApartment ? 'Switch to Interior Space' : 'Switch to Apartment Space',
+            onPressed: _toggleAppSpaceMode,
+          ),
           IconButton(
             icon: const Icon(Icons.save_outlined),
             tooltip: 'Save',
@@ -163,18 +181,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Reset current room',
-            onPressed: () => _confirmReset(context, activeRoom.name),
+            tooltip: isApartment ? 'Reset apartment layout' : 'Reset current room',
+            onPressed: () => isApartment
+                ? _confirmResetApartment(context)
+                : _confirmReset(context, activeRoom.name),
           ),
         ],
       ),
       body: Column(
         children: [
-          const RoomTabsBar(),
-          Expanded(child: _buildBody()),
+          if (!isApartment) const RoomTabsBar(),
+          Expanded(child: _buildBody(isApartment)),
         ],
       ),
-      floatingActionButton: DesignMenuFab(onAction: _onDesignMenuAction),
+      floatingActionButton: isApartment ? null : DesignMenuFab(onAction: _onDesignMenuAction),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedTab.index,
         onDestinationSelected: _onTabSelected,
@@ -204,7 +224,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(bool isApartment) {
+    if (isApartment) {
+      return switch (_selectedTab) {
+        MainNavTab.room => const ApartmentSpaceView(),
+        MainNavTab.blueprint => const ApartmentSpaceView(showBlueprintOnly: true),
+        MainNavTab.preview3d => const ApartmentSpaceView(showBlueprintOnly: true),
+        MainNavTab.aiAssist => const AiAssistPlaceholder(),
+      };
+    }
+
     return switch (_selectedTab) {
       MainNavTab.room => const RoomSetupEditor(),
       MainNavTab.blueprint => const BlueprintView(),
@@ -229,6 +258,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           FilledButton(
             onPressed: () {
               ref.read(roomDesignProvider.notifier).reset();
+              Navigator.pop(context);
+            },
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmResetApartment(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset Apartment Layout?'),
+        content: const Text(
+          'This will remove all rooms from the apartment blueprint. '
+          'Your individual room designs are not affected.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              ref.read(projectProvider.notifier).resetApartmentLayout();
               Navigator.pop(context);
             },
             child: const Text('Reset'),
