@@ -2,8 +2,47 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/project_design.dart';
 import '../models/room_design.dart';
 import 'texture_service.dart';
+
+class ApartmentSceneBuilder {
+  ApartmentSceneBuilder(this._roomSceneBuilder);
+
+  final RoomSceneBuilder _roomSceneBuilder;
+
+  Future<String> buildSceneJson(ProjectDesign project) async {
+    final layout = project.apartmentLayout;
+    final placements = <Map<String, dynamic>>[];
+
+    for (final placement in layout.placements) {
+      final room = project.roomById(placement.roomId);
+      if (room == null) continue;
+
+      final roomJson = jsonDecode(await _roomSceneBuilder.buildSceneJson(room))
+          as Map<String, dynamic>;
+
+      placements.add({
+        'blueprintX': placement.blueprintX,
+        'blueprintY': placement.blueprintY,
+        'rotation': placement.rotation,
+        'name': room.name,
+        'room': roomJson,
+      });
+    }
+
+    final scene = {
+      'mode': 'apartment',
+      'apartment': {
+        'width': layout.widthFt,
+        'length': layout.lengthFt,
+      },
+      'placements': placements,
+    };
+
+    return jsonEncode(scene);
+  }
+}
 
 class RoomSceneBuilder {
   RoomSceneBuilder(this._textureService);
@@ -39,6 +78,7 @@ class RoomSceneBuilder {
     }
 
     final scene = {
+      'mode': 'single',
       'room': design.dimensions.toJson(),
       'walls': walls,
       'floor': {
@@ -74,4 +114,8 @@ class RoomSceneBuilder {
 
 final roomSceneBuilderProvider = Provider<RoomSceneBuilder>((ref) {
   return RoomSceneBuilder(ref.read(textureServiceProvider));
+});
+
+final apartmentSceneBuilderProvider = Provider<ApartmentSceneBuilder>((ref) {
+  return ApartmentSceneBuilder(ref.read(roomSceneBuilderProvider));
 });

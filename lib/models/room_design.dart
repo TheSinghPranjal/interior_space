@@ -12,6 +12,7 @@ import 'window_config.dart';
 
 class RoomDesign {
   const RoomDesign({
+    required this.id,
     this.name = 'My Room',
     this.dimensions = const RoomDimensions(),
     this.walls = const [],
@@ -26,6 +27,7 @@ class RoomDesign {
     this.aiPromptHistory = const [],
   });
 
+  final String id;
   final String name;
   final RoomDimensions dimensions;
   final List<WallConfig> walls;
@@ -40,6 +42,7 @@ class RoomDesign {
   final List<String> aiPromptHistory;
 
   RoomDesign copyWith({
+    String? id,
     String? name,
     RoomDimensions? dimensions,
     List<WallConfig>? walls,
@@ -54,6 +57,7 @@ class RoomDesign {
     List<String>? aiPromptHistory,
   }) {
     return RoomDesign(
+      id: id ?? this.id,
       name: name ?? this.name,
       dimensions: dimensions ?? this.dimensions,
       walls: walls ?? this.walls,
@@ -70,6 +74,7 @@ class RoomDesign {
   }
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'name': name,
         'room': dimensions.toJson(),
         'walls': walls.map((w) => w.toJson()).toList(),
@@ -84,8 +89,9 @@ class RoomDesign {
         'aiPromptHistory': aiPromptHistory,
       };
 
-  factory RoomDesign.fromJson(Map<String, dynamic> json) {
+  factory RoomDesign.fromJson(Map<String, dynamic> json, {String? fallbackId}) {
     return RoomDesign(
+      id: json['id'] as String? ?? fallbackId ?? 'room-default',
       name: json['name'] as String? ?? 'My Room',
       dimensions: RoomDimensions.fromJson(
         (json['room'] as Map<String, dynamic>?) ?? {},
@@ -131,8 +137,9 @@ class RoomDesign {
     );
   }
 
-  static RoomDesign initial() {
+  static RoomDesign initial({String? id}) {
     return RoomDesign(
+      id: id ?? 'room-default',
       walls: WallConfig.defaultWalls(),
       lights: [
         LightConfig(
