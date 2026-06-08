@@ -44,9 +44,43 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     super.dispose();
   }
 
+  bool _selectionValid(RoomDesign design) {
+    if (_selectedId == null || _selectedType == null) return false;
+    switch (_selectedType!) {
+      case 'furniture_floor':
+      case 'furniture_wall':
+        return design.furniture.any((f) => f.id == _selectedId);
+      case 'cupboard_floor':
+        return design.cupboards.any((c) => c.id == _selectedId);
+      case 'door_wall':
+        return design.doors.any((d) => d.id == _selectedId);
+      case 'window_wall':
+        return design.windows.any((w) => w.id == _selectedId);
+      case 'wall_tv_wall':
+        return design.wallTvUnits.any((t) => t.id == _selectedId);
+      default:
+        return false;
+    }
+  }
+
+  void _clearStaleSelection(RoomDesign design) {
+    if (_selectedId != null && !_selectionValid(design)) {
+      _selectedId = null;
+      _selectedType = null;
+      _isDragging = false;
+      _dragDelta = Offset.zero;
+      _dragStartCenter = null;
+      _tempBlueprintX = null;
+      _tempBlueprintY = null;
+      _tempPositionFromEdge = null;
+      _cancelHold();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final design = ref.watch(roomDesignProvider);
+    _clearStaleSelection(design);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -67,6 +101,8 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
           minScale: 0.5,
           maxScale: 4.0,
           boundaryMargin: const EdgeInsets.all(120),
+          panEnabled: !_isDragging,
+          scaleEnabled: !_isDragging,
           child: SizedBox(
             width: constraints.maxWidth,
             height: constraints.maxHeight,
@@ -133,7 +169,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
                 scale: scale,
               );
             }),
-            if (_selectedId != null)
+            if (_selectedId != null && _selectionValid(design))
               _buildSelectionToolbar(design: design, roomRect: roomRect, scale: scale),
               ],
             ),
@@ -186,7 +222,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
   }
 
   void _commitDrag(RoomDesign design, Rect roomRect, double scale) {
-    if (_selectedId == null || _selectedType == null) return;
+    if (_selectedId == null || _selectedType == null || !_selectionValid(design)) return;
 
     final notifier = ref.read(roomDesignProvider.notifier);
 
@@ -225,7 +261,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
   }
 
   void _rotateSelected(RoomDesign design, double degrees) {
-    if (_selectedId == null || _selectedType == null) return;
+    if (_selectedId == null || _selectedType == null || !_selectionValid(design)) return;
     HapticFeedback.selectionClick();
     final notifier = ref.read(roomDesignProvider.notifier);
 
@@ -557,6 +593,8 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     required Rect roomRect,
     required double scale,
   }) {
+    if (!_selectionValid(design)) return const SizedBox.shrink();
+
     final canRotate = _selectedType == 'furniture_floor' ||
         _selectedType == 'cupboard_floor' ||
         _selectedType == 'door_wall' ||
