@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:screenshot/screenshot.dart';
 
+import '../providers/app_mode_provider.dart';
 import '../providers/project_provider.dart';
 import '../providers/room_design_provider.dart';
 import '../services/export_service.dart';
@@ -11,7 +12,9 @@ import '../services/project_storage_service.dart';
 import '../widgets/three_d/room_3d_viewer.dart';
 
 class Preview3DScreen extends ConsumerStatefulWidget {
-  const Preview3DScreen({super.key});
+  const Preview3DScreen({super.key, this.apartmentMode = false});
+
+  final bool apartmentMode;
 
   @override
   ConsumerState<Preview3DScreen> createState() => _Preview3DScreenState();
@@ -23,25 +26,30 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isApartment = widget.apartmentMode ||
+        ref.watch(appSpaceModeProvider) == AppSpaceMode.apartment;
     final design = ref.watch(roomDesignProvider);
+    final project = ref.watch(projectProvider);
+    final title = isApartment ? 'Apartment Space' : design.name;
 
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black87,
         foregroundColor: Colors.white,
-        title: Text(design.name, style: const TextStyle(color: Colors.white)),
+        title: Text(title, style: const TextStyle(color: Colors.white)),
         actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            onSelected: (action) => _handleExport(action),
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'screenshot', child: Text('Save Screenshot')),
-              PopupMenuItem(value: 'pdf', child: Text('Export PDF')),
-              PopupMenuItem(value: 'project', child: Text('Share Project')),
-              PopupMenuItem(value: 'save', child: Text('Save Project')),
-            ],
-          ),
+          if (!isApartment)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Colors.white),
+              onSelected: (action) => _handleExport(action),
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'screenshot', child: Text('Save Screenshot')),
+                PopupMenuItem(value: 'pdf', child: Text('Export PDF')),
+                PopupMenuItem(value: 'project', child: Text('Share Project')),
+                PopupMenuItem(value: 'save', child: Text('Save Project')),
+              ],
+            ),
           IconButton(
             icon: const Icon(Icons.close, color: Colors.white),
             onPressed: () => Navigator.pop(context),
@@ -52,6 +60,7 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
         controller: _screenshotController,
         child: Room3DViewer(
           showControls: true,
+          apartmentMode: isApartment,
           onCaptureReady: (capture) => _capture3dRender = capture,
         ),
       ),
@@ -60,7 +69,9 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: SafeArea(
           child: Text(
-            'Pinch to zoom • Swipe to rotate • Use arrows to walk',
+            isApartment
+                ? '${project.apartmentLayout.placements.length} rooms • Pinch to zoom • Swipe to rotate'
+                : 'Pinch to zoom • Swipe to rotate • Use arrows to walk',
             style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
             textAlign: TextAlign.center,
           ),
