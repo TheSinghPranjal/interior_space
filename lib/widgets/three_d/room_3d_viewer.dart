@@ -6,6 +6,8 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/enums.dart';
+import '../../providers/app_mode_provider.dart';
+import '../../providers/project_provider.dart';
 import '../../providers/room_design_provider.dart';
 import '../../services/room_scene_builder.dart';
 import '../../services/room_viewer_html_loader.dart';
@@ -18,10 +20,12 @@ class Room3DViewer extends ConsumerStatefulWidget {
   const Room3DViewer({
     super.key,
     this.showControls = true,
+    this.apartmentMode = false,
     this.onCaptureReady,
   });
 
   final bool showControls;
+  final bool apartmentMode;
   final Room3DControllerCallback? onCaptureReady;
 
   @override
@@ -57,9 +61,18 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
   Future<void> _pushScene() async {
     if (_controller == null) return;
     try {
-      final design = ref.read(roomDesignProvider);
-      final builder = ref.read(roomSceneBuilderProvider);
-      final json = await builder.buildSceneJson(design);
+      final isApartment = widget.apartmentMode ||
+          ref.read(appSpaceModeProvider) == AppSpaceMode.apartment;
+      final String json;
+      if (isApartment) {
+        final project = ref.read(projectProvider);
+        final builder = ref.read(apartmentSceneBuilderProvider);
+        json = await builder.buildSceneJson(project);
+      } else {
+        final design = ref.read(roomDesignProvider);
+        final builder = ref.read(roomSceneBuilderProvider);
+        json = await builder.buildSceneJson(design);
+      }
       final escaped = jsonEncode(json);
 
       final result = await _controller!.evaluateJavascript(
@@ -143,7 +156,11 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     final cameraMode = ref.watch(cameraModeProvider);
 
     ref.listen(roomDesignProvider, (_, _) {
-      if (_isReady) _pushScene();
+      if (_isReady && !widget.apartmentMode) _pushScene();
+    });
+
+    ref.listen(projectProvider, (_, _) {
+      if (_isReady && widget.apartmentMode) _pushScene();
     });
 
     ref.listen(cameraModeProvider, (_, next) {

@@ -185,7 +185,11 @@
       try {
         this.config = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
         this._clearRoom();
-        this._buildRoom();
+        if (this.config.mode === 'apartment') {
+          this._buildApartment();
+        } else {
+          this._buildRoom();
+        }
         this._applyCameraMode(this.cameraMode);
         this._updateWallVisibility();
         this._notifyReady();
@@ -243,7 +247,14 @@
 
     _applyCameraMode(mode) {
       if (!this.config) return;
-      const { width, length, height } = this.config.room;
+      let width, length, height;
+      if (this.config.mode === 'apartment') {
+        width = this.config.apartment.width;
+        length = this.config.apartment.length;
+        height = (this.roomSize.h || 10) / FT;
+      } else {
+        ({ width, length, height } = this.config.room);
+      }
       const w = width * FT;
       const l = length * FT;
       const h = height * FT;
@@ -324,13 +335,7 @@
       });
     }
 
-    _buildRoom() {
-      const cfg = this.config;
-      const w = cfg.room.width * FT;
-      const l = cfg.room.length * FT;
-      const h = cfg.room.height * FT;
-      this.roomSize = { w, l, h };
-
+    _addSceneLights() {
       const ambient = new THREE.AmbientLight(0xffffff, 0.35);
       this.scene.add(ambient);
       this.lights.push(ambient);
@@ -338,6 +343,20 @@
       const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.4);
       this.scene.add(hemi);
       this.lights.push(hemi);
+    }
+
+    _buildRoomContents(cfg, targetGroup) {
+      const savedGroup = this.roomGroup;
+      const savedWallMeshes = this.wallMeshes;
+      const savedConfig = this.config;
+
+      this.roomGroup = targetGroup;
+      this.wallMeshes = {};
+      this.config = cfg;
+
+      const w = cfg.room.width * FT;
+      const l = cfg.room.length * FT;
+      const h = cfg.room.height * FT;
 
       this._buildFloor(w, l, cfg.floor);
       this._buildCeiling(w, l, h, cfg.ceiling);
@@ -348,6 +367,65 @@
       this._buildCupboards(cfg.cupboards, w, l, h);
       this._buildFurniture(cfg.furniture, w, l);
       this._buildLights(cfg.lights, w, l, h);
+
+      this.roomGroup = savedGroup;
+      this.wallMeshes = savedWallMeshes;
+      this.config = savedConfig;
+
+      return { w, l, h };
+    }
+
+    _buildRoom() {
+      const cfg = this.config;
+      const w = cfg.room.width * FT;
+      const l = cfg.room.length * FT;
+      const h = cfg.room.height * FT;
+      this.roomSize = { w, l, h };
+
+      this._addSceneLights();
+      this._buildRoomContents(cfg, this.roomGroup);
+    }
+
+    _buildApartment() {
+      const apt = this.config.apartment;
+      const aptW = apt.width * FT;
+      const aptL = apt.length * FT;
+      let maxH = 3 * FT;
+
+      this._addSceneLights();
+
+      const baseMat = new THREE.MeshStandardMaterial({
+        color: 0xE8E0D5,
+        roughness: 0.9,
+        metalness: 0,
+      });
+      const base = new THREE.Mesh(new THREE.PlaneGeometry(aptW, aptL), baseMat);
+      base.rotation.x = -Math.PI / 2;
+      base.position.y = -0.01;
+      base.receiveShadow = true;
+      this.roomGroup.add(base);
+
+      const gridHelper = new THREE.GridHelper(Math.max(aptW, aptL), 12, 0x888888, 0xcccccc);
+      gridHelper.position.y = 0.001;
+      this.roomGroup.add(gridHelper);
+
+      (this.config.placements || []).forEach((placement) => {
+        const cfg = placement.room;
+        if (!cfg || !cfg.room) return;
+
+        const subGroup = new THREE.Group();
+        const dims = this._buildRoomContents(cfg, subGroup);
+        maxH = Math.max(maxH, dims.h);
+
+        const wx = (placement.blueprintX - 0.5) * aptW;
+        const wz = (placement.blueprintY - 0.5) * aptL;
+        subGroup.position.set(wx, 0, wz);
+        subGroup.rotation.y = (placement.rotation || 0) * Math.PI / 180;
+        this.roomGroup.add(subGroup);
+      });
+
+      this.roomSize = { w: aptW, l: aptL, h: maxH };
+      this.wallMeshes = {};
     }
 
     _makeMaterial(color, roughness, metalness, textureUrl, procType, repeatX, repeatY) {
@@ -557,18 +635,14 @@
         group.add(sill);
 
         const glassHex = hexColor(win.glassColor);
-        const glassMat = new THREE.MeshPhysicalMaterial({
+        const glassMat = new THREE.MeshStandardMaterial({
           color: glassHex,
           transparent: true,
-          opacity: 0.85,
+          opacity: 0.55,
           roughness: 0.05,
-          metalness: 0,
-          transmission: 0.25,
-          ior: 1.45,
-          thickness: 0.02,
-          attenuationColor: new THREE.Color(glassHex),
-          attenuationDistance: 0.3,
+          metalness: 0.1,
           side: THREE.DoubleSide,
+          depthWrite: false,
         });
         const glass = new THREE.Mesh(
           new THREE.BoxGeometry(ww - frameW * 0.4, wh - frameW * 0.4, 0.018),
