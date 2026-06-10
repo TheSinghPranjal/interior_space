@@ -156,13 +156,13 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
     final isSelected = _selectedId == placement.id;
     final isDragging = isSelected && _isDragging;
     final itemCenter = Offset(
-      pixelLayout.left + pixelLayout.bboxW / 2 + _dragDelta.dx,
-      pixelLayout.top + pixelLayout.bboxH / 2 + _dragDelta.dy,
+      pixelLayout.left + pixelLayout.bboxW / 2,
+      pixelLayout.top + pixelLayout.bboxH / 2,
     );
 
     return Positioned(
-      left: pixelLayout.left + _dragDelta.dx,
-      top: pixelLayout.top + _dragDelta.dy,
+      left: pixelLayout.left,
+      top: pixelLayout.top,
       width: pixelLayout.bboxW,
       height: pixelLayout.bboxH,
       child: GestureDetector(
@@ -178,15 +178,17 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
         },
         onPanUpdate: (details) {
           if (_selectedId != placement.id || !_isDragging) return;
-          setState(() => _dragDelta += details.delta);
-          final center = (_dragStartCenter ?? itemCenter) + _dragDelta;
-          _updateTempPosition(
-            center: center,
-            room: room,
-            layout: layout,
-            aptRect: aptRect,
-            placement: placement,
-          );
+          setState(() {
+            _dragDelta += details.delta;
+            final center = (_dragStartCenter ?? itemCenter) + _dragDelta;
+            _updateTempPosition(
+              center: center,
+              room: room,
+              layout: layout,
+              aptRect: aptRect,
+              placement: placement,
+            );
+          });
         },
         onPanEnd: (_) {
           _cancelHold();
@@ -253,8 +255,12 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
     final room = project.roomById(placement.roomId);
     if (room == null) return const SizedBox.shrink();
 
-    final bx = _tempBlueprintX ?? placement.blueprintX;
-    final by = _tempBlueprintY ?? placement.blueprintY;
+    final bx = (_isDragging && _selectedId == placement.id && _tempBlueprintX != null)
+        ? _tempBlueprintX!
+        : placement.blueprintX;
+    final by = (_isDragging && _selectedId == placement.id && _tempBlueprintY != null)
+        ? _tempBlueprintY!
+        : placement.blueprintY;
     final pixelLayout = BlueprintPlacement.layoutPixels(
       blueprintX: bx,
       blueprintY: by,
@@ -266,8 +272,8 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
     );
 
     final itemRect = Rect.fromLTWH(
-      pixelLayout.left + _dragDelta.dx,
-      pixelLayout.top + _dragDelta.dy,
+      pixelLayout.left,
+      pixelLayout.top,
       pixelLayout.bboxW,
       pixelLayout.bboxH,
     );
@@ -367,10 +373,8 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
       roomWidthFt: layout.widthFt,
       roomLengthFt: layout.lengthFt,
     );
-    setState(() {
-      _tempBlueprintX = clamped.bx;
-      _tempBlueprintY = clamped.by;
-    });
+    _tempBlueprintX = clamped.bx;
+    _tempBlueprintY = clamped.by;
   }
 
   void _commitDrag(

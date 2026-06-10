@@ -90,7 +90,7 @@ class _WallEditorCard extends ConsumerWidget {
                         ),
                       );
                 }
-                
+
               },
               icon: const Icon(Icons.upload_file),
               label: Text(wall.wallpaperPath == null ? 'Upload Wallpaper' : 'Change Wallpaper'),
