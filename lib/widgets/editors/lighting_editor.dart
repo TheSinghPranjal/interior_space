@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/enums.dart';
+import '../../models/fan_config.dart';
+import '../../models/light_config.dart';
 import '../../providers/room_design_provider.dart';
 import '../common/color_picker_field.dart';
 import '../common/section_card.dart';
@@ -12,6 +14,7 @@ class LightingEditor extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lights = ref.watch(roomDesignProvider).lights;
+    final fans = ref.watch(roomDesignProvider).fans;
 
     return ListView(
       children: [
@@ -31,6 +34,19 @@ class LightingEditor extends ConsumerWidget {
                   children: lights.map((l) => _LightCard(light: l)).toList(),
                 ),
         ),
+        SectionCard(
+          title: 'Ceiling Fans',
+          subtitle: 'Ceiling-mounted fans • Position on room ceiling',
+          trailing: IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () => ref.read(roomDesignProvider.notifier).addFan(),
+          ),
+          child: fans.isEmpty
+              ? const Text('No ceiling fans added. Tap + to add a fan.')
+              : Column(
+                  children: fans.map((f) => _FanCard(fan: f)).toList(),
+                ),
+        ),
       ],
     );
   }
@@ -47,7 +63,7 @@ class LightingEditor extends ConsumerWidget {
 class _LightCard extends ConsumerWidget {
   const _LightCard({required this.light});
 
-  final dynamic light;
+  final LightConfig light;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -126,6 +142,71 @@ class _LightCard extends ConsumerWidget {
         LightTemperature.coolWhite => 'Cool White',
         LightTemperature.neutralWhite => 'Neutral White',
       };
+}
+
+class _FanCard extends ConsumerWidget {
+  const _FanCard({required this.fan});
+
+  final FanConfig fan;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(roomDesignProvider.notifier);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: Colors.grey.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.air, size: 20),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Ceiling Fan',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: () => notifier.removeFan(fan.id),
+                ),
+              ],
+            ),
+            _Slider(
+              label: 'Position X',
+              value: fan.positionX,
+              min: 0,
+              max: 1,
+              onChanged: (v) => notifier.updateFan(fan.copyWith(positionX: v)),
+            ),
+            _Slider(
+              label: 'Position Y',
+              value: fan.positionY,
+              min: 0,
+              max: 1,
+              onChanged: (v) => notifier.updateFan(fan.copyWith(positionY: v)),
+            ),
+            _Slider(
+              label: 'Height',
+              value: fan.height,
+              min: 0.85,
+              max: 1,
+              onChanged: (v) => notifier.updateFan(fan.copyWith(height: v)),
+            ),
+            ColorPickerField(
+              label: 'Fan Color',
+              colorHex: fan.color,
+              onChanged: (c) => notifier.updateFan(fan.copyWith(color: c)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _Slider extends StatelessWidget {
