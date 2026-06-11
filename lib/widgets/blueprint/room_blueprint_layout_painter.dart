@@ -34,9 +34,11 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
     _drawGrid(canvas);
     _drawDoors(canvas);
     _drawWindows(canvas);
+    _drawAcUnits(canvas);
     _drawWallTvUnits(canvas);
     _drawCupboards(canvas);
     _drawFurniture(canvas);
+    _drawFans(canvas);
     _drawRoomBorder(canvas);
     if (showWallLabels) _drawWallLabels(canvas);
     if (showDimensions) _drawDimensions(canvas);
@@ -103,6 +105,41 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
     }
   }
 
+  void _drawAcUnits(Canvas canvas) {
+    for (final unit in design.acUnits) {
+      final paint = Paint()..color = ColorUtils.fromHex(unit.color);
+      final aw = unit.width * scale;
+      final offset = unit.positionFromEdge * scale;
+      final rect = switch (unit.wall) {
+        WallId.front => Rect.fromLTWH(roomRect.left + offset, roomRect.top - 4, aw, 8),
+        WallId.back => Rect.fromLTWH(roomRect.left + offset, roomRect.bottom - 4, aw, 8),
+        WallId.left => Rect.fromLTWH(roomRect.left - 4, roomRect.top + offset, 8, aw),
+        WallId.right => Rect.fromLTWH(roomRect.right - 4, roomRect.top + offset, 8, aw),
+      };
+      canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(2)), paint);
+
+      final fontSize = math.max(5.0, math.min(8.0, aw * 0.18));
+      final tp = TextPainter(
+        text: TextSpan(
+          text: 'AC',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: fontSize,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: aw);
+      tp.paint(
+        canvas,
+        Offset(
+          rect.left + (rect.width - tp.width) / 2,
+          rect.top + (rect.height - tp.height) / 2,
+        ),
+      );
+    }
+  }
+
   void _drawWallTvUnits(Canvas canvas) {
     for (final unit in design.wallTvUnits) {
       final paint = Paint()..color = ColorUtils.fromHex(unit.color);
@@ -149,6 +186,38 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
         'Cupboard',
         ColorUtils.fromHex(cupboard.color),
       );
+    }
+  }
+
+  void _drawFans(Canvas canvas) {
+    for (final fan in design.fans) {
+      final cx = roomRect.left + fan.positionX * roomRect.width;
+      final cy = roomRect.top + fan.positionY * roomRect.height;
+      const radius = 10.0;
+
+      final fill = Paint()
+        ..color = ColorUtils.fromHex(fan.color).withValues(alpha: 0.85)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(Offset(cx, cy), radius, fill);
+
+      final border = Paint()
+        ..color = Colors.blueGrey.shade800
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2;
+      canvas.drawCircle(Offset(cx, cy), radius, border);
+
+      final bladePaint = Paint()
+        ..color = ColorUtils.fromHex(fan.color).withValues(alpha: 0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+      for (var i = 0; i < 4; i++) {
+        final angle = i * math.pi / 2;
+        canvas.drawLine(
+          Offset(cx, cy),
+          Offset(cx + math.cos(angle) * (radius - 2), cy + math.sin(angle) * (radius - 2)),
+          bladePaint,
+        );
+      }
     }
   }
 
