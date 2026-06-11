@@ -77,6 +77,15 @@ class RoomSceneBuilder {
       });
     }
 
+    final acUnits = <Map<String, dynamic>>[];
+    for (final unit in design.acUnits) {
+      acUnits.add({
+        ...unit.toJson(),
+        'textureDataUrl':
+            await _textureService.resolveTextureDataUrl(unit.texturePath),
+      });
+    }
+
     final scene = {
       'mode': 'single',
       'room': design.dimensions.toJson(),
@@ -94,9 +103,11 @@ class RoomSceneBuilder {
       },
       'doors': doors,
       'windows': design.windows.map((w) => w.toJson()).toList(),
+      'acUnits': acUnits,
       'wallTvUnits': design.wallTvUnits.map((t) => t.toJson()).toList(),
       'cupboards': cupboards,
       'lights': design.lights.map((l) => l.toJson()).toList(),
+      'fans': design.fans.map((f) => f.toJson()).toList(),
       'furniture': await Future.wait(
         design.furniture.map((f) async {
           return {
