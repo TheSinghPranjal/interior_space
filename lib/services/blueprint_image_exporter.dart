@@ -59,9 +59,11 @@ class _BlueprintExportPainter {
     _drawGrid(canvas);
     _drawDoors(canvas);
     _drawWindows(canvas);
+    _drawAcUnits(canvas);
     _drawWallTvUnits(canvas);
     _drawFurniture(canvas);
     _drawCupboards(canvas);
+    _drawFans(canvas);
     _drawDimensions(canvas);
     _drawWallLabels(canvas);
   }
@@ -138,6 +140,21 @@ class _BlueprintExportPainter {
     }
   }
 
+  void _drawAcUnits(Canvas canvas) {
+    for (final unit in design.acUnits) {
+      final paint = Paint()..color = ColorUtils.fromHex(unit.color);
+      final aw = unit.width * _scale;
+      final offset = unit.positionFromEdge * _scale;
+      final rect = switch (unit.wall) {
+        WallId.front => Rect.fromLTWH(_roomRect.left + offset, _roomRect.top - 4, aw, 8),
+        WallId.back => Rect.fromLTWH(_roomRect.left + offset, _roomRect.bottom - 4, aw, 8),
+        WallId.left => Rect.fromLTWH(_roomRect.left - 4, _roomRect.top + offset, 8, aw),
+        WallId.right => Rect.fromLTWH(_roomRect.right - 4, _roomRect.top + offset, 8, aw),
+      };
+      canvas.drawRect(rect, paint);
+    }
+  }
+
   void _drawWallTvUnits(Canvas canvas) {
     for (final unit in design.wallTvUnits) {
       final paint = Paint()..color = ColorUtils.fromHex(unit.color);
@@ -174,6 +191,25 @@ class _BlueprintExportPainter {
       final left = _roomRect.left + cupboard.blueprintX * _roomRect.width - w / 2;
       final top = _roomRect.top + cupboard.blueprintY * _roomRect.height - d / 2;
       _drawItemBox(canvas, Rect.fromLTWH(left, top, w, d), 'Cupboard', ColorUtils.fromHex(cupboard.color));
+    }
+  }
+
+  void _drawFans(Canvas canvas) {
+    for (final fan in design.fans) {
+      final cx = _roomRect.left + fan.positionX * _roomRect.width;
+      final cy = _roomRect.top + fan.positionY * _roomRect.height;
+      const radius = 12.0;
+
+      final fill = Paint()
+        ..color = ColorUtils.fromHex(fan.color).withValues(alpha: 0.85)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(Offset(cx, cy), radius, fill);
+
+      final border = Paint()
+        ..color = Colors.blueGrey.shade800
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
+      canvas.drawCircle(Offset(cx, cy), radius, border);
     }
   }
 
