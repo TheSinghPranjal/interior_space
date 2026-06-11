@@ -1,7 +1,9 @@
 import 'enums.dart';
+import 'ac_unit_config.dart';
 import 'ceiling_config.dart';
 import 'cupboard_config.dart';
 import 'door_config.dart';
+import 'fan_config.dart';
 import 'floor_config.dart';
 import 'furniture_item.dart';
 import 'light_config.dart';
@@ -20,9 +22,11 @@ class RoomDesign {
     this.ceiling = const CeilingConfig(),
     this.doors = const [],
     this.windows = const [],
+    this.acUnits = const [],
     this.wallTvUnits = const [],
     this.cupboards = const [],
     this.lights = const [],
+    this.fans = const [],
     this.furniture = const [],
     this.aiPromptHistory = const [],
   });
@@ -35,9 +39,11 @@ class RoomDesign {
   final CeilingConfig ceiling;
   final List<DoorConfig> doors;
   final List<WindowConfig> windows;
+  final List<AcUnitConfig> acUnits;
   final List<WallTvUnitConfig> wallTvUnits;
   final List<CupboardConfig> cupboards;
   final List<LightConfig> lights;
+  final List<FanConfig> fans;
   final List<FurnitureItem> furniture;
   final List<String> aiPromptHistory;
 
@@ -50,9 +56,11 @@ class RoomDesign {
     CeilingConfig? ceiling,
     List<DoorConfig>? doors,
     List<WindowConfig>? windows,
+    List<AcUnitConfig>? acUnits,
     List<WallTvUnitConfig>? wallTvUnits,
     List<CupboardConfig>? cupboards,
     List<LightConfig>? lights,
+    List<FanConfig>? fans,
     List<FurnitureItem>? furniture,
     List<String>? aiPromptHistory,
   }) {
@@ -65,9 +73,11 @@ class RoomDesign {
       ceiling: ceiling ?? this.ceiling,
       doors: doors ?? this.doors,
       windows: windows ?? this.windows,
+      acUnits: acUnits ?? this.acUnits,
       wallTvUnits: wallTvUnits ?? this.wallTvUnits,
       cupboards: cupboards ?? this.cupboards,
       lights: lights ?? this.lights,
+      fans: fans ?? this.fans,
       furniture: furniture ?? this.furniture,
       aiPromptHistory: aiPromptHistory ?? this.aiPromptHistory,
     );
@@ -82,9 +92,11 @@ class RoomDesign {
         'ceiling': ceiling.toJson(),
         'doors': doors.map((d) => d.toJson()).toList(),
         'windows': windows.map((w) => w.toJson()).toList(),
+        'acUnits': acUnits.map((a) => a.toJson()).toList(),
         'wallTvUnits': wallTvUnits.map((t) => t.toJson()).toList(),
         'cupboards': cupboards.map((c) => c.toJson()).toList(),
         'lights': lights.map((l) => l.toJson()).toList(),
+        'fans': fans.map((f) => f.toJson()).toList(),
         'furniture': furniture.map((f) => f.toJson()).toList(),
         'aiPromptHistory': aiPromptHistory,
       };
@@ -114,6 +126,10 @@ class RoomDesign {
               ?.map((e) => WindowConfig.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      acUnits: (json['acUnits'] as List<dynamic>?)
+              ?.map((e) => AcUnitConfig.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
       wallTvUnits: (json['wallTvUnits'] as List<dynamic>?)
               ?.map((e) => WallTvUnitConfig.fromJson(e as Map<String, dynamic>))
               .toList() ??
@@ -124,6 +140,10 @@ class RoomDesign {
           [],
       lights: (json['lights'] as List<dynamic>?)
               ?.map((e) => LightConfig.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      fans: (json['fans'] as List<dynamic>?)
+              ?.map((e) => FanConfig.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
       furniture: (json['furniture'] as List<dynamic>?)
