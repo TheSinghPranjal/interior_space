@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../models/ac_unit_config.dart';
 import '../models/ceiling_config.dart';
 import '../models/cupboard_config.dart';
 import '../models/door_config.dart';
 import '../models/enums.dart';
+import '../models/fan_config.dart';
 import '../models/floor_config.dart';
 import '../models/furniture_item.dart';
 import '../models/light_config.dart';
@@ -108,6 +110,25 @@ class RoomDesignNotifier extends StateNotifier<RoomDesign> {
     );
   }
 
+  void addAcUnit({WallId wall = WallId.front}) {
+    final unit = AcUnitConfig(id: _uuid.v4(), wall: wall);
+    _mutate((r) => r.copyWith(acUnits: [...r.acUnits, unit]));
+  }
+
+  void updateAcUnit(AcUnitConfig unit) {
+    _mutate(
+      (r) => r.copyWith(
+        acUnits: r.acUnits.map((a) => a.id == unit.id ? unit : a).toList(),
+      ),
+    );
+  }
+
+  void removeAcUnit(String id) {
+    _mutate(
+      (r) => r.copyWith(acUnits: r.acUnits.where((a) => a.id != id).toList()),
+    );
+  }
+
   void addWallTvUnit({WallId wall = WallId.front}) {
     final unit = WallTvUnitConfig(id: _uuid.v4(), wall: wall);
     _mutate((r) => r.copyWith(wallTvUnits: [...r.wallTvUnits, unit]));
@@ -181,6 +202,25 @@ class RoomDesignNotifier extends StateNotifier<RoomDesign> {
   void removeLight(String id) {
     _mutate(
       (r) => r.copyWith(lights: r.lights.where((l) => l.id != id).toList()),
+    );
+  }
+
+  void addFan() {
+    final fan = FanConfig(id: _uuid.v4());
+    _mutate((r) => r.copyWith(fans: [...r.fans, fan]));
+  }
+
+  void updateFan(FanConfig fan) {
+    _mutate(
+      (r) => r.copyWith(
+        fans: r.fans.map((f) => f.id == fan.id ? fan : f).toList(),
+      ),
+    );
+  }
+
+  void removeFan(String id) {
+    _mutate(
+      (r) => r.copyWith(fans: r.fans.where((f) => f.id != id).toList()),
     );
   }
 
