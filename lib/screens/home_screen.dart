@@ -114,7 +114,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: DoorsEditor(),
         ),
       DesignMenuAction.windows => const EditorScreen(
-          title: 'Windows',
+          title: 'Windows & AC',
           icon: Icons.window,
           child: WindowsEditor(),
         ),
