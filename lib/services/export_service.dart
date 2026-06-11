@@ -8,9 +8,11 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
+import '../models/ac_unit_config.dart';
 import '../models/cupboard_config.dart';
 import '../models/door_config.dart';
 import '../models/enums.dart';
+import '../models/fan_config.dart';
 import '../models/furniture_item.dart';
 import '../models/light_config.dart';
 import '../models/project_design.dart';
@@ -206,6 +208,15 @@ class ExportService {
           rows: room.windows.map(_windowRow).toList(),
         ),
       pw.SizedBox(height: 10),
+      _sectionTitle('AC Units (${room.acUnits.length})'),
+      if (room.acUnits.isEmpty)
+        pw.Text('None')
+      else
+        _detailTable(
+          headers: const ['Wall', 'Width', 'Height', 'From edge', 'From floor', 'Rotation', 'Color'],
+          rows: room.acUnits.map(_acUnitRow).toList(),
+        ),
+      pw.SizedBox(height: 10),
       _sectionTitle('Wall TV Units (${room.wallTvUnits.length})'),
       if (room.wallTvUnits.isEmpty)
         pw.Text('None')
@@ -240,6 +251,15 @@ class ExportService {
         _detailTable(
           headers: const ['Type', 'Brightness', 'Temperature', 'Position (X,Y,Z)', 'Color', 'On'],
           rows: room.lights.map(_lightRow).toList(),
+        ),
+      pw.SizedBox(height: 10),
+      _sectionTitle('Ceiling Fans (${room.fans.length})'),
+      if (room.fans.isEmpty)
+        pw.Text('None')
+      else
+        _detailTable(
+          headers: const ['Position (X,Y)', 'Height', 'Color'],
+          rows: room.fans.map(_fanRow).toList(),
         ),
       pw.SizedBox(height: 8),
       pw.Divider(),
@@ -294,6 +314,16 @@ class ExportService {
         window.glassColor,
       ];
 
+  List<String> _acUnitRow(AcUnitConfig unit) => [
+        unit.wall.label,
+        '${unit.width.toStringAsFixed(1)} ft',
+        '${unit.height.toStringAsFixed(1)} ft',
+        '${unit.positionFromEdge.toStringAsFixed(1)} ft',
+        '${unit.positionFromFloor.toStringAsFixed(1)} ft',
+        '${unit.rotation.toStringAsFixed(0)}°',
+        unit.color,
+      ];
+
   List<String> _wallTvUnitRow(WallTvUnitConfig unit) => [
         unit.wall.label,
         '${unit.width.toStringAsFixed(1)} ft',
@@ -334,6 +364,12 @@ class ExportService {
         '${light.positionX.toStringAsFixed(2)}, ${light.positionY.toStringAsFixed(2)}, ${light.positionZ.toStringAsFixed(2)}',
         light.color,
         light.enabled ? 'Yes' : 'No',
+      ];
+
+  List<String> _fanRow(FanConfig fan) => [
+        '${fan.positionX.toStringAsFixed(2)}, ${fan.positionY.toStringAsFixed(2)}',
+        fan.height.toStringAsFixed(2),
+        fan.color,
       ];
 }
 
