@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/utils/blueprint_placement.dart';
 import '../../core/utils/color_utils.dart';
+import '../../models/ac_unit_config.dart';
 import '../../models/cupboard_config.dart';
 import '../../models/door_config.dart';
 import '../../models/enums.dart';
@@ -56,6 +57,8 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
         return design.doors.any((d) => d.id == _selectedId);
       case 'window_wall':
         return design.windows.any((w) => w.id == _selectedId);
+      case 'ac_unit_wall':
+        return design.acUnits.any((a) => a.id == _selectedId);
       case 'wall_tv_wall':
         return design.wallTvUnits.any((t) => t.id == _selectedId);
       default:
@@ -161,6 +164,14 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
                 scale: scale,
               );
             }),
+            ...design.acUnits.map((unit) {
+              return _buildAcUnitItem(
+                unit: unit,
+                design: design,
+                roomRect: roomRect,
+                scale: scale,
+              );
+            }),
             ...design.wallTvUnits.map((unit) {
               return _buildWallTvUnitItem(
                 unit: unit,
@@ -245,6 +256,9 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     } else if (_selectedType == 'window_wall' && _tempPositionFromEdge != null) {
       final window = design.windows.firstWhere((w) => w.id == _selectedId);
       notifier.updateWindow(window.copyWith(positionFromEdge: _tempPositionFromEdge!));
+    } else if (_selectedType == 'ac_unit_wall' && _tempPositionFromEdge != null) {
+      final unit = design.acUnits.firstWhere((a) => a.id == _selectedId);
+      notifier.updateAcUnit(unit.copyWith(positionFromEdge: _tempPositionFromEdge!));
     } else if (_selectedType == 'wall_tv_wall' && _tempPositionFromEdge != null) {
       final unit = design.wallTvUnits.firstWhere((t) => t.id == _selectedId);
       notifier.updateWallTvUnit(unit.copyWith(positionFromEdge: _tempPositionFromEdge!));
@@ -281,6 +295,10 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       final window = design.windows.firstWhere((w) => w.id == _selectedId);
       final next = (window.rotation + degrees) % 360;
       notifier.updateWindow(window.copyWith(rotation: next < 0 ? next + 360 : next));
+    } else if (_selectedType == 'ac_unit_wall') {
+      final unit = design.acUnits.firstWhere((a) => a.id == _selectedId);
+      final next = (unit.rotation + degrees) % 360;
+      notifier.updateAcUnit(unit.copyWith(rotation: next < 0 ? next + 360 : next));
     } else if (_selectedType == 'wall_tv_wall') {
       final unit = design.wallTvUnits.firstWhere((t) => t.id == _selectedId);
       final next = (unit.rotation + degrees) % 360;
@@ -495,6 +513,49 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     );
   }
 
+  Widget _buildAcUnitItem({
+    required AcUnitConfig unit,
+    required RoomDesign design,
+    required Rect roomRect,
+    required double scale,
+  }) {
+    final edge = (_isDragging && _selectedId == unit.id && _tempPositionFromEdge != null)
+        ? _tempPositionFromEdge!
+        : unit.positionFromEdge;
+    final rect = _wallStripRect(
+      wall: unit.wall,
+      positionFromEdge: edge,
+      widthFt: unit.width,
+      roomRect: roomRect,
+      scale: scale,
+    );
+
+    return _itemBox(
+      id: unit.id,
+      dragType: 'ac_unit_wall',
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+      label: 'AC',
+      color: ColorUtils.fromHex(unit.color),
+      rotation: unit.rotation,
+      design: design,
+      roomRect: roomRect,
+      scale: scale,
+      onWallDrag: (Offset center) {
+        _tempPositionFromEdge = _edgeFromCenter(
+          wall: unit.wall,
+          center: center,
+          itemWidthFt: unit.width,
+          roomRect: roomRect,
+          scale: scale,
+          maxEdge: unit.maxPositionFromEdge(design.dimensions),
+        );
+      },
+    );
+  }
+
   Widget _buildWallTvUnitItem({
     required WallTvUnitConfig unit,
     required RoomDesign design,
@@ -599,6 +660,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
         _selectedType == 'cupboard_floor' ||
         _selectedType == 'door_wall' ||
         _selectedType == 'window_wall' ||
+        _selectedType == 'ac_unit_wall' ||
         _selectedType == 'wall_tv_wall';
 
     Rect? itemRect;
@@ -650,6 +712,16 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
         wall: window.wall,
         positionFromEdge: edge,
         widthFt: window.width,
+        roomRect: roomRect,
+        scale: scale,
+      );
+    } else if (_selectedType == 'ac_unit_wall') {
+      final unit = design.acUnits.firstWhere((a) => a.id == _selectedId);
+      final edge = _tempPositionFromEdge ?? unit.positionFromEdge;
+      itemRect = _wallStripRect(
+        wall: unit.wall,
+        positionFromEdge: edge,
+        widthFt: unit.width,
         roomRect: roomRect,
         scale: scale,
       );
