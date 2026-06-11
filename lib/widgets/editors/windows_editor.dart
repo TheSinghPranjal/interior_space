@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/room_constants.dart';
+import '../../models/ac_unit_config.dart';
 import '../../models/enums.dart';
 import '../../models/window_config.dart';
 import '../../providers/room_design_provider.dart';
+import '../../services/texture_service.dart';
 import '../common/color_picker_field.dart';
 import '../common/dimension_slider.dart';
 import '../common/item_editor_header.dart';
@@ -16,6 +18,7 @@ class WindowsEditor extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final windows = ref.watch(roomDesignProvider).windows;
+    final acUnits = ref.watch(roomDesignProvider).acUnits;
 
     return ListView(
       children: [
@@ -30,6 +33,19 @@ class WindowsEditor extends ConsumerWidget {
               ? const Text('No windows added. Tap + to add a window.')
               : Column(
                   children: windows.map((w) => _WindowCard(window: w)).toList(),
+                ),
+        ),
+        SectionCard(
+          title: 'AC Units',
+          subtitle: 'Wall-mounted split AC • Drag in Blueprint',
+          trailing: IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () => ref.read(roomDesignProvider.notifier).addAcUnit(),
+          ),
+          child: acUnits.isEmpty
+              ? const Text('No AC units added. Tap + to add a split AC unit.')
+              : Column(
+                  children: acUnits.map((a) => _AcUnitCard(unit: a)).toList(),
                 ),
         ),
       ],
@@ -176,6 +192,159 @@ class _WindowCardState extends ConsumerState<_WindowCard> {
               enabled: enabled,
               onChanged: (c) => notifier.updateWindow(window.copyWith(frameColor: c)),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AcUnitCard extends ConsumerStatefulWidget {
+  const _AcUnitCard({required this.unit});
+
+  final AcUnitConfig unit;
+
+  @override
+  ConsumerState<_AcUnitCard> createState() => _AcUnitCardState();
+}
+
+class _AcUnitCardState extends ConsumerState<_AcUnitCard> {
+  bool _editingEnabled = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final unit = widget.unit;
+    final design = ref.watch(roomDesignProvider);
+    final notifier = ref.read(roomDesignProvider.notifier);
+    final enabled = _editingEnabled;
+    final maxEdge = unit.maxPositionFromEdge(design.dimensions);
+    final clampedPosition = unit.positionFromEdge.clamp(0, maxEdge).toDouble();
+
+    if (clampedPosition != unit.positionFromEdge) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notifier.updateAcUnit(unit.copyWith(positionFromEdge: clampedPosition));
+      });
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: Colors.grey.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            ItemEditorHeader(
+              title: 'Split AC Unit',
+              icon: Icons.ac_unit,
+              editingEnabled: _editingEnabled,
+              onToggleEdit: () => setState(() => _editingEnabled = !_editingEnabled),
+              onDelete: () => notifier.removeAcUnit(unit.id),
+            ),
+            if (!enabled)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Tap edit to change parameters, or drag in Blueprint view',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
+              ),
+            DropdownButtonFormField<WallId>(
+              value: unit.wall,
+              decoration: const InputDecoration(labelText: 'Wall'),
+              items: WallId.values
+                  .map((w) => DropdownMenuItem(value: w, child: Text(w.label)))
+                  .toList(),
+              onChanged: enabled
+                  ? (w) {
+                      if (w != null) {
+                        final updated = unit.copyWith(wall: w);
+                        notifier.updateAcUnit(
+                          updated.copyWith(
+                            positionFromEdge: updated.positionFromEdge
+                                .clamp(0, updated.maxPositionFromEdge(design.dimensions))
+                                .toDouble(),
+                          ),
+                        );
+                      }
+                    }
+                  : null,
+            ),
+            DimensionSlider(
+              label: 'Width',
+              value: unit.width,
+              min: 2,
+              max: 6,
+              suffix: 'ft',
+              onChanged: enabled
+                  ? (v) {
+                      final updated = unit.copyWith(width: v);
+                      notifier.updateAcUnit(
+                        updated.copyWith(
+                          positionFromEdge: updated.positionFromEdge
+                              .clamp(0, updated.maxPositionFromEdge(design.dimensions))
+                              .toDouble(),
+                        ),
+                      );
+                    }
+                  : null,
+            ),
+            DimensionSlider(
+              label: 'Height',
+              value: unit.height,
+              min: 0.5,
+              max: 3,
+              suffix: 'ft',
+              onChanged: enabled ? (v) => notifier.updateAcUnit(unit.copyWith(height: v)) : null,
+            ),
+            DimensionSlider(
+              label: 'Position from edge',
+              value: clampedPosition,
+              min: 0,
+              max: maxEdge,
+              suffix: 'ft',
+              onChanged: enabled && maxEdge > 0
+                  ? (v) => notifier.updateAcUnit(unit.copyWith(positionFromEdge: v))
+                  : null,
+            ),
+            DimensionSlider(
+              label: 'From floor',
+              value: unit.positionFromFloor,
+              min: 1,
+              max: design.dimensions.height.clamp(1, RoomConstants.maxHeight).toDouble(),
+              suffix: 'ft',
+              onChanged: enabled
+                  ? (v) => notifier.updateAcUnit(unit.copyWith(positionFromFloor: v))
+                  : null,
+            ),
+            DimensionSlider(
+              label: 'Rotation',
+              value: unit.rotation,
+              min: 0,
+              max: 360,
+              suffix: '°',
+              onChanged: enabled ? (v) => notifier.updateAcUnit(unit.copyWith(rotation: v)) : null,
+            ),
+            Text(
+              'Wall length: ${unit.wallLengthFt(design.dimensions).toStringAsFixed(1)} ft',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+            ),
+            ColorPickerField(
+              label: 'AC Color',
+              colorHex: unit.color,
+              enabled: enabled,
+              onChanged: (c) => notifier.updateAcUnit(unit.copyWith(color: c)),
+            ),
+            if (enabled)
+              FilledButton.icon(
+                onPressed: () async {
+                  final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
+                  if (path != null) {
+                    notifier.updateAcUnit(unit.copyWith(texturePath: path));
+                  }
+                },
+                icon: const Icon(Icons.upload_file),
+                label: Text(unit.texturePath == null ? 'Upload AC Image' : 'Change AC Image'),
+              ),
           ],
         ),
       ),
