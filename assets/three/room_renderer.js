@@ -133,6 +133,7 @@
       this.controls.maxDistance = 60;
 
       this.lights = [];
+      this.fanRotors = [];
       this.wallMeshes = {};
       this.cameraMode = 'orbit';
       this.walkVelocity = new THREE.Vector3();
@@ -178,6 +179,7 @@
       }
       this.lights.forEach(l => this.scene.remove(l));
       this.lights = [];
+      this.fanRotors = [];
       this.wallMeshes = {};
     }
 
@@ -363,10 +365,12 @@
       this._buildWalls(w, l, h, cfg);
       this._buildDoors(cfg.doors, w, l, h);
       this._buildWindows(cfg.windows, w, l, h);
+      this._buildAcUnits(cfg.acUnits || [], w, l, h);
       this._buildWallTvUnits(cfg.wallTvUnits || [], w, l, h);
       this._buildCupboards(cfg.cupboards, w, l, h);
       this._buildFurniture(cfg.furniture, w, l);
       this._buildLights(cfg.lights, w, l, h);
+      this._buildFans(cfg.fans || [], w, l, h);
 
       this.roomGroup = savedGroup;
       this.wallMeshes = savedWallMeshes;
@@ -663,6 +667,74 @@
         group.position.set(pos.x, (win.positionFromFloor * FT) + wh / 2, pos.z);
         if (win.wall === 'left' || win.wall === 'right') group.rotation.y = Math.PI / 2;
         group.rotation.y += (win.rotation || 0) * Math.PI / 180;
+        this.roomGroup.add(group);
+      });
+    }
+
+    _buildAcUnits(units, w, l, h) {
+      units.forEach((unit) => {
+        const uw = unit.width * FT;
+        const uh = unit.height * FT;
+        const depth = 0.22;
+        const group = new THREE.Group();
+
+        const bodyMat = this._makeMaterial(unit.color, 0.35, 0.12, unit.textureDataUrl, 'wood', 1, 1);
+        const trimMat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(hexColor(unit.color)).multiplyScalar(0.88),
+          roughness: 0.4,
+          metalness: 0.08,
+        });
+        const louverMat = new THREE.MeshStandardMaterial({
+          color: 0xB0BEC5,
+          roughness: 0.55,
+          metalness: 0.2,
+        });
+
+        const body = new THREE.Mesh(new THREE.BoxGeometry(uw, uh * 0.72, depth), bodyMat);
+        body.position.set(0, uh * 0.14, depth * 0.45);
+        body.castShadow = true;
+        body.receiveShadow = true;
+        group.add(body);
+
+        const topCap = new THREE.Mesh(new THREE.BoxGeometry(uw, uh * 0.1, depth * 0.95), trimMat);
+        topCap.position.set(0, uh * 0.45, depth * 0.42);
+        topCap.castShadow = true;
+        group.add(topCap);
+
+        const display = new THREE.Mesh(
+          new THREE.BoxGeometry(uw * 0.18, uh * 0.08, 0.02),
+          new THREE.MeshStandardMaterial({ color: 0x263238, roughness: 0.3, metalness: 0.4 })
+        );
+        display.position.set(uw * 0.32, uh * 0.38, depth * 0.88);
+        group.add(display);
+
+        const louverH = uh * 0.28;
+        const louver = new THREE.Mesh(new THREE.BoxGeometry(uw * 0.96, louverH, depth * 0.85), louverMat);
+        louver.position.set(0, -uh * 0.36, depth * 0.4);
+        louver.castShadow = true;
+        group.add(louver);
+
+        for (let i = 0; i < 5; i++) {
+          const slat = new THREE.Mesh(
+            new THREE.BoxGeometry(uw * 0.9, 0.012, depth * 0.7),
+            louverMat
+          );
+          slat.position.set(0, -uh * 0.26 + i * (louverH / 5), depth * 0.78);
+          slat.rotation.x = -0.35;
+          group.add(slat);
+        }
+
+        const brandBar = new THREE.Mesh(
+          new THREE.BoxGeometry(uw * 0.12, uh * 0.04, 0.015),
+          new THREE.MeshStandardMaterial({ color: 0x78909C, roughness: 0.5, metalness: 0.15 })
+        );
+        brandBar.position.set(-uw * 0.38, uh * 0.38, depth * 0.88);
+        group.add(brandBar);
+
+        const pos = this._wallItemPosition(unit.wall, unit.positionFromEdge, uw, w, l);
+        group.position.set(pos.x, (unit.positionFromFloor * FT) + uh / 2, pos.z);
+        if (unit.wall === 'left' || unit.wall === 'right') group.rotation.y = Math.PI / 2;
+        group.rotation.y += (unit.rotation || 0) * Math.PI / 180;
         this.roomGroup.add(group);
       });
     }
@@ -1040,6 +1112,74 @@
       });
     }
 
+    _buildFans(fans, w, l, h) {
+      fans.forEach((fan) => {
+        const x = (fan.positionX - 0.5) * w;
+        const z = (fan.positionY - 0.5) * l;
+        const mountY = Math.min(h, Math.max(h * 0.85, (fan.height || 0.95) * h));
+        const fanColor = hexColor(fan.color);
+
+        const group = new THREE.Group();
+        group.position.set(x, mountY, z);
+
+        const mountMat = new THREE.MeshStandardMaterial({
+          color: fanColor,
+          roughness: 0.45,
+          metalness: 0.25,
+        });
+        const bladeMat = new THREE.MeshStandardMaterial({
+          color: fanColor,
+          roughness: 0.55,
+          metalness: 0.08,
+          side: THREE.DoubleSide,
+        });
+        const darkMat = new THREE.MeshStandardMaterial({
+          color: 0x455A64,
+          roughness: 0.5,
+          metalness: 0.2,
+        });
+
+        const canopy = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.06, 16), mountMat);
+        canopy.position.y = 0.03;
+        group.add(canopy);
+
+        const downrod = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.35, 8), darkMat);
+        downrod.position.y = -0.14;
+        group.add(downrod);
+
+        const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.12, 16), mountMat);
+        motor.position.y = -0.35;
+        group.add(motor);
+
+        const rotor = new THREE.Group();
+        rotor.position.y = -0.38;
+
+        const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.04, 12), darkMat);
+        rotor.add(hub);
+
+        const bladeLen = 0.55;
+        const bladeW = 0.14;
+        for (let i = 0; i < 3; i++) {
+          const bladeGroup = new THREE.Group();
+          bladeGroup.rotation.y = (i * Math.PI * 2) / 3;
+          const blade = new THREE.Mesh(
+            new THREE.BoxGeometry(bladeLen, 0.02, bladeW),
+            bladeMat
+          );
+          blade.position.x = bladeLen * 0.48;
+          bladeGroup.add(blade);
+          rotor.add(bladeGroup);
+        }
+
+        group.add(rotor);
+        group.traverse((obj) => {
+          if (obj.isMesh) obj.castShadow = false;
+        });
+        this.fanRotors.push(rotor);
+        this.roomGroup.add(group);
+      });
+    }
+
     _materialProps(material) {
       const map = {
         marble: { roughness: 0.15, metalness: 0.1 },
@@ -1080,6 +1220,12 @@
         if (this.walkKeys.backward) this.camera.position.addScaledVector(direction, -speed);
         if (this.walkKeys.left) this.camera.position.addScaledVector(right, -speed);
         if (this.walkKeys.right) this.camera.position.addScaledVector(right, speed);
+      }
+
+      if (this.fanRotors && this.fanRotors.length) {
+        this.fanRotors.forEach((rotor) => {
+          rotor.rotation.y += delta * 2.4;
+        });
       }
 
       this.controls.update();
