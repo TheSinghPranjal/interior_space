@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 class ItemEditorHeader extends StatelessWidget {
+
   const ItemEditorHeader({
     super.key,
     required this.title,
