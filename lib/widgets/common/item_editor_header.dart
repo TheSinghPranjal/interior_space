@@ -16,6 +16,7 @@ class ItemEditorHeader extends StatelessWidget {
   final VoidCallback onToggleEdit;
   final VoidCallback onDelete;
 
+
   @override
   Widget build(BuildContext context) {
     return Row(
