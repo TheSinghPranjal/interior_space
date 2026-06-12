@@ -10,6 +10,7 @@ class ItemEditorHeader extends StatelessWidget {
     this.icon,
   });
 
+
   final String title;
   final IconData? icon;
   final bool editingEnabled;
