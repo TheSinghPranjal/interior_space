@@ -42,6 +42,7 @@ class ItemEditorHeader extends StatelessWidget {
           color: editingEnabled ? Colors.orange.shade800 : null,
           onPressed: onToggleEdit,
         ),
+
         IconButton(
           icon: const Icon(Icons.delete_outline, color: Colors.red),
           tooltip: 'Delete',
