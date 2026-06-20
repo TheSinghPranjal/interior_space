@@ -34,6 +34,7 @@ class ItemEditorHeader extends StatelessWidget {
           const SizedBox(width: 8),
         ],
 
+
         Expanded(
           child: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
         ),
