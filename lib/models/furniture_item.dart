@@ -196,6 +196,22 @@ class FurnitureItem {
           depth: 5.0,
           color: '#FAFAFA',
         ),
+      FurnitureType.flowerPot => FurnitureItem(
+          id: id,
+          type: type,
+          width: 1.2,
+          height: 2.5,
+          depth: 1.2,
+          color: '#BF360C',
+        ),
+      FurnitureType.fridge => FurnitureItem(
+          id: id,
+          type: type,
+          width: 2.5,
+          height: 5.5,
+          depth: 2.5,
+          color: '#ECEFF1',
+        ),
     };
 
     if (base.isWallMounted) {
