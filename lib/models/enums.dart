@@ -46,7 +46,19 @@ enum CameraMode {
   isometric,
 }
 
-enum FurnitureType { bed, sofa, table, tvUnit, chair, wardrobe, cupboard }
+enum FurnitureType {
+  bed,
+  sofa,
+  table,
+  tvUnit,
+  chair,
+  wardrobe,
+  cupboard,
+  sink,
+  toilet,
+  washingMachine,
+  bathtub,
+}
 
 extension FurnitureTypePlacement on FurnitureType {
   bool get isWallMounted => false;
@@ -59,6 +71,13 @@ extension WallIdLabel on WallId {
         WallId.left => 'Left Wall',
         WallId.right => 'Right Wall',
       };
+
+  String get shortLabel => switch (this) {
+        WallId.front => 'Front',
+        WallId.back => 'Back',
+        WallId.left => 'Left',
+        WallId.right => 'Right',
+      };
 }
 
 extension FurnitureTypeLabel on FurnitureType {
@@ -70,6 +89,10 @@ extension FurnitureTypeLabel on FurnitureType {
         FurnitureType.chair => 'Chair',
         FurnitureType.wardrobe => 'Wardrobe',
         FurnitureType.cupboard => 'Cupboard',
+        FurnitureType.sink => 'Sink / Wash Basin',
+        FurnitureType.toilet => 'Western Toilet',
+        FurnitureType.washingMachine => 'Washing Machine',
+        FurnitureType.bathtub => 'Bathtub',
       };
 
   IconData get icon => switch (this) {
@@ -80,5 +103,9 @@ extension FurnitureTypeLabel on FurnitureType {
         FurnitureType.chair => Icons.chair,
         FurnitureType.wardrobe => Icons.door_sliding,
         FurnitureType.cupboard => Icons.kitchen,
+        FurnitureType.sink => Icons.wash,
+        FurnitureType.toilet => Icons.wc,
+        FurnitureType.washingMachine => Icons.local_laundry_service,
+        FurnitureType.bathtub => Icons.bathtub,
       };
 }

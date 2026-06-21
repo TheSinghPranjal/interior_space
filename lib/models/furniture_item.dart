@@ -40,25 +40,25 @@ class FurnitureItem {
       BlueprintPlacement.effectiveDepthFt(width, depth, rotation);
 
   double positionFromLeftFt(RoomDimensions dims) =>
-      blueprintX * dims.width - effectiveWidthFt() / 2;
+      blueprintX * dims.effectiveWidth - effectiveWidthFt() / 2;
 
   double positionFromFrontFt(RoomDimensions dims) =>
-      blueprintY * dims.length - effectiveDepthFt() / 2;
+      blueprintY * dims.effectiveLength - effectiveDepthFt() / 2;
 
   double maxPositionFromLeftFt(RoomDimensions dims) =>
-      (dims.width - effectiveWidthFt()).clamp(0, dims.width).toDouble();
+      (dims.effectiveWidth - effectiveWidthFt()).clamp(0, dims.effectiveWidth).toDouble();
 
   double maxPositionFromFrontFt(RoomDimensions dims) =>
-      (dims.length - effectiveDepthFt()).clamp(0, dims.length).toDouble();
+      (dims.effectiveLength - effectiveDepthFt()).clamp(0, dims.effectiveLength).toDouble();
 
   double blueprintXFromLeftFt(double leftFt, RoomDimensions dims) {
     final half = normalizedHalfExtents(dims).halfX;
-    return ((leftFt + effectiveWidthFt() / 2) / dims.width).clamp(half, 1 - half);
+    return ((leftFt + effectiveWidthFt() / 2) / dims.effectiveWidth).clamp(half, 1 - half);
   }
 
   double blueprintYFromFrontFt(double frontFt, RoomDimensions dims) {
     final half = normalizedHalfExtents(dims).halfY;
-    return ((frontFt + effectiveDepthFt() / 2) / dims.length).clamp(half, 1 - half);
+    return ((frontFt + effectiveDepthFt() / 2) / dims.effectiveLength).clamp(half, 1 - half);
   }
 
   ({double halfX, double halfY}) normalizedHalfExtents(RoomDimensions dims) =>
@@ -66,8 +66,8 @@ class FurnitureItem {
         widthFt: width,
         depthFt: depth,
         rotationDeg: rotation,
-        roomWidthFt: dims.width,
-        roomLengthFt: dims.length,
+        roomWidthFt: dims.effectiveWidth,
+        roomLengthFt: dims.effectiveLength,
       );
 
   FurnitureItem copyWith({
@@ -163,6 +163,38 @@ class FurnitureItem {
           height: 3.0,
           depth: 1.5,
           color: '#8D6E63',
+        ),
+      FurnitureType.sink => FurnitureItem(
+          id: id,
+          type: type,
+          width: 2.5,
+          height: 3.2,
+          depth: 1.8,
+          color: '#78909C',
+        ),
+      FurnitureType.toilet => FurnitureItem(
+          id: id,
+          type: type,
+          width: 1.6,
+          height: 2.8,
+          depth: 2.6,
+          color: '#FAFAFA',
+        ),
+      FurnitureType.washingMachine => FurnitureItem(
+          id: id,
+          type: type,
+          width: 2.2,
+          height: 3.0,
+          depth: 2.5,
+          color: '#ECEFF1',
+        ),
+      FurnitureType.bathtub => FurnitureItem(
+          id: id,
+          type: type,
+          width: 2.5,
+          height: 2.0,
+          depth: 5.0,
+          color: '#FAFAFA',
         ),
     };
 
