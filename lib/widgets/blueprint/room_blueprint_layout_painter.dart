@@ -34,6 +34,7 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
     _drawGrid(canvas);
     _drawDoors(canvas);
     _drawWindows(canvas);
+    _drawCurtains(canvas);
     _drawAcUnits(canvas);
     _drawWallTvUnits(canvas);
     _drawCupboards(canvas);
@@ -100,6 +101,21 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
         WallId.back => Rect.fromLTWH(roomRect.left + offset, roomRect.bottom - 3, ww, 6),
         WallId.left => Rect.fromLTWH(roomRect.left - 3, roomRect.top + offset, 6, ww),
         WallId.right => Rect.fromLTWH(roomRect.right - 3, roomRect.top + offset, 6, ww),
+      };
+      canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(2)), paint);
+    }
+  }
+
+  void _drawCurtains(Canvas canvas) {
+    for (final curtain in design.curtains) {
+      final paint = Paint()..color = ColorUtils.fromHex(curtain.color);
+      final cw = curtain.width * scale;
+      final offset = curtain.positionFromEdge * scale;
+      final rect = switch (curtain.wall) {
+        WallId.front => Rect.fromLTWH(roomRect.left + offset, roomRect.top - 4, cw, 8),
+        WallId.back => Rect.fromLTWH(roomRect.left + offset, roomRect.bottom - 4, cw, 8),
+        WallId.left => Rect.fromLTWH(roomRect.left - 4, roomRect.top + offset, 8, cw),
+        WallId.right => Rect.fromLTWH(roomRect.right - 4, roomRect.top + offset, 8, cw),
       };
       canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(2)), paint);
     }
