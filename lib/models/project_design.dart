@@ -11,7 +11,7 @@ class ProjectDesign {
     this.apartmentLayout = const ApartmentLayout(),
   });
 
-  static const int maxRooms = 10;
+  static const int maxRooms = 30;
 
   final String projectName;
   final List<RoomDesign> rooms;
