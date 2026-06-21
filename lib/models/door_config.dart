@@ -25,10 +25,7 @@ class DoorConfig {
   final DoorMaterial material;
   final String? texturePath;
 
-  double wallLengthFt(RoomDimensions dims) => switch (wall) {
-        WallId.front || WallId.back => dims.width,
-        WallId.left || WallId.right => dims.length,
-      };
+  double wallLengthFt(RoomDimensions dims) => dims.lengthForWall(wall);
 
   double maxPositionFromEdge(RoomDimensions dims) =>
       (wallLengthFt(dims) - width).clamp(0, wallLengthFt(dims)).toDouble();
