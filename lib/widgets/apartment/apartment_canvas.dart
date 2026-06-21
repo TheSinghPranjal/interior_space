@@ -206,13 +206,19 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
           width: pixelLayout.bboxW,
           height: pixelLayout.bboxH,
           child: Center(
-            child: Transform.rotate(
-              angle: placement.rotation * math.pi / 180,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 120),
-                curve: Curves.easeOut,
-                width: pixelLayout.innerW,
-                height: pixelLayout.innerH,
+            child: OverflowBox(
+              maxWidth: pixelLayout.innerW,
+              maxHeight: pixelLayout.innerH,
+              minWidth: pixelLayout.innerW,
+              minHeight: pixelLayout.innerH,
+              alignment: Alignment.center,
+              child: Transform.rotate(
+                angle: placement.rotation * math.pi / 180,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  curve: Curves.easeOut,
+                  width: pixelLayout.innerW,
+                  height: pixelLayout.innerH,
                 decoration: isDragging
                     ? BoxDecoration(
                         boxShadow: [
@@ -239,6 +245,7 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
           ),
         ),
       ),
+    ),
     );
   }
 
