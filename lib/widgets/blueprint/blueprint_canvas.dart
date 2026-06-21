@@ -9,6 +9,7 @@ import '../../core/utils/blueprint_placement.dart';
 import '../../core/utils/color_utils.dart';
 import '../../models/ac_unit_config.dart';
 import '../../models/cupboard_config.dart';
+import '../../models/curtain_config.dart';
 import '../../models/door_config.dart';
 import '../../models/enums.dart';
 import '../../models/furniture_item.dart';
@@ -57,6 +58,8 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
         return design.doors.any((d) => d.id == _selectedId);
       case 'window_wall':
         return design.windows.any((w) => w.id == _selectedId);
+      case 'curtain_wall':
+        return design.curtains.any((c) => c.id == _selectedId);
       case 'ac_unit_wall':
         return design.acUnits.any((a) => a.id == _selectedId);
       case 'wall_tv_wall':
@@ -91,11 +94,11 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
         final availW = constraints.maxWidth - padding * 2;
         final availH = constraints.maxHeight - padding * 2;
         final scale = math.min(
-          availW / design.dimensions.width,
-          availH / design.dimensions.length,
+          availW / design.dimensions.effectiveWidth,
+          availH / design.dimensions.effectiveLength,
         );
-        final roomW = design.dimensions.width * scale;
-        final roomH = design.dimensions.length * scale;
+        final roomW = design.dimensions.effectiveWidth * scale;
+        final roomH = design.dimensions.effectiveLength * scale;
         final offsetX = (constraints.maxWidth - roomW) / 2;
         final offsetY = (constraints.maxHeight - roomH) / 2;
         final roomRect = Rect.fromLTWH(offsetX, offsetY, roomW, roomH);
@@ -159,6 +162,14 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
             ...design.windows.map((window) {
               return _buildWindowItem(
                 window: window,
+                design: design,
+                roomRect: roomRect,
+                scale: scale,
+              );
+            }),
+            ...design.curtains.map((curtain) {
+              return _buildCurtainItem(
+                curtain: curtain,
                 design: design,
                 roomRect: roomRect,
                 scale: scale,
@@ -256,6 +267,9 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     } else if (_selectedType == 'window_wall' && _tempPositionFromEdge != null) {
       final window = design.windows.firstWhere((w) => w.id == _selectedId);
       notifier.updateWindow(window.copyWith(positionFromEdge: _tempPositionFromEdge!));
+    } else if (_selectedType == 'curtain_wall' && _tempPositionFromEdge != null) {
+      final curtain = design.curtains.firstWhere((c) => c.id == _selectedId);
+      notifier.updateCurtain(curtain.copyWith(positionFromEdge: _tempPositionFromEdge!));
     } else if (_selectedType == 'ac_unit_wall' && _tempPositionFromEdge != null) {
       final unit = design.acUnits.firstWhere((a) => a.id == _selectedId);
       notifier.updateAcUnit(unit.copyWith(positionFromEdge: _tempPositionFromEdge!));
@@ -272,6 +286,33 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       _tempBlueprintY = null;
       _tempPositionFromEdge = null;
     });
+  }
+
+  void _deleteSelected(RoomDesign design) {
+    if (_selectedId == null || _selectedType == null || !_selectionValid(design)) return;
+    HapticFeedback.mediumImpact();
+    final notifier = ref.read(roomDesignProvider.notifier);
+    final id = _selectedId!;
+
+    switch (_selectedType!) {
+      case 'furniture_floor':
+      case 'furniture_wall':
+        notifier.removeFurniture(id);
+      case 'cupboard_floor':
+        notifier.removeCupboard(id);
+      case 'door_wall':
+        notifier.removeDoor(id);
+      case 'window_wall':
+        notifier.removeWindow(id);
+      case 'curtain_wall':
+        notifier.removeCurtain(id);
+      case 'ac_unit_wall':
+        notifier.removeAcUnit(id);
+      case 'wall_tv_wall':
+        notifier.removeWallTvUnit(id);
+    }
+
+    _deselect();
   }
 
   void _rotateSelected(RoomDesign design, double degrees) {
@@ -295,6 +336,10 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       final window = design.windows.firstWhere((w) => w.id == _selectedId);
       final next = (window.rotation + degrees) % 360;
       notifier.updateWindow(window.copyWith(rotation: next < 0 ? next + 360 : next));
+    } else if (_selectedType == 'curtain_wall') {
+      final curtain = design.curtains.firstWhere((c) => c.id == _selectedId);
+      final next = (curtain.rotation + degrees) % 360;
+      notifier.updateCurtain(curtain.copyWith(rotation: next < 0 ? next + 360 : next));
     } else if (_selectedType == 'ac_unit_wall') {
       final unit = design.acUnits.firstWhere((a) => a.id == _selectedId);
       final next = (unit.rotation + degrees) % 360;
@@ -324,8 +369,8 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       widthFt: width,
       depthFt: depth,
       rotationDeg: rotation,
-      roomWidthFt: design.dimensions.width,
-      roomLengthFt: design.dimensions.length,
+      roomWidthFt: design.dimensions.effectiveWidth,
+      roomLengthFt: design.dimensions.effectiveLength,
     );
     _tempBlueprintX = _isDragging ? clamped.bx : defaultBx;
     _tempBlueprintY = _isDragging ? clamped.by : defaultBy;
@@ -343,7 +388,15 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     final by = (_isDragging && _selectedId == item.id && _tempBlueprintY != null)
         ? _tempBlueprintY!
         : item.blueprintY;
-    final layout = BlueprintPlacement.layoutPixels(
+    final footprint = BlueprintPlacement.footprintLayout(
+      blueprintX: bx,
+      blueprintY: by,
+      widthFt: item.width,
+      depthFt: item.depth,
+      roomRect: roomRect,
+      scale: scale,
+    );
+    final hit = BlueprintPlacement.layoutPixels(
       blueprintX: bx,
       blueprintY: by,
       widthFt: item.width,
@@ -356,12 +409,12 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     return _itemBox(
       id: item.id,
       dragType: 'furniture_floor',
-      left: layout.left,
-      top: layout.top,
-      width: layout.bboxW,
-      height: layout.bboxH,
-      innerWidth: layout.innerW,
-      innerHeight: layout.innerH,
+      left: hit.left,
+      top: hit.top,
+      width: hit.bboxW,
+      height: hit.bboxH,
+      innerWidth: footprint.innerW,
+      innerHeight: footprint.innerH,
       label: item.type.label,
       color: ColorUtils.fromHex(item.color),
       rotation: item.rotation,
@@ -513,6 +566,49 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     );
   }
 
+  Widget _buildCurtainItem({
+    required CurtainConfig curtain,
+    required RoomDesign design,
+    required Rect roomRect,
+    required double scale,
+  }) {
+    final edge = (_isDragging && _selectedId == curtain.id && _tempPositionFromEdge != null)
+        ? _tempPositionFromEdge!
+        : curtain.positionFromEdge;
+    final rect = _wallStripRect(
+      wall: curtain.wall,
+      positionFromEdge: edge,
+      widthFt: curtain.width,
+      roomRect: roomRect,
+      scale: scale,
+    );
+
+    return _itemBox(
+      id: curtain.id,
+      dragType: 'curtain_wall',
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+      label: 'Curtain',
+      color: ColorUtils.fromHex(curtain.color),
+      rotation: curtain.rotation,
+      design: design,
+      roomRect: roomRect,
+      scale: scale,
+      onWallDrag: (Offset center) {
+        _tempPositionFromEdge = _edgeFromCenter(
+          wall: curtain.wall,
+          center: center,
+          itemWidthFt: curtain.width,
+          roomRect: roomRect,
+          scale: scale,
+          maxEdge: curtain.maxPositionFromEdge(design.dimensions),
+        );
+      },
+    );
+  }
+
   Widget _buildAcUnitItem({
     required AcUnitConfig unit,
     required RoomDesign design,
@@ -611,7 +707,15 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     final by = (_isDragging && _selectedId == cupboard.id && _tempBlueprintY != null)
         ? _tempBlueprintY!
         : cupboard.blueprintY;
-    final layout = BlueprintPlacement.layoutPixels(
+    final footprint = BlueprintPlacement.footprintLayout(
+      blueprintX: bx,
+      blueprintY: by,
+      widthFt: cupboard.width,
+      depthFt: cupboard.depth,
+      roomRect: roomRect,
+      scale: scale,
+    );
+    final hit = BlueprintPlacement.layoutPixels(
       blueprintX: bx,
       blueprintY: by,
       widthFt: cupboard.width,
@@ -624,12 +728,12 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     return _itemBox(
       id: cupboard.id,
       dragType: 'cupboard_floor',
-      left: layout.left,
-      top: layout.top,
-      width: layout.bboxW,
-      height: layout.bboxH,
-      innerWidth: layout.innerW,
-      innerHeight: layout.innerH,
+      left: hit.left,
+      top: hit.top,
+      width: hit.bboxW,
+      height: hit.bboxH,
+      innerWidth: footprint.innerW,
+      innerHeight: footprint.innerH,
       label: 'Cupboard',
       color: ColorUtils.fromHex(cupboard.color),
       rotation: cupboard.rotation,
@@ -660,6 +764,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
         _selectedType == 'cupboard_floor' ||
         _selectedType == 'door_wall' ||
         _selectedType == 'window_wall' ||
+        _selectedType == 'curtain_wall' ||
         _selectedType == 'ac_unit_wall' ||
         _selectedType == 'wall_tv_wall';
 
@@ -668,7 +773,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       final item = design.furniture.firstWhere((f) => f.id == _selectedId);
       final bx = _tempBlueprintX ?? item.blueprintX;
       final by = _tempBlueprintY ?? item.blueprintY;
-      final layout = BlueprintPlacement.layoutPixels(
+      final hit = BlueprintPlacement.layoutPixels(
         blueprintX: bx,
         blueprintY: by,
         widthFt: item.width,
@@ -677,12 +782,12 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
         roomRect: roomRect,
         scale: scale,
       );
-      itemRect = Rect.fromLTWH(layout.left, layout.top, layout.bboxW, layout.bboxH);
+      itemRect = Rect.fromLTWH(hit.left, hit.top, hit.bboxW, hit.bboxH);
     } else if (_selectedType == 'cupboard_floor') {
       final cupboard = design.cupboards.firstWhere((c) => c.id == _selectedId);
       final bx = _tempBlueprintX ?? cupboard.blueprintX;
       final by = _tempBlueprintY ?? cupboard.blueprintY;
-      final layout = BlueprintPlacement.layoutPixels(
+      final hit = BlueprintPlacement.layoutPixels(
         blueprintX: bx,
         blueprintY: by,
         widthFt: cupboard.width,
@@ -691,7 +796,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
         roomRect: roomRect,
         scale: scale,
       );
-      itemRect = Rect.fromLTWH(layout.left, layout.top, layout.bboxW, layout.bboxH);
+      itemRect = Rect.fromLTWH(hit.left, hit.top, hit.bboxW, hit.bboxH);
     } else if (_selectedType == 'furniture_wall') {
       final item = design.furniture.firstWhere((f) => f.id == _selectedId);
       itemRect = _wallItemRect(item, roomRect, scale);
@@ -712,6 +817,16 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
         wall: window.wall,
         positionFromEdge: edge,
         widthFt: window.width,
+        roomRect: roomRect,
+        scale: scale,
+      );
+    } else if (_selectedType == 'curtain_wall') {
+      final curtain = design.curtains.firstWhere((c) => c.id == _selectedId);
+      final edge = _tempPositionFromEdge ?? curtain.positionFromEdge;
+      itemRect = _wallStripRect(
+        wall: curtain.wall,
+        positionFromEdge: edge,
+        widthFt: curtain.width,
         roomRect: roomRect,
         scale: scale,
       );
@@ -740,7 +855,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     if (itemRect == null) return const SizedBox.shrink();
 
     return Positioned(
-      left: itemRect.center.dx - 72,
+      left: itemRect.center.dx - 88,
       top: itemRect.top - 44,
       child: Material(
         elevation: 4,
@@ -765,6 +880,12 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
                   onPressed: () => _rotateSelected(design, 15),
                 ),
               ],
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.delete_outline, color: Colors.white, size: 20),
+                tooltip: 'Delete',
+                onPressed: () => _deleteSelected(design),
+              ),
               IconButton(
                 visualDensity: VisualDensity.compact,
                 icon: const Icon(Icons.close, color: Colors.white, size: 18),
@@ -879,6 +1000,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       left: left,
       top: top,
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onLongPress: () => _selectItem(id, dragType),
         onPanDown: (_) {
           _holdItemId = id;
@@ -917,39 +1039,48 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
           width: width,
           height: height,
           child: Center(
-            child: Transform.rotate(
-              angle: rotation * math.pi / 180,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 120),
-                curve: Curves.easeOut,
-                width: innerW,
-                height: innerH,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: isDragging ? 0.9 : 0.75),
-                  border: Border.all(
-                    color: isSelected ? Colors.orange : Colors.black54,
-                    width: isSelected ? 2.5 : 1,
+            // Bbox is smaller than width×depth at diagonal angles; OverflowBox keeps
+            // the visual footprint at true dimensions so rotation matches 3D.
+            child: OverflowBox(
+              maxWidth: innerW,
+              maxHeight: innerH,
+              minWidth: innerW,
+              minHeight: innerH,
+              alignment: Alignment.center,
+              child: Transform.rotate(
+                angle: rotation * math.pi / 180,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  curve: Curves.easeOut,
+                  width: innerW,
+                  height: innerH,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: isDragging ? 0.9 : 0.75),
+                    border: Border.all(
+                      color: isSelected ? Colors.orange : Colors.black54,
+                      width: isSelected ? 2.5 : 1,
+                    ),
+                    borderRadius: BorderRadius.circular(4),
+                    boxShadow: isDragging
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : null,
                   ),
-                  borderRadius: BorderRadius.circular(4),
-                  boxShadow: isDragging
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.25),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ]
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
+                  alignment: Alignment.center,
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
                 ),
               ),
             ),
