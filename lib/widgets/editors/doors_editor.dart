@@ -112,8 +112,8 @@ class _DoorCardState extends ConsumerState<_DoorCard> {
             DimensionSlider(
               label: 'Width',
               value: door.width,
-              min: 2,
-              max: 6,
+              min: RoomConstants.minDoorWidth,
+              max: RoomConstants.maxDoorWidth,
               suffix: 'ft',
               onChanged: enabled
                   ? (v) {
