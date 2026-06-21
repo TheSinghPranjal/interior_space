@@ -20,7 +20,7 @@ extension DesignMenuActionInfo on DesignMenuAction {
         DesignMenuAction.flooring => 'Flooring',
         DesignMenuAction.ceiling => 'Ceiling',
         DesignMenuAction.doors => 'Doors',
-        DesignMenuAction.windows => 'Windows & AC',
+        DesignMenuAction.windows => 'Windows, Ac & Curtains',
         DesignMenuAction.cupboards => 'Cupboards',
         DesignMenuAction.furniture => 'Furniture',
         DesignMenuAction.lighting => 'Lighting',
