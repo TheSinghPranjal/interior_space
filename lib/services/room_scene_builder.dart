@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/utils/room_geometry.dart';
+import '../models/enums.dart';
 import '../models/project_design.dart';
 import '../models/room_design.dart';
 import 'texture_service.dart';
@@ -86,9 +88,24 @@ class RoomSceneBuilder {
       });
     }
 
+    final dims = design.dimensions;
+    final geometry = RoomGeometry.fromDimensions(dims);
+    // Only send polygon geometry when custom wall mode is active.
+    final floorPolygon = dims.useCustomWallLengths && geometry.isValid
+        ? geometry.corners.map((c) => {'x': c.x, 'y': c.y}).toList()
+        : null;
+
     final scene = {
       'mode': 'single',
-      'room': design.dimensions.toJson(),
+      'room': {
+        ...dims.toJson(),
+        'effectiveWidth': dims.effectiveWidth,
+        'effectiveLength': dims.effectiveLength,
+        if (floorPolygon != null) 'floorPolygon': floorPolygon,
+        'wallLengths': {
+          for (final wall in WallId.values) wall.name: dims.lengthForWall(wall),
+        },
+      },
       'walls': walls,
       'floor': {
         ...design.floor.toJson(),
@@ -103,6 +120,7 @@ class RoomSceneBuilder {
       },
       'doors': doors,
       'windows': design.windows.map((w) => w.toJson()).toList(),
+      'curtains': design.curtains.map((c) => c.toJson()).toList(),
       'acUnits': acUnits,
       'wallTvUnits': design.wallTvUnits.map((t) => t.toJson()).toList(),
       'cupboards': cupboards,

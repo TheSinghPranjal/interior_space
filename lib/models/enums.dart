@@ -58,6 +58,8 @@ enum FurnitureType {
   toilet,
   washingMachine,
   bathtub,
+  flowerPot,
+  fridge,
 }
 
 extension FurnitureTypePlacement on FurnitureType {
@@ -93,6 +95,8 @@ extension FurnitureTypeLabel on FurnitureType {
         FurnitureType.toilet => 'Western Toilet',
         FurnitureType.washingMachine => 'Washing Machine',
         FurnitureType.bathtub => 'Bathtub',
+        FurnitureType.flowerPot => 'Flower Pot',
+        FurnitureType.fridge => 'Fridge',
       };
 
   IconData get icon => switch (this) {
@@ -107,5 +111,7 @@ extension FurnitureTypeLabel on FurnitureType {
         FurnitureType.toilet => Icons.wc,
         FurnitureType.washingMachine => Icons.local_laundry_service,
         FurnitureType.bathtub => Icons.bathtub,
+        FurnitureType.flowerPot => Icons.local_florist,
+        FurnitureType.fridge => Icons.inventory_2,
       };
 }
