@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../models/ac_unit_config.dart';
 import '../models/ceiling_config.dart';
+import '../models/curtain_config.dart';
 import '../models/cupboard_config.dart';
 import '../models/door_config.dart';
 import '../models/enums.dart';
@@ -52,6 +53,31 @@ class RoomDesignNotifier extends StateNotifier<RoomDesign> {
 
   void updateDimensions(RoomDimensions dimensions) {
     _mutate((r) => r.copyWith(dimensions: dimensions.clamped()));
+  }
+
+  void setCustomWallLengthsEnabled(bool enabled) {
+    _mutate((r) {
+      var dims = r.dimensions;
+      if (enabled) {
+        dims = dims.withSyncedCustomWalls().copyWith(useCustomWallLengths: true);
+      } else {
+        dims = dims.copyWith(useCustomWallLengths: false, clearCustomWalls: true);
+      }
+      return r.copyWith(dimensions: dims.clamped());
+    });
+  }
+
+  void updateCustomWallLength(WallId wall, double lengthFt) {
+    _mutate((r) {
+      final dims = r.dimensions;
+      final updated = switch (wall) {
+        WallId.front => dims.copyWith(customWallFront: lengthFt),
+        WallId.back => dims.copyWith(customWallBack: lengthFt),
+        WallId.left => dims.copyWith(customWallLeft: lengthFt),
+        WallId.right => dims.copyWith(customWallRight: lengthFt),
+      };
+      return r.copyWith(dimensions: updated.clamped());
+    });
   }
 
   void updateWall(WallConfig wall) {
@@ -107,6 +133,25 @@ class RoomDesignNotifier extends StateNotifier<RoomDesign> {
   void removeWindow(String id) {
     _mutate(
       (r) => r.copyWith(windows: r.windows.where((w) => w.id != id).toList()),
+    );
+  }
+
+  void addCurtain({WallId wall = WallId.front}) {
+    final curtain = CurtainConfig(id: _uuid.v4(), wall: wall);
+    _mutate((r) => r.copyWith(curtains: [...r.curtains, curtain]));
+  }
+
+  void updateCurtain(CurtainConfig curtain) {
+    _mutate(
+      (r) => r.copyWith(
+        curtains: r.curtains.map((c) => c.id == curtain.id ? curtain : c).toList(),
+      ),
+    );
+  }
+
+  void removeCurtain(String id) {
+    _mutate(
+      (r) => r.copyWith(curtains: r.curtains.where((c) => c.id != id).toList()),
     );
   }
 
