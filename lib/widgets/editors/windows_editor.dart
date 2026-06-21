@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/room_constants.dart';
 import '../../models/ac_unit_config.dart';
+import '../../models/curtain_config.dart';
 import '../../models/enums.dart';
 import '../../models/window_config.dart';
 import '../../providers/room_design_provider.dart';
@@ -19,6 +20,7 @@ class WindowsEditor extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final windows = ref.watch(roomDesignProvider).windows;
     final acUnits = ref.watch(roomDesignProvider).acUnits;
+    final curtains = ref.watch(roomDesignProvider).curtains;
 
     return ListView(
       children: [
@@ -33,6 +35,19 @@ class WindowsEditor extends ConsumerWidget {
               ? const Text('No windows added. Tap + to add a window.')
               : Column(
                   children: windows.map((w) => _WindowCard(window: w)).toList(),
+                ),
+        ),
+        SectionCard(
+          title: 'Curtains',
+          subtitle: 'Wall-mounted curtains • Open or closed states',
+          trailing: IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () => ref.read(roomDesignProvider.notifier).addCurtain(),
+          ),
+          child: curtains.isEmpty
+              ? const Text('No curtains added. Tap + to add curtains.')
+              : Column(
+                  children: curtains.map((c) => _CurtainCard(curtain: c)).toList(),
                 ),
         ),
         SectionCard(
@@ -345,6 +360,148 @@ class _AcUnitCardState extends ConsumerState<_AcUnitCard> {
                 icon: const Icon(Icons.upload_file),
                 label: Text(unit.texturePath == null ? 'Upload AC Image' : 'Change AC Image'),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CurtainCard extends ConsumerStatefulWidget {
+  const _CurtainCard({required this.curtain});
+
+  final CurtainConfig curtain;
+
+  @override
+  ConsumerState<_CurtainCard> createState() => _CurtainCardState();
+}
+
+class _CurtainCardState extends ConsumerState<_CurtainCard> {
+  bool _editingEnabled = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final curtain = widget.curtain;
+    final design = ref.watch(roomDesignProvider);
+    final notifier = ref.read(roomDesignProvider.notifier);
+    final enabled = _editingEnabled;
+    final maxEdge = curtain.maxPositionFromEdge(design.dimensions);
+    final clampedPosition = curtain.positionFromEdge.clamp(0, maxEdge).toDouble();
+
+    if (clampedPosition != curtain.positionFromEdge) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notifier.updateCurtain(curtain.copyWith(positionFromEdge: clampedPosition));
+      });
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: Colors.grey.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            ItemEditorHeader(
+              title: 'Curtains',
+              icon: Icons.curtains,
+              editingEnabled: _editingEnabled,
+              onToggleEdit: () => setState(() => _editingEnabled = !_editingEnabled),
+              onDelete: () => notifier.removeCurtain(curtain.id),
+            ),
+            DropdownButtonFormField<WallId>(
+              value: curtain.wall,
+              decoration: const InputDecoration(labelText: 'Wall'),
+              items: WallId.values
+                  .map((w) => DropdownMenuItem(value: w, child: Text(w.label)))
+                  .toList(),
+              onChanged: enabled
+                  ? (w) {
+                      if (w != null) {
+                        final updated = curtain.copyWith(wall: w);
+                        notifier.updateCurtain(
+                          updated.copyWith(
+                            positionFromEdge: updated.positionFromEdge
+                                .clamp(0, updated.maxPositionFromEdge(design.dimensions))
+                                .toDouble(),
+                          ),
+                        );
+                      }
+                    }
+                  : null,
+            ),
+            DimensionSlider(
+              label: 'Width',
+              value: curtain.width,
+              min: 2,
+              max: 10,
+              suffix: 'ft',
+              onChanged: enabled
+                  ? (v) {
+                      final updated = curtain.copyWith(width: v);
+                      notifier.updateCurtain(
+                        updated.copyWith(
+                          positionFromEdge: updated.positionFromEdge
+                              .clamp(0, updated.maxPositionFromEdge(design.dimensions))
+                              .toDouble(),
+                        ),
+                      );
+                    }
+                  : null,
+            ),
+            DimensionSlider(
+              label: 'Height',
+              value: curtain.height,
+              min: 3,
+              max: 10,
+              suffix: 'ft',
+              onChanged: enabled ? (v) => notifier.updateCurtain(curtain.copyWith(height: v)) : null,
+            ),
+            DimensionSlider(
+              label: 'Position from edge',
+              value: clampedPosition,
+              min: 0,
+              max: maxEdge,
+              suffix: 'ft',
+              onChanged: enabled && maxEdge > 0
+                  ? (v) => notifier.updateCurtain(curtain.copyWith(positionFromEdge: v))
+                  : null,
+            ),
+            DimensionSlider(
+              label: 'From floor',
+              value: curtain.positionFromFloor,
+              min: 0,
+              max: design.dimensions.height.clamp(1, RoomConstants.maxHeight).toDouble(),
+              suffix: 'ft',
+              onChanged: enabled
+                  ? (v) => notifier.updateCurtain(curtain.copyWith(positionFromFloor: v))
+                  : null,
+            ),
+            DimensionSlider(
+              label: 'Rotation',
+              value: curtain.rotation,
+              min: 0,
+              max: 360,
+              suffix: '°',
+              onChanged: enabled ? (v) => notifier.updateCurtain(curtain.copyWith(rotation: v)) : null,
+            ),
+            DropdownButtonFormField<CurtainState>(
+              value: curtain.state,
+              decoration: const InputDecoration(labelText: 'Curtain State'),
+              items: CurtainState.values
+                  .map((s) => DropdownMenuItem(value: s, child: Text(s.label)))
+                  .toList(),
+              onChanged: enabled
+                  ? (s) {
+                      if (s != null) notifier.updateCurtain(curtain.copyWith(state: s));
+                    }
+                  : null,
+            ),
+            ColorPickerField(
+              label: 'Curtain Color',
+              colorHex: curtain.color,
+              enabled: enabled,
+              onChanged: (c) => notifier.updateCurtain(curtain.copyWith(color: c)),
+            ),
           ],
         ),
       ),

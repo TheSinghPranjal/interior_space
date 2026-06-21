@@ -16,7 +16,10 @@ class WallsEditor extends ConsumerWidget {
     final walls = ref.watch(roomDesignProvider).walls;
 
     return ListView(
-      children: walls.map((wall) => _WallEditorCard(wall: wall)).toList(),
+      children: WallId.values
+          .map((id) => walls.firstWhere((w) => w.id == id))
+          .map((wall) => _WallEditorCard(wall: wall))
+          .toList(),
     );
   }
 }
