@@ -83,4 +83,34 @@ class BlueprintPlacement {
       innerH: innerH,
     );
   }
+
+  /// Fixed width × depth footprint anchored at blueprint center (rotation does not resize).
+  static ({
+    double left,
+    double top,
+    double innerW,
+    double innerH,
+    Offset center,
+  }) footprintLayout({
+    required double blueprintX,
+    required double blueprintY,
+    required double widthFt,
+    required double depthFt,
+    required Rect roomRect,
+    required double scale,
+  }) {
+    final innerW = widthFt * scale;
+    final innerH = depthFt * scale;
+    final center = Offset(
+      roomRect.left + blueprintX * roomRect.width,
+      roomRect.top + blueprintY * roomRect.height,
+    );
+    return (
+      left: center.dx - innerW / 2,
+      top: center.dy - innerH / 2,
+      innerW: innerW,
+      innerH: innerH,
+      center: center,
+    );
+  }
 }
