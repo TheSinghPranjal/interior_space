@@ -1,3 +1,4 @@
+import 'curtain_config.dart';
 import 'enums.dart';
 import 'ac_unit_config.dart';
 import 'ceiling_config.dart';
@@ -22,6 +23,7 @@ class RoomDesign {
     this.ceiling = const CeilingConfig(),
     this.doors = const [],
     this.windows = const [],
+    this.curtains = const [],
     this.acUnits = const [],
     this.wallTvUnits = const [],
     this.cupboards = const [],
@@ -39,6 +41,7 @@ class RoomDesign {
   final CeilingConfig ceiling;
   final List<DoorConfig> doors;
   final List<WindowConfig> windows;
+  final List<CurtainConfig> curtains;
   final List<AcUnitConfig> acUnits;
   final List<WallTvUnitConfig> wallTvUnits;
   final List<CupboardConfig> cupboards;
@@ -56,6 +59,7 @@ class RoomDesign {
     CeilingConfig? ceiling,
     List<DoorConfig>? doors,
     List<WindowConfig>? windows,
+    List<CurtainConfig>? curtains,
     List<AcUnitConfig>? acUnits,
     List<WallTvUnitConfig>? wallTvUnits,
     List<CupboardConfig>? cupboards,
@@ -73,6 +77,7 @@ class RoomDesign {
       ceiling: ceiling ?? this.ceiling,
       doors: doors ?? this.doors,
       windows: windows ?? this.windows,
+      curtains: curtains ?? this.curtains,
       acUnits: acUnits ?? this.acUnits,
       wallTvUnits: wallTvUnits ?? this.wallTvUnits,
       cupboards: cupboards ?? this.cupboards,
@@ -92,6 +97,7 @@ class RoomDesign {
         'ceiling': ceiling.toJson(),
         'doors': doors.map((d) => d.toJson()).toList(),
         'windows': windows.map((w) => w.toJson()).toList(),
+        'curtains': curtains.map((c) => c.toJson()).toList(),
         'acUnits': acUnits.map((a) => a.toJson()).toList(),
         'wallTvUnits': wallTvUnits.map((t) => t.toJson()).toList(),
         'cupboards': cupboards.map((c) => c.toJson()).toList(),
@@ -124,6 +130,10 @@ class RoomDesign {
           [],
       windows: (json['windows'] as List<dynamic>?)
               ?.map((e) => WindowConfig.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      curtains: (json['curtains'] as List<dynamic>?)
+              ?.map((e) => CurtainConfig.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
       acUnits: (json['acUnits'] as List<dynamic>?)
