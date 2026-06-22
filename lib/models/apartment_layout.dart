@@ -51,21 +51,25 @@ class ApartmentRoomPlacement {
 
 class ApartmentLayout {
   const ApartmentLayout({
+    this.name = 'Apartment 1',
     this.widthFt = 60,
     this.lengthFt = 60,
     this.placements = const [],
   });
 
+  final String name;
   final double widthFt;
   final double lengthFt;
   final List<ApartmentRoomPlacement> placements;
 
   ApartmentLayout copyWith({
+    String? name,
     double? widthFt,
     double? lengthFt,
     List<ApartmentRoomPlacement>? placements,
   }) {
     return ApartmentLayout(
+      name: name ?? this.name,
       widthFt: widthFt ?? this.widthFt,
       lengthFt: lengthFt ?? this.lengthFt,
       placements: placements ?? this.placements,
@@ -86,6 +90,7 @@ class ApartmentLayout {
   }
 
   Map<String, dynamic> toJson() => {
+        'name': name,
         'widthFt': widthFt,
         'lengthFt': lengthFt,
         'placements': placements.map((p) => p.toJson()).toList(),
@@ -93,6 +98,7 @@ class ApartmentLayout {
 
   factory ApartmentLayout.fromJson(Map<String, dynamic> json) {
     return ApartmentLayout(
+      name: json['name'] as String? ?? 'Apartment 1',
       widthFt: (json['widthFt'] as num?)?.toDouble() ?? 60,
       lengthFt: (json['lengthFt'] as num?)?.toDouble() ?? 60,
       placements: (json['placements'] as List<dynamic>?)
@@ -102,5 +108,6 @@ class ApartmentLayout {
     );
   }
 
-  static ApartmentLayout initial() => const ApartmentLayout();
+  static ApartmentLayout initial({String name = 'Apartment 1'}) =>
+      ApartmentLayout(name: name);
 }
