@@ -18,7 +18,7 @@ class ApartmentSpaceView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final project = ref.watch(projectProvider);
     final history = ref.watch(apartmentPlacementHistoryProvider);
-    final rooms = project.roomsOrDefault;
+    final rooms = project.roomsForActiveApartment;
     final layout = project.apartmentLayout;
     final theme = Theme.of(context);
     final historyNotifier = ref.read(apartmentPlacementHistoryProvider.notifier);
@@ -65,7 +65,7 @@ class ApartmentSpaceView extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
-                Text('Your Rooms', style: theme.textTheme.titleSmall),
+                Text('Your Rooms — ${layout.name}', style: theme.textTheme.titleSmall),
                 const SizedBox(height: 8),
                 SizedBox(
                   height: 48,
@@ -181,7 +181,7 @@ class ApartmentSpaceView extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Apartment Blueprint • ${layout.placements.length} rooms placed • '
+                    'Apartment Blueprint • ${layout.name} • ${layout.placements.length} rooms placed • '
                     '${layout.widthFt.toStringAsFixed(0)}×${layout.lengthFt.toStringAsFixed(0)} ft',
                     style: const TextStyle(fontSize: 13),
                   ),
