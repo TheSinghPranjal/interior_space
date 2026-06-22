@@ -8,6 +8,8 @@ class WallConfig {
     this.texture = WallTexture.concrete,
     this.wallpaperPath,
     this.tileWallpaper = false,
+    this.visibleFraction = 1.0,
+    this.visibleAlign = WallVisibleAlign.start,
   });
 
   final WallId id;
@@ -16,6 +18,12 @@ class WallConfig {
   final WallTexture texture;
   final String? wallpaperPath;
   final bool tileWallpaper;
+  /// 0 = fully hidden, 0.5 = half length, 1 = full wall (custom wall mode only).
+  final double visibleFraction;
+  final WallVisibleAlign visibleAlign;
+
+  bool get isFullyHidden => visibleFraction <= 0.001;
+  bool get isPartial => visibleFraction > 0.001 && visibleFraction < 0.999;
 
   WallConfig copyWith({
     SurfaceType? surfaceType,
@@ -24,6 +32,8 @@ class WallConfig {
     String? wallpaperPath,
     bool? tileWallpaper,
     bool clearWallpaper = false,
+    double? visibleFraction,
+    WallVisibleAlign? visibleAlign,
   }) {
     return WallConfig(
       id: id,
@@ -32,6 +42,8 @@ class WallConfig {
       texture: texture ?? this.texture,
       wallpaperPath: clearWallpaper ? null : (wallpaperPath ?? this.wallpaperPath),
       tileWallpaper: tileWallpaper ?? this.tileWallpaper,
+      visibleFraction: visibleFraction ?? this.visibleFraction,
+      visibleAlign: visibleAlign ?? this.visibleAlign,
     );
   }
 
@@ -42,6 +54,8 @@ class WallConfig {
         'texture': texture.name,
         'wallpaperPath': wallpaperPath,
         'tileWallpaper': tileWallpaper,
+        'visibleFraction': visibleFraction,
+        'visibleAlign': visibleAlign.name,
       };
 
   factory WallConfig.fromJson(Map<String, dynamic> json) {
@@ -56,6 +70,10 @@ class WallConfig {
       ),
       wallpaperPath: json['wallpaperPath'] as String?,
       tileWallpaper: json['tileWallpaper'] as bool? ?? false,
+      visibleFraction: (json['visibleFraction'] as num?)?.toDouble() ?? 1.0,
+      visibleAlign: WallVisibleAlign.values.byName(
+        json['visibleAlign'] as String? ?? 'start',
+      ),
     );
   }
 
