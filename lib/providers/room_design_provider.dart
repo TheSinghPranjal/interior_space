@@ -26,6 +26,8 @@ final roomDesignProvider =
 
 final cameraModeProvider = StateProvider<CameraMode>((ref) => CameraMode.orbit);
 
+final showWallDimensionLabelsProvider = StateProvider<bool>((ref) => true);
+
 final blueprintModeProvider = StateProvider<bool>((ref) => true);
 
 class RoomDesignNotifier extends StateNotifier<RoomDesign> {

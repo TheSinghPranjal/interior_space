@@ -76,17 +76,24 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
   Future<void> _pushScene() async {
     if (_controller == null) return;
     try {
+      final showLabels = ref.read(showWallDimensionLabelsProvider);
       final isApartment = widget.apartmentMode ||
           ref.read(appSpaceModeProvider) == AppSpaceMode.apartment;
       final String json;
       if (isApartment) {
         final project = ref.read(projectProvider);
         final builder = ref.read(apartmentSceneBuilderProvider);
-        json = await builder.buildSceneJson(project);
+        json = await builder.buildSceneJson(
+          project,
+          showWallDimensionLabels: showLabels,
+        );
       } else {
         final design = ref.read(roomDesignProvider);
         final builder = ref.read(roomSceneBuilderProvider);
-        json = await builder.buildSceneJson(design);
+        json = await builder.buildSceneJson(
+          design,
+          showWallDimensionLabels: showLabels,
+        );
       }
       final escaped = jsonEncode(json);
 
@@ -128,13 +135,6 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     );
   }
 
-  Future<void> _setWalkInput(String key, bool active) async {
-    if (_controller == null) return;
-    await _controller!.evaluateJavascript(
-      source: 'setWalkInput("$key", $active);',
-    );
-  }
-
   Future<void> _orbitZoom({required bool zoomIn}) async {
     if (_controller == null) return;
     await _controller!.evaluateJavascript(
@@ -169,6 +169,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
   @override
   Widget build(BuildContext context) {
     final cameraMode = ref.watch(cameraModeProvider);
+    final showWallLabels = ref.watch(showWallDimensionLabelsProvider);
 
     ref.listen(roomDesignProvider, (_, _) {
       if (_isReady && !widget.apartmentMode) _pushScene();
@@ -180,6 +181,10 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
 
     ref.listen(cameraModeProvider, (_, next) {
       if (_isReady) _setCameraMode(next);
+    });
+
+    ref.listen(showWallDimensionLabelsProvider, (_, _) {
+      if (_isReady) _pushScene();
     });
 
     if (_loadError != null) {
@@ -309,16 +314,42 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
             top: 8,
             left: 8,
             right: 8,
-            child: _CameraModeBar(
-              onModeSelected: (mode) {
-                ref.read(cameraModeProvider.notifier).state = mode;
-              },
+            child: Row(
+              children: [
+                Expanded(
+                  child: _CameraModeBar(
+                    onModeSelected: (mode) {
+                      ref.read(cameraModeProvider.notifier).state = mode;
+                    },
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Tooltip(
+                  message: showWallLabels
+                      ? 'Hide wall dimension labels'
+                      : 'Show wall dimension labels',
+                  child: Material(
+                    color: showWallLabels ? Colors.white : Colors.black54,
+                    borderRadius: BorderRadius.circular(20),
+                    child: InkWell(
+                      onTap: () {
+                        ref.read(showWallDimensionLabelsProvider.notifier).state =
+                            !showWallLabels;
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Icon(
+                          Icons.info_outline,
+                          size: 20,
+                          color: showWallLabels ? Colors.black87 : Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          Positioned(
-            bottom: 16,
-            left: 16,
-            child: _WalkControls(onInput: _setWalkInput),
           ),
           if (cameraMode == CameraMode.orbit)
             Positioned(
@@ -357,8 +388,6 @@ class _CameraModeBar extends StatelessWidget {
 
   String _label(CameraMode mode) => switch (mode) {
         CameraMode.orbit => 'Orbit',
-        CameraMode.walk => 'Walk',
-        CameraMode.firstPerson => 'First Person',
         CameraMode.top => 'Top',
         CameraMode.front => 'Front',
         CameraMode.side => 'Side',
@@ -418,77 +447,6 @@ class _ZoomButton extends StatelessWidget {
             height: 44,
             child: Icon(icon, color: Colors.white, size: 22),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _WalkControls extends StatelessWidget {
-  const _WalkControls({required this.onInput});
-
-  final Future<void> Function(String key, bool active) onInput;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _WalkButton(
-          icon: Icons.arrow_upward,
-          onPressed: () => onInput('forward', true),
-          onReleased: () => onInput('forward', false),
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _WalkButton(
-              icon: Icons.arrow_back,
-              onPressed: () => onInput('left', true),
-              onReleased: () => onInput('left', false),
-            ),
-            const SizedBox(width: 40),
-            _WalkButton(
-              icon: Icons.arrow_forward,
-              onPressed: () => onInput('right', true),
-              onReleased: () => onInput('right', false),
-            ),
-          ],
-        ),
-        _WalkButton(
-          icon: Icons.arrow_downward,
-          onPressed: () => onInput('backward', true),
-          onReleased: () => onInput('backward', false),
-        ),
-      ],
-    );
-  }
-}
-
-class _WalkButton extends StatelessWidget {
-  const _WalkButton({
-    required this.icon,
-    required this.onPressed,
-    required this.onReleased,
-  });
-
-  final IconData icon;
-  final VoidCallback onPressed;
-  final VoidCallback onReleased;
-
-  @override
-  Widget build(BuildContext context) {
-    return Listener(
-      onPointerDown: (_) => onPressed(),
-      onPointerUp: (_) => onReleased(),
-      onPointerCancel: (_) => onReleased(),
-      child: Material(
-        color: Colors.black54,
-        borderRadius: BorderRadius.circular(8),
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: Icon(icon, color: Colors.white, size: 20),
         ),
       ),
     );
