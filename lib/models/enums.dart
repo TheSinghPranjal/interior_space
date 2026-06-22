@@ -38,8 +38,6 @@ enum LightTemperature { warmWhite, coolWhite, neutralWhite }
 
 enum CameraMode {
   orbit,
-  walk,
-  firstPerson,
   top,
   front,
   side,
