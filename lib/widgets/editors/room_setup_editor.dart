@@ -108,6 +108,13 @@ class RoomSetupEditor extends ConsumerWidget {
                   value:
                       '${geometry.boundingWidth.toStringAsFixed(1)} × ${geometry.boundingLength.toStringAsFixed(1)} ft',
                 ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Use the Walls editor to hide or shorten individual walls for open-plan layouts.',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                ),
               ],
             ],
           ),
