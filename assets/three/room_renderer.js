@@ -506,23 +506,14 @@
         const texUrl = wallCfg.surfaceType === 'wallpaper' ? wallCfg.textureDataUrl : null;
         const sizeXFt = len / FT;
         const sizeYFt = h / FT;
-        const { repeatX, repeatY, clamp } = this._wallTextureRepeat(wallCfg, sizeXFt, sizeYFt);
+        const { repeatX, repeatY, clamp } = this._wallTextureRepeat(wallCfg, sizeXFt * (this._wallVisibility(wallCfg).fraction), sizeYFt);
         const mat = this._makeMaterial(
           wallCfg.color, 0.85, 0.02, texUrl, procType, repeatX, repeatY, clamp
         );
-        const midX = (a.x + b.x) / 2;
-        const midZ = (a.z + b.z) / 2;
-        const inset = 0.04;
-        const geo = new THREE.PlaneGeometry(len, h);
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(
-          midX + (-dz / len) * inset,
-          h / 2,
-          midZ + (dx / len) * inset
+        const mesh = this._buildPolygonWallSegment(
+          poly[i], poly[(i + 1) % poly.length], wallCfg, h, mat, id
         );
-        mesh.rotation.y = Math.atan2(-dz, dx);
-        mesh.userData.wallId = id;
-        mesh.receiveShadow = true;
+        if (!mesh) return;
         this.wallMeshes[id] = mesh;
         this.roomGroup.add(mesh);
       });
@@ -538,6 +529,8 @@
       wallOrder.forEach(({ id, label }) => {
         const lenFt = layout.wallLengths[id];
         if (!lenFt) return;
+        const wallCfg = this.config.walls && this.config.walls.find(w => w.id === id);
+        if (wallCfg && this._wallVisibility(wallCfg).fraction <= 0.001) return;
         const canvas = document.createElement('canvas');
         canvas.width = 256;
         canvas.height = 64;
@@ -646,6 +639,90 @@
       return { repeatX: sizeXFt, repeatY: sizeYFt, clamp: false };
     }
 
+    _wallVisibility(wallCfg) {
+      const fraction = wallCfg.visibleFraction != null ? wallCfg.visibleFraction : 1;
+      const align = wallCfg.visibleAlign || 'start';
+      return {
+        fraction: Math.max(0, Math.min(1, fraction)),
+        align,
+      };
+    }
+
+    _buildVisibleWallMesh(wallCfg, fullWidth, fullHeight, id, basePos, baseRot, mat) {
+      const { fraction, align } = this._wallVisibility(wallCfg);
+      if (fraction <= 0.001) return null;
+
+      const visW = fullWidth * fraction;
+      const visH = fullHeight;
+
+      let alongOffset = 0;
+      if (align === 'center') alongOffset = (fullWidth - visW) / 2;
+      else if (align === 'end') alongOffset = fullWidth - visW;
+
+      const geo = new THREE.PlaneGeometry(visW, visH);
+      const mesh = new THREE.Mesh(geo, mat);
+
+      const pos = [basePos[0], basePos[1], basePos[2]];
+      switch (id) {
+        case 'front':
+          pos[0] = basePos[0] - fullWidth / 2 + alongOffset + visW / 2;
+          break;
+        case 'back':
+          pos[0] = basePos[0] + fullWidth / 2 - alongOffset - visW / 2;
+          break;
+        case 'left':
+          pos[2] = basePos[2] - fullWidth / 2 + alongOffset + visW / 2;
+          break;
+        case 'right':
+          pos[2] = basePos[2] + fullWidth / 2 - alongOffset - visW / 2;
+          break;
+      }
+
+      mesh.position.set(pos[0], pos[1], pos[2]);
+      mesh.rotation.set(baseRot[0], baseRot[1], baseRot[2]);
+      mesh.userData.wallId = id;
+      return mesh;
+    }
+
+    _buildPolygonWallSegment(a, b, wallCfg, h, mat, id) {
+      const { fraction, align } = this._wallVisibility(wallCfg);
+      if (fraction <= 0.001) return null;
+
+      const dx = b.x - a.x;
+      const dz = b.z - a.z;
+      const len = Math.sqrt(dx * dx + dz * dz);
+      if (len < 0.001) return null;
+
+      const visLen = len * fraction;
+      const skip = len - visLen;
+
+      let startX = a.x;
+      let startZ = a.z;
+      if (align === 'center') {
+        startX = a.x + (dx * skip / 2) / len;
+        startZ = a.z + (dz * skip / 2) / len;
+      } else if (align === 'end') {
+        startX = a.x + (dx * skip) / len;
+        startZ = a.z + (dz * skip) / len;
+      }
+
+      const midX = startX + (dx / len) * visLen / 2;
+      const midZ = startZ + (dz / len) * visLen / 2;
+      const inset = 0.04;
+
+      const geo = new THREE.PlaneGeometry(visLen, h);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(
+        midX + (-dz / len) * inset,
+        h / 2,
+        midZ + (dx / len) * inset
+      );
+      mesh.rotation.y = Math.atan2(-dz, dx);
+      mesh.userData.wallId = id;
+      mesh.receiveShadow = true;
+      return mesh;
+    }
+
     _makeMaterial(color, roughness, metalness, textureUrl, procType, repeatX, repeatY, clamp) {
       const useClamp = clamp === true;
       const key = [color, roughness, metalness, textureUrl || '', procType || '', repeatX, repeatY, useClamp ? 'c' : 'r'].join('|');
@@ -748,12 +825,11 @@
           wallCfg.color, 0.85, 0.02, texUrl, procType, repeatX, repeatY, clamp
         );
 
-        const geo = new THREE.PlaneGeometry(def.size[0], def.size[1]);
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(...def.pos);
-        mesh.rotation.set(...def.rot);
+        const mesh = this._buildVisibleWallMesh(
+          wallCfg, def.size[0], def.size[1], def.id, def.pos, def.rot, mat
+        );
+        if (!mesh) return;
         mesh.receiveShadow = true;
-        mesh.userData.wallId = def.id;
         this.wallMeshes[def.id] = mesh;
         this.roomGroup.add(mesh);
       });
