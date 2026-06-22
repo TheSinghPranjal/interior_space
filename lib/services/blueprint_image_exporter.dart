@@ -173,13 +173,13 @@ class _BlueprintExportPainter {
   void _drawFurniture(Canvas canvas) {
     for (final item in design.furniture) {
       if (item.isWallMounted) {
-        _drawItemBox(canvas, _wallItemRect(item), item.type.label, ColorUtils.fromHex(item.color));
+        _drawItemBox(canvas, _wallItemRect(item), FurnitureItem.displayLabel(design.furniture, item), ColorUtils.fromHex(item.color));
       } else {
         final w = item.width * _scale;
         final d = item.depth * _scale;
         final left = _roomRect.left + item.blueprintX * _roomRect.width - w / 2;
         final top = _roomRect.top + item.blueprintY * _roomRect.height - d / 2;
-        _drawItemBox(canvas, Rect.fromLTWH(left, top, w, d), item.type.label, ColorUtils.fromHex(item.color));
+        _drawItemBox(canvas, Rect.fromLTWH(left, top, w, d), FurnitureItem.displayLabel(design.furniture, item), ColorUtils.fromHex(item.color));
       }
     }
   }

@@ -88,7 +88,7 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ItemEditorHeader(
-              title: item.type.label,
+              title: FurnitureItem.displayLabel(design.furniture, item),
               icon: item.type.icon,
               editingEnabled: _editingEnabled,
               onToggleEdit: () => setState(() => _editingEnabled = !_editingEnabled),

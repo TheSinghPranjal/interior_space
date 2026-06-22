@@ -174,7 +174,7 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
   void _drawFurniture(Canvas canvas) {
     for (final item in design.furniture) {
       if (item.isWallMounted) {
-        _drawItemBox(canvas, _wallItemRect(item), item.type.label, ColorUtils.fromHex(item.color));
+        _drawItemBox(canvas, _wallItemRect(item), FurnitureItem.displayLabel(design.furniture, item), ColorUtils.fromHex(item.color));
       } else {
         final w = item.width * scale;
         final d = item.depth * scale;
@@ -183,7 +183,7 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
         _drawItemBox(
           canvas,
           Rect.fromLTWH(left, top, w, d),
-          item.type.label,
+          FurnitureItem.displayLabel(design.furniture, item),
           ColorUtils.fromHex(item.color),
         );
       }

@@ -84,6 +84,15 @@ class FurnitureItem {
 
   bool get isWallMounted => type.isWallMounted;
 
+  /// Blueprint/editor label — "Bed" alone, or "Bed 1", "Bed 2" when multiples exist.
+  static String displayLabel(List<FurnitureItem> furniture, FurnitureItem item) {
+    final sameType = furniture.where((f) => f.type == item.type).toList();
+    if (sameType.length <= 1) return item.type.label;
+    final index = sameType.indexWhere((f) => f.id == item.id);
+    if (index < 0) return item.type.label;
+    return '${item.type.label} ${index + 1}';
+  }
+
   double effectiveWidthFt() =>
       BlueprintPlacement.effectiveWidthFt(width, depth, rotation);
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/enums.dart';
+import '../../models/furniture_item.dart';
 import '../../providers/room_design_provider.dart';
 
 class AddFurnitureSheet extends ConsumerWidget {
@@ -53,7 +54,7 @@ class AddFurnitureSheet extends ConsumerWidget {
                 children: furniture.map((item) {
                   return InputChip(
                     avatar: Icon(item.type.icon, size: 18),
-                    label: Text(item.type.label),
+                    label: Text(FurnitureItem.displayLabel(furniture, item)),
                     deleteIcon: const Icon(Icons.close, size: 18),
                     onDeleted: () {
                       ref.read(roomDesignProvider.notifier).removeFurniture(item.id);

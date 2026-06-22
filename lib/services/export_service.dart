@@ -340,7 +340,7 @@ class ExportService {
         : '${item.positionFromLeftFt(room.dimensions).toStringAsFixed(1)} ft left, '
             '${item.positionFromFrontFt(room.dimensions).toStringAsFixed(1)} ft front';
     return [
-      item.type.label,
+      FurnitureItem.displayLabel(room.furniture, item),
       '${item.width.toStringAsFixed(1)}×${item.depth.toStringAsFixed(1)}×${item.height.toStringAsFixed(1)}',
       position,
       '${item.rotation.toStringAsFixed(0)}°',
