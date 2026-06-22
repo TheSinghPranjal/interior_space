@@ -11,6 +11,11 @@ class RoomConstants {
   static const double maxLength = 50;
   static const double maxHeight = 20;
 
+  static const double minApartmentWidth = 10;
+  static const double maxApartmentWidth = 200;
+  static const double minApartmentLength = 10;
+  static const double maxApartmentLength = 200;
+
   static const double defaultDoorWidth = 3;
   static const double defaultDoorHeight = 7;
   static const double minDoorWidth = 2;

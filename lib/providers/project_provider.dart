@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../core/utils/blueprint_placement.dart';
 import '../models/apartment_layout.dart';
 import '../models/project_design.dart';
 import '../models/room_design.dart';
@@ -98,6 +99,34 @@ class ProjectNotifier extends StateNotifier<ProjectDesign> {
     state = state.copyWith(
       apartmentLayout: state.apartmentLayout.copyWith(placements: placements),
     );
+  }
+
+  void updateApartmentDimensions({double? widthFt, double? lengthFt}) {
+    var layout = state.apartmentLayout
+        .copyWith(widthFt: widthFt, lengthFt: lengthFt)
+        .clamped();
+
+    final placements = layout.placements.map((placement) {
+      final room = state.roomById(placement.roomId);
+      if (room == null) return placement;
+
+      final clamped = BlueprintPlacement.clampBlueprintCenter(
+        centerXNorm: placement.blueprintX,
+        centerYNorm: placement.blueprintY,
+        widthFt: room.dimensions.width,
+        depthFt: room.dimensions.length,
+        rotationDeg: placement.rotation,
+        roomWidthFt: layout.widthFt,
+        roomLengthFt: layout.lengthFt,
+      );
+      return placement.copyWith(
+        blueprintX: clamped.bx,
+        blueprintY: clamped.by,
+      );
+    }).toList();
+
+    layout = layout.copyWith(placements: placements);
+    state = state.copyWith(apartmentLayout: layout);
   }
 
   void removeApartmentPlacement(String placementId) {
