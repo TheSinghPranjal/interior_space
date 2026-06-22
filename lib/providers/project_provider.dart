@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import '../core/utils/blueprint_placement.dart';
+import '../core/constants/room_constants.dart';
 import '../models/apartment_layout.dart';
 import '../models/project_design.dart';
 import '../models/room_design.dart';
@@ -102,31 +102,34 @@ class ProjectNotifier extends StateNotifier<ProjectDesign> {
   }
 
   void updateApartmentDimensions({double? widthFt, double? lengthFt}) {
-    var layout = state.apartmentLayout
-        .copyWith(widthFt: widthFt, lengthFt: lengthFt)
-        .clamped();
+    final old = state.apartmentLayout;
+    final newW = (widthFt ?? old.widthFt).clamp(
+      RoomConstants.minApartmentWidth,
+      RoomConstants.maxApartmentWidth,
+    );
+    final newL = (lengthFt ?? old.lengthFt).clamp(
+      RoomConstants.minApartmentLength,
+      RoomConstants.maxApartmentLength,
+    );
 
-    final placements = layout.placements.map((placement) {
-      final room = state.roomById(placement.roomId);
-      if (room == null) return placement;
-
-      final clamped = BlueprintPlacement.clampBlueprintCenter(
-        centerXNorm: placement.blueprintX,
-        centerYNorm: placement.blueprintY,
-        widthFt: room.dimensions.width,
-        depthFt: room.dimensions.length,
-        rotationDeg: placement.rotation,
-        roomWidthFt: layout.widthFt,
-        roomLengthFt: layout.lengthFt,
-      );
+    // Keep each room at the same absolute position (feet from top-left).
+    // Normalized coords alone would shift rooms when the canvas scale changes.
+    final placements = old.placements.map((placement) {
+      final absXFt = placement.blueprintX * old.widthFt;
+      final absYFt = placement.blueprintY * old.lengthFt;
       return placement.copyWith(
-        blueprintX: clamped.bx,
-        blueprintY: clamped.by,
+        blueprintX: absXFt / newW,
+        blueprintY: absYFt / newL,
       );
     }).toList();
 
-    layout = layout.copyWith(placements: placements);
-    state = state.copyWith(apartmentLayout: layout);
+    state = state.copyWith(
+      apartmentLayout: ApartmentLayout(
+        widthFt: newW,
+        lengthFt: newL,
+        placements: placements,
+      ),
+    );
   }
 
   void removeApartmentPlacement(String placementId) {
