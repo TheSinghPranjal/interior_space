@@ -77,10 +77,24 @@ class FurnitureItem {
     );
   }
 
-  bool get supportsTextureUpload =>
-      type == FurnitureType.storageUnit ||
-      type == FurnitureType.kitchenChimney ||
-      type == FurnitureType.diningTable;
+  bool get supportsTextureUpload => switch (type) {
+        FurnitureType.bed ||
+        FurnitureType.sofa ||
+        FurnitureType.table ||
+        FurnitureType.diningTable ||
+        FurnitureType.tvUnit ||
+        FurnitureType.chair ||
+        FurnitureType.storageUnit ||
+        FurnitureType.kitchenChimney ||
+        FurnitureType.sink ||
+        FurnitureType.toilet ||
+        FurnitureType.washingMachine ||
+        FurnitureType.bathtub ||
+        FurnitureType.flowerPot ||
+        FurnitureType.fridge =>
+          true,
+        _ => false,
+      };
 
   bool get isWallMounted => type.isWallMounted;
 
