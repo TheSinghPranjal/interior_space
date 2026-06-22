@@ -17,6 +17,7 @@ class RoomDesign {
   const RoomDesign({
     required this.id,
     this.name = 'My Room',
+    this.apartmentIndex = 0,
     this.dimensions = const RoomDimensions(),
     this.walls = const [],
     this.floor = const FloorConfig(),
@@ -35,6 +36,7 @@ class RoomDesign {
 
   final String id;
   final String name;
+  final int apartmentIndex;
   final RoomDimensions dimensions;
   final List<WallConfig> walls;
   final FloorConfig floor;
@@ -53,6 +55,7 @@ class RoomDesign {
   RoomDesign copyWith({
     String? id,
     String? name,
+    int? apartmentIndex,
     RoomDimensions? dimensions,
     List<WallConfig>? walls,
     FloorConfig? floor,
@@ -71,6 +74,7 @@ class RoomDesign {
     return RoomDesign(
       id: id ?? this.id,
       name: name ?? this.name,
+      apartmentIndex: apartmentIndex ?? this.apartmentIndex,
       dimensions: dimensions ?? this.dimensions,
       walls: walls ?? this.walls,
       floor: floor ?? this.floor,
@@ -91,6 +95,7 @@ class RoomDesign {
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
+        'apartmentIndex': apartmentIndex,
         'room': dimensions.toJson(),
         'walls': walls.map((w) => w.toJson()).toList(),
         'floor': floor.toJson(),
@@ -111,6 +116,7 @@ class RoomDesign {
     return RoomDesign(
       id: json['id'] as String? ?? fallbackId ?? 'room-default',
       name: json['name'] as String? ?? 'My Room',
+      apartmentIndex: (json['apartmentIndex'] as num?)?.toInt() ?? 0,
       dimensions: RoomDimensions.fromJson(
         (json['room'] as Map<String, dynamic>?) ?? {},
       ),
@@ -167,9 +173,10 @@ class RoomDesign {
     );
   }
 
-  static RoomDesign initial({String? id}) {
+  static RoomDesign initial({String? id, int apartmentIndex = 0}) {
     return RoomDesign(
       id: id ?? 'room-default',
+      apartmentIndex: apartmentIndex,
       walls: WallConfig.defaultWalls(),
       lights: [
         LightConfig(
