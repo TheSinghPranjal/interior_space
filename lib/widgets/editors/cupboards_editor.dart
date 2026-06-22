@@ -12,6 +12,7 @@ import '../common/color_picker_field.dart';
 import '../common/dimension_slider.dart';
 import '../common/item_editor_header.dart';
 import '../common/section_card.dart';
+import '../common/texture_upload_field.dart';
 
 class CupboardsEditor extends ConsumerWidget {
   const CupboardsEditor({super.key});
@@ -61,7 +62,9 @@ class CupboardsEditor extends ConsumerWidget {
             title: 'Wall TV Units',
             subtitle: 'Tap edit icon to adjust parameters • Drag in Blueprint',
             child: Column(
-              children: wallTvUnits.map((unit) => _WallTvUnitCard(unit: unit)).toList(),
+              children: wallTvUnits
+                  .map((unit) => _WallTvUnitCard(unit: unit, units: wallTvUnits))
+                  .toList(),
             ),
           ),
       ],
@@ -190,15 +193,19 @@ class _CupboardCardState extends ConsumerState<_CupboardCard> {
                   : null,
             ),
             if (enabled)
-              FilledButton.icon(
-                onPressed: () async {
+              TextureUploadField(
+                texturePath: cupboard.texturePath,
+                onPick: () async {
                   final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
                   if (path != null) {
                     notifier.updateCupboard(cupboard.copyWith(texturePath: path));
                   }
                 },
-                icon: const Icon(Icons.upload_file),
-                label: const Text('Upload Texture'),
+                onClear: cupboard.texturePath == null
+                    ? null
+                    : () => notifier.updateCupboard(
+                          cupboard.copyWith(clearTexture: true),
+                        ),
               ),
           ],
         ),
@@ -208,9 +215,10 @@ class _CupboardCardState extends ConsumerState<_CupboardCard> {
 }
 
 class _WallTvUnitCard extends ConsumerStatefulWidget {
-  const _WallTvUnitCard({required this.unit});
+  const _WallTvUnitCard({required this.unit, required this.units});
 
   final WallTvUnitConfig unit;
+  final List<WallTvUnitConfig> units;
 
   @override
   ConsumerState<_WallTvUnitCard> createState() => _WallTvUnitCardState();
@@ -243,7 +251,7 @@ class _WallTvUnitCardState extends ConsumerState<_WallTvUnitCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ItemEditorHeader(
-              title: 'Wall TV Unit',
+              title: WallTvUnitConfig.displayLabel(widget.units, unit),
               icon: Icons.tv,
               editingEnabled: _editingEnabled,
               onToggleEdit: () => setState(() => _editingEnabled = !_editingEnabled),
@@ -341,6 +349,19 @@ class _WallTvUnitCardState extends ConsumerState<_WallTvUnitCard> {
               enabled: enabled,
               onChanged: (c) => notifier.updateWallTvUnit(unit.copyWith(color: c)),
             ),
+            if (enabled)
+              TextureUploadField(
+                texturePath: unit.texturePath,
+                onPick: () async {
+                  final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
+                  if (path != null) {
+                    notifier.updateWallTvUnit(unit.copyWith(texturePath: path));
+                  }
+                },
+                onClear: unit.texturePath == null
+                    ? null
+                    : () => notifier.updateWallTvUnit(unit.copyWith(clearTexture: true)),
+              ),
           ],
         ),
       ),
