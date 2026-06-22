@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 enum WallId { front, back, left, right }
 
+/// Which segment of a wall remains visible when [WallConfig.visibleFraction] &lt; 1.
+enum WallVisibleAlign { start, center, end }
+
 enum SurfaceType { solidColor, texture, wallpaper }
 
 enum WallTexture {
