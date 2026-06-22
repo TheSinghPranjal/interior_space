@@ -11,6 +11,7 @@ class WallTvUnitConfig {
     this.positionFromFloor = 4.0,
     this.rotation = 0,
     this.color = '#37474F',
+    this.texturePath,
   });
 
   final String id;
@@ -21,6 +22,7 @@ class WallTvUnitConfig {
   final double positionFromFloor;
   final double rotation;
   final String color;
+  final String? texturePath;
 
   double wallLengthFt(RoomDimensions dims) => dims.lengthForWall(wall);
 
@@ -35,6 +37,8 @@ class WallTvUnitConfig {
     double? positionFromFloor,
     double? rotation,
     String? color,
+    String? texturePath,
+    bool clearTexture = false,
   }) {
     return WallTvUnitConfig(
       id: id,
@@ -45,7 +49,15 @@ class WallTvUnitConfig {
       positionFromFloor: positionFromFloor ?? this.positionFromFloor,
       rotation: rotation ?? this.rotation,
       color: color ?? this.color,
+      texturePath: clearTexture ? null : (texturePath ?? this.texturePath),
     );
+  }
+
+  static String displayLabel(List<WallTvUnitConfig> units, WallTvUnitConfig unit) {
+    if (units.length <= 1) return 'Wall TV Unit';
+    final index = units.indexWhere((u) => u.id == unit.id);
+    if (index < 0) return 'Wall TV Unit';
+    return 'Wall TV Unit ${index + 1}';
   }
 
   Map<String, dynamic> toJson() => {
@@ -57,6 +69,7 @@ class WallTvUnitConfig {
         'positionFromFloor': positionFromFloor,
         'rotation': rotation,
         'color': color,
+        'texturePath': texturePath,
       };
 
   factory WallTvUnitConfig.fromJson(Map<String, dynamic> json) {
@@ -69,6 +82,7 @@ class WallTvUnitConfig {
       positionFromFloor: (json['positionFromFloor'] as num?)?.toDouble() ?? 4.0,
       rotation: (json['rotation'] as num?)?.toDouble() ?? 0,
       color: json['color'] as String? ?? '#37474F',
+      texturePath: json['texturePath'] as String?,
     );
   }
 }
