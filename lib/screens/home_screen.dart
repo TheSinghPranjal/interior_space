@@ -18,6 +18,7 @@ import '../widgets/editors/lighting_editor.dart';
 import '../widgets/editors/room_setup_editor.dart';
 import '../widgets/editors/walls_editor.dart';
 import '../widgets/editors/windows_editor.dart';
+import '../widgets/navigation/apartment_tabs_bar.dart';
 import '../widgets/navigation/design_menu_fab.dart';
 import '../widgets/navigation/room_tabs_bar.dart';
 import 'ai_assist_screen.dart';
@@ -157,8 +158,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Text(appMode.title),
             Text(
               isApartment
-                  ? '${project.apartmentLayout.placements.length} rooms on plan'
-                  : activeRoom.name,
+                  ? '${project.apartmentLayout.name} • ${project.apartmentLayout.placements.length} on plan'
+                  : '${project.apartmentLayout.name} • ${activeRoom.name}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -192,6 +193,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       body: Column(
         children: [
+          const ApartmentTabsBar(),
           if (!isApartment) const RoomTabsBar(),
           Expanded(child: _buildBody(isApartment)),
         ],
@@ -274,9 +276,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Reset Apartment Layout?'),
-        content: const Text(
-          'This will remove all rooms from the apartment blueprint. '
-          'Your individual room designs are not affected.',
+        content: Text(
+          'This will remove all rooms from "${ref.read(projectProvider).apartmentLayout.name}" '
+          'blueprint. Your individual room designs are not affected.',
         ),
         actions: [
           TextButton(
