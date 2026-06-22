@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/project_design.dart';
 import '../../providers/project_provider.dart';
+import '../common/confirm_delete_dialog.dart';
 
 class RoomTabsBar extends ConsumerWidget {
   const RoomTabsBar({super.key});
@@ -10,8 +11,9 @@ class RoomTabsBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final project = ref.watch(projectProvider);
-    final rooms = project.roomsOrDefault;
-    final activeIndex = project.safeActiveIndex;
+    final rooms = project.roomsForActiveApartment;
+    final activeRoom = project.activeRoom;
+    final activeIndex = rooms.indexWhere((r) => r.id == activeRoom.id);
     final theme = Theme.of(context);
 
     return Material(
@@ -44,7 +46,7 @@ class RoomTabsBar extends ConsumerWidget {
               padding: const EdgeInsets.only(right: 8),
               child: IconButton(
                 tooltip: project.canAddRoom
-                    ? 'Add room (${rooms.length}/${ProjectDesign.maxRooms})'
+                    ? 'Add room (${project.roomsOrDefault.length}/${ProjectDesign.maxRooms})'
                     : 'Maximum ${ProjectDesign.maxRooms} rooms',
                 onPressed: project.canAddRoom
                     ? () => ref.read(projectProvider.notifier).addRoom()
@@ -64,32 +66,19 @@ class RoomTabsBar extends ConsumerWidget {
     );
   }
 
-  void _confirmDeleteRoom(
+  Future<void> _confirmDeleteRoom(
     BuildContext context,
     WidgetRef ref,
     int index,
     String roomName,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Room?'),
-        content: Text('Remove "$roomName" and all its customizations?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              ref.read(projectProvider.notifier).removeRoom(index);
-              Navigator.pop(context);
-            },
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+  ) async {
+    final confirmed = await showConfirmDeleteDialog(
+      context,
+      title: 'Delete Room?',
+      message: 'Remove "$roomName" and all its customizations? This cannot be undone.',
     );
+    if (!confirmed || !context.mounted) return;
+    ref.read(projectProvider.notifier).removeRoom(index);
   }
 }
 
