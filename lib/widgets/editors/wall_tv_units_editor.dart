@@ -5,10 +5,12 @@ import '../../core/constants/room_constants.dart';
 import '../../models/enums.dart';
 import '../../models/wall_tv_unit_config.dart';
 import '../../providers/room_design_provider.dart';
+import '../../services/texture_service.dart';
 import '../common/color_picker_field.dart';
 import '../common/dimension_slider.dart';
 import '../common/item_editor_header.dart';
 import '../common/section_card.dart';
+import '../common/texture_upload_field.dart';
 
 class WallTvUnitsEditor extends ConsumerWidget {
   const WallTvUnitsEditor({super.key});
@@ -29,7 +31,9 @@ class WallTvUnitsEditor extends ConsumerWidget {
           child: units.isEmpty
               ? const Text('No wall TV units added. Tap + to add one.')
               : Column(
-                  children: units.map((unit) => _WallTvUnitCard(unit: unit)).toList(),
+                  children: units
+                      .map((unit) => _WallTvUnitCard(unit: unit, units: units))
+                      .toList(),
                 ),
         ),
       ],
@@ -38,9 +42,10 @@ class WallTvUnitsEditor extends ConsumerWidget {
 }
 
 class _WallTvUnitCard extends ConsumerStatefulWidget {
-  const _WallTvUnitCard({required this.unit});
+  const _WallTvUnitCard({required this.unit, required this.units});
 
   final WallTvUnitConfig unit;
+  final List<WallTvUnitConfig> units;
 
   @override
   ConsumerState<_WallTvUnitCard> createState() => _WallTvUnitCardState();
@@ -73,7 +78,7 @@ class _WallTvUnitCardState extends ConsumerState<_WallTvUnitCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ItemEditorHeader(
-              title: 'Wall TV Unit',
+              title: WallTvUnitConfig.displayLabel(widget.units, unit),
               icon: Icons.tv,
               editingEnabled: _editingEnabled,
               onToggleEdit: () => setState(() => _editingEnabled = !_editingEnabled),
@@ -171,6 +176,19 @@ class _WallTvUnitCardState extends ConsumerState<_WallTvUnitCard> {
               enabled: enabled,
               onChanged: (c) => notifier.updateWallTvUnit(unit.copyWith(color: c)),
             ),
+            if (enabled)
+              TextureUploadField(
+                texturePath: unit.texturePath,
+                onPick: () async {
+                  final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
+                  if (path != null) {
+                    notifier.updateWallTvUnit(unit.copyWith(texturePath: path));
+                  }
+                },
+                onClear: unit.texturePath == null
+                    ? null
+                    : () => notifier.updateWallTvUnit(unit.copyWith(clearTexture: true)),
+              ),
           ],
         ),
       ),
