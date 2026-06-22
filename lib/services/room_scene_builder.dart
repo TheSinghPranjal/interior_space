@@ -15,26 +15,30 @@ class ApartmentSceneBuilder {
 
   Future<String> buildSceneJson(ProjectDesign project) async {
     final layout = project.apartmentLayout;
-    final placements = <Map<String, dynamic>>[];
 
-    for (final placement in layout.placements) {
-      final room = project.roomById(placement.roomId);
-      if (room == null) continue;
+    final placementResults = await Future.wait(
+      layout.placements.map((placement) async {
+        final room = project.roomById(placement.roomId);
+        if (room == null) return null;
 
-      final roomJson = jsonDecode(await _roomSceneBuilder.buildSceneJson(room))
-          as Map<String, dynamic>;
+        final roomJson = jsonDecode(await _roomSceneBuilder.buildSceneJson(room))
+            as Map<String, dynamic>;
 
-      placements.add({
-        'blueprintX': placement.blueprintX,
-        'blueprintY': placement.blueprintY,
-        'rotation': placement.rotation,
-        'name': room.name,
-        'room': roomJson,
-      });
-    }
+        return {
+          'blueprintX': placement.blueprintX,
+          'blueprintY': placement.blueprintY,
+          'rotation': placement.rotation,
+          'name': room.name,
+          'room': roomJson,
+        };
+      }),
+    );
+
+    final placements = placementResults.whereType<Map<String, dynamic>>().toList();
 
     final scene = {
       'mode': 'apartment',
+      'performanceMode': true,
       'apartment': {
         'width': layout.widthFt,
         'length': layout.lengthFt,
@@ -50,8 +54,19 @@ class RoomSceneBuilder {
   RoomSceneBuilder(this._textureService);
 
   final TextureService _textureService;
+  final _sceneCache = <String, String>{};
 
   Future<String> buildSceneJson(RoomDesign design) async {
+    final cacheKey = jsonEncode(design.toJson());
+    final cached = _sceneCache[cacheKey];
+    if (cached != null) return cached;
+
+    final json = await _buildSceneJson(design);
+    _sceneCache[cacheKey] = json;
+    return json;
+  }
+
+  Future<String> _buildSceneJson(RoomDesign design) async {
     final walls = <Map<String, dynamic>>[];
     for (final wall in design.walls) {
       walls.add({
