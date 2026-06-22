@@ -94,6 +94,15 @@ class RoomDesignNotifier extends StateNotifier<RoomDesign> {
     });
   }
 
+  void setAllWallsVisibility(double fraction) {
+    _mutate((r) {
+      final walls = r.walls
+          .map((w) => w.copyWith(visibleFraction: fraction.clamp(0.0, 1.0)))
+          .toList();
+      return r.copyWith(walls: walls);
+    });
+  }
+
   void updateFloor(FloorConfig floor) =>
       _mutate((r) => r.copyWith(floor: floor));
 
