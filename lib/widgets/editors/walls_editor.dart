@@ -7,6 +7,7 @@ import '../../providers/room_design_provider.dart';
 import '../../services/texture_service.dart';
 import '../common/color_picker_field.dart';
 import '../common/section_card.dart';
+import '../common/texture_upload_field.dart';
 
 class WallsEditor extends ConsumerWidget {
   const WallsEditor({super.key});
@@ -31,6 +32,8 @@ class _WallEditorCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(roomDesignProvider.notifier);
+
     return SectionCard(
       title: wall.id.label,
       child: Column(
@@ -44,9 +47,7 @@ class _WallEditorCard extends ConsumerWidget {
             ],
             selected: {wall.surfaceType},
             onSelectionChanged: (s) {
-              ref.read(roomDesignProvider.notifier).updateWall(
-                    wall.copyWith(surfaceType: s.first),
-                  );
+              notifier.updateWall(wall.copyWith(surfaceType: s.first));
             },
           ),
           const SizedBox(height: 12),
@@ -54,57 +55,60 @@ class _WallEditorCard extends ConsumerWidget {
             ColorPickerField(
               label: 'Wall Color',
               colorHex: wall.color,
-              onChanged: (c) => ref.read(roomDesignProvider.notifier).updateWall(
-                    wall.copyWith(color: c),
-                  ),
+              onChanged: (c) => notifier.updateWall(wall.copyWith(color: c)),
             ),
           if (wall.surfaceType == SurfaceType.texture) ...[
             DropdownButtonFormField<WallTexture>(
-              value: wall.texture,
+              initialValue: wall.texture,
               decoration: const InputDecoration(labelText: 'Texture'),
               items: WallTexture.values
                   .map((t) => DropdownMenuItem(value: t, child: Text(t.name)))
                   .toList(),
               onChanged: (t) {
-                if (t != null) {
-                  ref.read(roomDesignProvider.notifier).updateWall(
-                        wall.copyWith(texture: t),
-                      );
-                }
+                if (t != null) notifier.updateWall(wall.copyWith(texture: t));
               },
             ),
             ColorPickerField(
               label: 'Base Tint',
               colorHex: wall.color,
-              onChanged: (c) => ref.read(roomDesignProvider.notifier).updateWall(
-                    wall.copyWith(color: c),
-                  ),
+              onChanged: (c) => notifier.updateWall(wall.copyWith(color: c)),
             ),
           ],
           if (wall.surfaceType == SurfaceType.wallpaper) ...[
-            FilledButton.icon(
-              onPressed: () async {
+            TextureUploadField(
+              texturePath: wall.wallpaperPath,
+              uploadLabel: 'Upload Wallpaper',
+              changeLabel: 'Change Wallpaper',
+              onPick: () async {
                 final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
                 if (path != null) {
-                  ref.read(roomDesignProvider.notifier).updateWall(
-                        wall.copyWith(
-                          surfaceType: SurfaceType.wallpaper,
-                          wallpaperPath: path,
-                        ),
-                      );
+                  notifier.updateWall(
+                    wall.copyWith(
+                      surfaceType: SurfaceType.wallpaper,
+                      wallpaperPath: path,
+                    ),
+                  );
                 }
-
               },
-              icon: const Icon(Icons.upload_file),
-              label: Text(wall.wallpaperPath == null ? 'Upload Wallpaper' : 'Change Wallpaper'),
+              onClear: wall.wallpaperPath == null
+                  ? null
+                  : () => notifier.updateWall(
+                        wall.copyWith(clearWallpaper: true),
+                      ),
+            ),
+            ColorPickerField(
+              label: 'Tint',
+              colorHex: wall.color,
+              onChanged: (c) => notifier.updateWall(wall.copyWith(color: c)),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Tile wallpaper'),
+              subtitle: const Text(
+                'Off: stretch one image across the wall. On: repeat the image in a grid.',
+              ),
               value: wall.tileWallpaper,
-              onChanged: (v) => ref.read(roomDesignProvider.notifier).updateWall(
-                    wall.copyWith(tileWallpaper: v),
-                  ),
+              onChanged: (v) => notifier.updateWall(wall.copyWith(tileWallpaper: v)),
             ),
           ],
         ],
