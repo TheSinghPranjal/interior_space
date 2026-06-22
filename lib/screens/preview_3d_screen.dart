@@ -70,7 +70,7 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
         child: SafeArea(
           child: Text(
             isApartment
-                ? '${project.apartmentLayout.placements.length} rooms • Pinch to zoom • Swipe to rotate'
+                ? '${project.apartmentLayout.name} • ${project.apartmentLayout.placements.length} rooms • Pinch to zoom • Swipe to rotate'
                 : 'Pinch to zoom • Swipe to rotate • Use arrows to walk',
             style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
             textAlign: TextAlign.center,
