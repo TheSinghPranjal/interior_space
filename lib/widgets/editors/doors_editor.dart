@@ -10,6 +10,7 @@ import '../common/color_picker_field.dart';
 import '../common/dimension_slider.dart';
 import '../common/item_editor_header.dart';
 import '../common/section_card.dart';
+import '../common/texture_upload_field.dart';
 
 class DoorsEditor extends ConsumerWidget {
   const DoorsEditor({super.key});
@@ -30,7 +31,9 @@ class DoorsEditor extends ConsumerWidget {
           child: doors.isEmpty
               ? const Text('No doors added. Tap + to add a door.')
               : Column(
-                  children: doors.map((door) => _DoorCard(door: door)).toList(),
+                  children: doors
+                      .map((door) => _DoorCard(door: door, doors: doors))
+                      .toList(),
                 ),
         ),
       ],
@@ -39,9 +42,10 @@ class DoorsEditor extends ConsumerWidget {
 }
 
 class _DoorCard extends ConsumerStatefulWidget {
-  const _DoorCard({required this.door});
+  const _DoorCard({required this.door, required this.doors});
 
   final DoorConfig door;
+  final List<DoorConfig> doors;
 
   @override
   ConsumerState<_DoorCard> createState() => _DoorCardState();
@@ -74,7 +78,7 @@ class _DoorCardState extends ConsumerState<_DoorCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ItemEditorHeader(
-              title: 'Door',
+              title: DoorConfig.displayLabel(widget.doors, door),
               icon: Icons.door_front_door,
               editingEnabled: _editingEnabled,
               onToggleEdit: () => setState(() => _editingEnabled = !_editingEnabled),
@@ -177,15 +181,19 @@ class _DoorCardState extends ConsumerState<_DoorCard> {
                   : null,
             ),
             if (enabled)
-              FilledButton.icon(
-                onPressed: () async {
+              TextureUploadField(
+                texturePath: door.texturePath,
+                uploadLabel: 'Upload Door Texture',
+                changeLabel: 'Change Door Texture',
+                onPick: () async {
                   final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
                   if (path != null) {
                     notifier.updateDoor(door.copyWith(texturePath: path));
                   }
                 },
-                icon: const Icon(Icons.upload_file),
-                label: const Text('Upload Door Texture'),
+                onClear: door.texturePath == null
+                    ? null
+                    : () => notifier.updateDoor(door.copyWith(clearTexture: true)),
               ),
           ],
         ),
