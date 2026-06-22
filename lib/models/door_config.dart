@@ -30,6 +30,14 @@ class DoorConfig {
   double maxPositionFromEdge(RoomDimensions dims) =>
       (wallLengthFt(dims) - width).clamp(0, wallLengthFt(dims)).toDouble();
 
+  /// "Door" alone, or "Door 1", "Door 2" when multiples exist.
+  static String displayLabel(List<DoorConfig> doors, DoorConfig door) {
+    if (doors.length <= 1) return 'Door';
+    final index = doors.indexWhere((d) => d.id == door.id);
+    if (index < 0) return 'Door';
+    return 'Door ${index + 1}';
+  }
+
   DoorConfig copyWith({
     WallId? wall,
     double? width,
