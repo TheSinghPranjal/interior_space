@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/constants/room_constants.dart';
 import '../../providers/project_provider.dart';
+import '../common/dimension_control.dart';
 import '../../screens/preview_3d_screen.dart';
 import 'apartment_canvas.dart';
 
@@ -109,6 +111,27 @@ class ApartmentSpaceView extends ConsumerWidget {
                       style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                     ),
                   ),
+                const SizedBox(height: 12),
+                Text('Apartment Size', style: theme.textTheme.titleSmall),
+                const SizedBox(height: 4),
+                DimensionControl(
+                  label: 'Width',
+                  value: layout.widthFt,
+                  min: RoomConstants.minApartmentWidth,
+                  max: RoomConstants.maxApartmentWidth,
+                  onChanged: (v) => ref
+                      .read(projectProvider.notifier)
+                      .updateApartmentDimensions(widthFt: v),
+                ),
+                DimensionControl(
+                  label: 'Length',
+                  value: layout.lengthFt,
+                  min: RoomConstants.minApartmentLength,
+                  max: RoomConstants.maxApartmentLength,
+                  onChanged: (v) => ref
+                      .read(projectProvider.notifier)
+                      .updateApartmentDimensions(lengthFt: v),
+                ),
               ],
             ),
           ),

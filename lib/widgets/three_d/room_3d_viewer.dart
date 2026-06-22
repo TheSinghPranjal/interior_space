@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -38,6 +39,20 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
   bool _isLoading = true;
   String? _loadError;
   String? _htmlContent;
+  Timer? _apartmentSceneDebounce;
+
+  @override
+  void dispose() {
+    _apartmentSceneDebounce?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleApartmentScenePush() {
+    _apartmentSceneDebounce?.cancel();
+    _apartmentSceneDebounce = Timer(const Duration(milliseconds: 350), () {
+      if (mounted) _pushScene();
+    });
+  }
 
   @override
   void initState() {
@@ -160,7 +175,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     });
 
     ref.listen(projectProvider, (_, _) {
-      if (_isReady && widget.apartmentMode) _pushScene();
+      if (_isReady && widget.apartmentMode) _scheduleApartmentScenePush();
     });
 
     ref.listen(cameraModeProvider, (_, next) {

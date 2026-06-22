@@ -860,7 +860,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       child: Material(
         elevation: 4,
         borderRadius: BorderRadius.circular(20),
-        color: Colors.orange.shade700,
+        color: Colors.orange.shade700.withValues(alpha: 1),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           child: Row(
