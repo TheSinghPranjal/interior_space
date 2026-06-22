@@ -99,6 +99,8 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
                     painter: _ApartmentPainter(
                       aptRect: aptRect,
                       scale: scale,
+                      widthFt: layout.widthFt,
+                      lengthFt: layout.lengthFt,
                     ),
                   ),
                 ),
@@ -291,7 +293,7 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
       child: Material(
         elevation: 4,
         borderRadius: BorderRadius.circular(20),
-        color: Colors.orange.shade700,
+        color: Colors.orange.shade700.withValues(alpha: 0.7),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           child: Row(
@@ -419,10 +421,14 @@ class _ApartmentPainter extends CustomPainter {
   _ApartmentPainter({
     required this.aptRect,
     required this.scale,
+    required this.widthFt,
+    required this.lengthFt,
   });
 
   final Rect aptRect;
   final double scale;
+  final double widthFt;
+  final double lengthFt;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -453,7 +459,7 @@ class _ApartmentPainter extends CustomPainter {
 
     final label = TextPainter(
       text: TextSpan(
-        text: 'Apartment Floor Plan',
+        text: 'Apartment Floor Plan • ${widthFt.toStringAsFixed(0)} × ${lengthFt.toStringAsFixed(0)} ft',
         style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
       ),
       textDirection: TextDirection.ltr,
@@ -463,5 +469,8 @@ class _ApartmentPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ApartmentPainter oldDelegate) =>
-      oldDelegate.aptRect != aptRect || oldDelegate.scale != scale;
+      oldDelegate.aptRect != aptRect ||
+      oldDelegate.scale != scale ||
+      oldDelegate.widthFt != widthFt ||
+      oldDelegate.lengthFt != lengthFt;
 }
