@@ -27,7 +27,7 @@ class InteriorSpaceApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Interior Space',
+      title: 'Abode',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       home: const SplashScreen(),

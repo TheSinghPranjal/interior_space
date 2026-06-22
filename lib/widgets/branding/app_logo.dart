@@ -65,7 +65,7 @@ class AppLogo extends StatelessWidget {
         if (showLabel) ...[
           SizedBox(height: compact ? 8 : 16),
           Text(
-            'Interior Space',
+            'Abode',
             style: TextStyle(
               fontSize: compact ? 18 : 26,
               fontWeight: FontWeight.w700,
