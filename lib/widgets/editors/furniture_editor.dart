@@ -10,6 +10,7 @@ import '../common/color_picker_field.dart';
 import '../common/dimension_slider.dart';
 import '../common/item_editor_header.dart';
 import '../common/section_card.dart';
+import '../common/texture_upload_field.dart';
 
 class FurnitureEditor extends ConsumerWidget {
   const FurnitureEditor({super.key});
@@ -207,27 +208,20 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard> {
               enabled: enabled,
               onChanged: (c) => notifier.updateFurniture(item.copyWith(color: c)),
             ),
-            if (item.isWallMounted && enabled)
-              FilledButton.icon(
-                onPressed: () async {
-                  final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
-                  if (path != null) {
-                    notifier.updateFurniture(item.copyWith(texturePath: path));
-                  }
-                },
-                icon: const Icon(Icons.upload_file),
-                label: Text(item.texturePath == null ? 'Upload Texture' : 'Change Texture'),
-              ),
             if (item.supportsTextureUpload && enabled)
-              FilledButton.icon(
-                onPressed: () async {
+              TextureUploadField(
+                texturePath: item.texturePath,
+                onPick: () async {
                   final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
                   if (path != null) {
                     notifier.updateFurniture(item.copyWith(texturePath: path));
                   }
                 },
-                icon: const Icon(Icons.upload_file),
-                label: Text(item.texturePath == null ? 'Upload Texture' : 'Change Texture'),
+                onClear: item.texturePath == null
+                    ? null
+                    : () => notifier.updateFurniture(
+                          item.copyWith(clearTexture: true),
+                        ),
               ),
           ],
         ),
