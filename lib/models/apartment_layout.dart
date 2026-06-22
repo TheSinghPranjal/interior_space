@@ -1,3 +1,5 @@
+import '../core/constants/room_constants.dart';
+
 class ApartmentRoomPlacement {
   const ApartmentRoomPlacement({
     required this.id,
@@ -67,6 +69,19 @@ class ApartmentLayout {
       widthFt: widthFt ?? this.widthFt,
       lengthFt: lengthFt ?? this.lengthFt,
       placements: placements ?? this.placements,
+    );
+  }
+
+  ApartmentLayout clamped() {
+    return copyWith(
+      widthFt: widthFt.clamp(
+        RoomConstants.minApartmentWidth,
+        RoomConstants.maxApartmentWidth,
+      ),
+      lengthFt: lengthFt.clamp(
+        RoomConstants.minApartmentLength,
+        RoomConstants.maxApartmentLength,
+      ),
     );
   }
 
