@@ -50,16 +50,35 @@ enum FurnitureType {
   bed,
   sofa,
   table,
+  diningTable,
   tvUnit,
   chair,
   wardrobe,
   cupboard,
+  storageUnit,
+  kitchenChimney,
   sink,
   toilet,
   washingMachine,
   bathtub,
   flowerPot,
   fridge,
+}
+
+enum DiningTableShape { rectangular, round }
+
+enum StorageUnitStyle { singleDoor, doubleDoor, drawerUnit, openShelf }
+
+enum KitchenChimneyStyle { wallMounted, glass, stainlessSteel }
+
+enum FurnitureMaterialPreset {
+  wood,
+  whiteMatte,
+  glossy,
+  metallic,
+  stainlessSteel,
+  black,
+  white,
 }
 
 extension FurnitureTypePlacement on FurnitureType {
@@ -87,10 +106,13 @@ extension FurnitureTypeLabel on FurnitureType {
         FurnitureType.bed => 'Bed',
         FurnitureType.sofa => 'Sofa',
         FurnitureType.table => 'Table',
+        FurnitureType.diningTable => 'Dining Table',
         FurnitureType.tvUnit => 'TV Unit',
         FurnitureType.chair => 'Chair',
         FurnitureType.wardrobe => 'Wardrobe',
         FurnitureType.cupboard => 'Cupboard',
+        FurnitureType.storageUnit => 'Storage Unit',
+        FurnitureType.kitchenChimney => 'Kitchen Chimney',
         FurnitureType.sink => 'Sink / Wash Basin',
         FurnitureType.toilet => 'Western Toilet',
         FurnitureType.washingMachine => 'Washing Machine',
@@ -103,15 +125,54 @@ extension FurnitureTypeLabel on FurnitureType {
         FurnitureType.bed => Icons.bed,
         FurnitureType.sofa => Icons.weekend,
         FurnitureType.table => Icons.table_restaurant,
+        FurnitureType.diningTable => Icons.dining,
         FurnitureType.tvUnit => Icons.tv,
         FurnitureType.chair => Icons.chair,
         FurnitureType.wardrobe => Icons.door_sliding,
         FurnitureType.cupboard => Icons.kitchen,
+        FurnitureType.storageUnit => Icons.countertops,
+        FurnitureType.kitchenChimney => Icons.air,
         FurnitureType.sink => Icons.wash,
         FurnitureType.toilet => Icons.wc,
         FurnitureType.washingMachine => Icons.local_laundry_service,
         FurnitureType.bathtub => Icons.bathtub,
         FurnitureType.flowerPot => Icons.local_florist,
         FurnitureType.fridge => Icons.inventory_2,
+      };
+}
+
+extension DiningTableShapeLabel on DiningTableShape {
+  String get label => switch (this) {
+        DiningTableShape.rectangular => 'Rectangular',
+        DiningTableShape.round => 'Round',
+      };
+}
+
+extension StorageUnitStyleLabel on StorageUnitStyle {
+  String get label => switch (this) {
+        StorageUnitStyle.singleDoor => 'Single Door',
+        StorageUnitStyle.doubleDoor => 'Double Door',
+        StorageUnitStyle.drawerUnit => 'Drawer Unit',
+        StorageUnitStyle.openShelf => 'Open Shelf Unit',
+      };
+}
+
+extension KitchenChimneyStyleLabel on KitchenChimneyStyle {
+  String get label => switch (this) {
+        KitchenChimneyStyle.wallMounted => 'Wall Mounted',
+        KitchenChimneyStyle.glass => 'Glass Chimney',
+        KitchenChimneyStyle.stainlessSteel => 'Stainless Steel',
+      };
+}
+
+extension FurnitureMaterialPresetLabel on FurnitureMaterialPreset {
+  String get label => switch (this) {
+        FurnitureMaterialPreset.wood => 'Wood',
+        FurnitureMaterialPreset.whiteMatte => 'White Matte',
+        FurnitureMaterialPreset.glossy => 'Glossy Finish',
+        FurnitureMaterialPreset.metallic => 'Metallic',
+        FurnitureMaterialPreset.stainlessSteel => 'Stainless Steel',
+        FurnitureMaterialPreset.black => 'Black Finish',
+        FurnitureMaterialPreset.white => 'White Finish',
       };
 }

@@ -2240,13 +2240,23 @@
           case 'fridge':
             group = this._buildFridgeGroup(item);
             break;
+          case 'diningTable':
+            group = this._buildDiningTableGroup(item);
+            break;
+          case 'storageUnit':
+            group = this._buildStorageUnitGroup(item);
+            break;
+          case 'kitchenChimney':
+            group = this._buildKitchenChimneyGroup(item);
+            break;
           default:
             group = this._buildGenericFurniture(item);
         }
 
         const x = (item.blueprintX - 0.5) * w;
         const z = (item.blueprintY - 0.5) * l;
-        group.position.set(x, 0, z);
+        const y = (item.heightFromFloor || 0) * FT;
+        group.position.set(x, y, z);
         group.rotation.y = -(item.rotation || 0) * Math.PI / 180;
         this.roomGroup.add(group);
       });
@@ -2998,6 +3008,273 @@
       const back = new THREE.Mesh(new THREE.BoxGeometry(fw, fh * 0.55, fd * 0.2), mat);
       back.position.set(0, fh * 0.55, -fd * 0.4);
       group.add(back);
+
+      group.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+      return group;
+    }
+
+    _furniturePresetMaterial(item) {
+      const preset = item.materialPreset || 'wood';
+      const tex = item.textureDataUrl || null;
+      const color = item.color;
+      switch (preset) {
+        case 'whiteMatte':
+          return { color: '#F5F5F5', roughness: 0.92, metalness: 0.02, procType: null, textureUrl: tex };
+        case 'glossy':
+          return { color, roughness: 0.12, metalness: 0.25, procType: null, textureUrl: tex };
+        case 'metallic':
+          return { color: color || '#78909C', roughness: 0.22, metalness: 0.88, procType: 'metal', textureUrl: tex };
+        case 'stainlessSteel':
+          return { color: '#B0BEC5', roughness: 0.18, metalness: 0.92, procType: 'metal', textureUrl: tex };
+        case 'black':
+          return { color: '#212121', roughness: 0.35, metalness: 0.55, procType: 'metal', textureUrl: tex };
+        case 'white':
+          return { color: '#FAFAFA', roughness: 0.28, metalness: 0.15, procType: null, textureUrl: tex };
+        default:
+          return { color, roughness: 0.62, metalness: 0.05, procType: 'wood', textureUrl: tex };
+      }
+    }
+
+    _makePresetMaterial(item) {
+      const p = this._furniturePresetMaterial(item);
+      return this._makeMaterial(p.color, p.roughness, p.metalness, p.textureUrl, p.procType, 1, 1);
+    }
+
+    _buildDiningTableGroup(item) {
+      const fw = item.width * FT;
+      const fd = item.depth * FT;
+      const tableH = item.height * FT;
+      const isRound = item.variant === 'round';
+      const tex = item.textureDataUrl || null;
+      const group = new THREE.Group();
+      const topMat = this._makeMaterial(item.color, 0.52, 0.08, tex, 'wood', 1, 1);
+      const legMat = this._makeMaterial(item.color, 0.58, 0.1, null, 'wood', 1, 1);
+      const topThickness = 0.08 * FT;
+      const legH = tableH - topThickness;
+
+      if (isRound) {
+        const radius = Math.max(fw, fd) / 2;
+        const top = new THREE.Mesh(
+          new THREE.CylinderGeometry(radius, radius, topThickness, 36),
+          topMat
+        );
+        top.position.y = legH + topThickness / 2;
+        group.add(top);
+
+        const pedestal = new THREE.Mesh(
+          new THREE.CylinderGeometry(radius * 0.14, radius * 0.2, legH, 20),
+          legMat
+        );
+        pedestal.position.y = legH / 2;
+        group.add(pedestal);
+      } else {
+        const top = new THREE.Mesh(new THREE.BoxGeometry(fw, topThickness, fd), topMat);
+        top.position.y = legH + topThickness / 2;
+        group.add(top);
+
+        [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => {
+          const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07 * FT, legH, 0.07 * FT), legMat);
+          leg.position.set(sx * fw * 0.4, legH / 2, sz * fd * 0.4);
+          group.add(leg);
+        });
+      }
+
+      group.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+      return group;
+    }
+
+    _buildStorageUnitGroup(item) {
+      const fw = item.width * FT;
+      const fh = item.height * FT;
+      const fd = item.depth * FT;
+      const style = item.variant || 'singleDoor';
+      const group = new THREE.Group();
+      const bodyMat = this._makePresetMaterial(item);
+      const trimMat = new THREE.MeshStandardMaterial({ color: 0x37474F, roughness: 0.35, metalness: 0.75 });
+      const shelfMat = new THREE.MeshStandardMaterial({ color: 0xD7CCC8, roughness: 0.85, metalness: 0.02 });
+      const toeKickH = fh * 0.06;
+      const bodyH = fh - toeKickH;
+
+      const toeKick = new THREE.Mesh(new THREE.BoxGeometry(fw, toeKickH, fd * 0.98), trimMat);
+      toeKick.position.y = toeKickH / 2;
+      group.add(toeKick);
+
+      const carcass = new THREE.Mesh(new THREE.BoxGeometry(fw * 0.98, bodyH, fd), bodyMat);
+      carcass.position.y = toeKickH + bodyH / 2;
+      group.add(carcass);
+
+      const counterTop = new THREE.Mesh(
+        new THREE.BoxGeometry(fw * 1.02, 0.04 * FT, fd * 1.04),
+        new THREE.MeshStandardMaterial({ color: 0xECEFF1, roughness: 0.25, metalness: 0.08 })
+      );
+      counterTop.position.y = fh + 0.02 * FT;
+      group.add(counterTop);
+
+      const addHandle = (x, y, z) => {
+        const handle = new THREE.Mesh(new THREE.BoxGeometry(0.02 * FT, 0.1 * FT, 0.04 * FT), trimMat);
+        handle.position.set(x, y, z);
+        group.add(handle);
+      };
+
+      const frontZ = fd / 2 + 0.015 * FT;
+      if (style === 'openShelf') {
+        const openBack = new THREE.Mesh(
+          new THREE.BoxGeometry(fw * 0.92, bodyH * 0.92, 0.03 * FT),
+          bodyMat
+        );
+        openBack.position.set(0, toeKickH + bodyH / 2, -fd / 2 + 0.04 * FT);
+        group.add(openBack);
+        [0.33, 0.66].forEach((t) => {
+          const shelf = new THREE.Mesh(
+            new THREE.BoxGeometry(fw * 0.9, 0.025 * FT, fd * 0.85),
+            shelfMat
+          );
+          shelf.position.set(0, toeKickH + bodyH * t, 0);
+          group.add(shelf);
+        });
+        const sideL = new THREE.Mesh(new THREE.BoxGeometry(0.04 * FT, bodyH * 0.92, fd * 0.88), bodyMat);
+        sideL.position.set(-fw / 2 + 0.03 * FT, toeKickH + bodyH / 2, 0);
+        group.add(sideL);
+        const sideR = sideL.clone();
+        sideR.position.x = fw / 2 - 0.03 * FT;
+        group.add(sideR);
+      } else if (style === 'drawerUnit') {
+        const drawerCount = 4;
+        const drawerH = bodyH / drawerCount;
+        for (let i = 0; i < drawerCount; i++) {
+          const dy = toeKickH + drawerH * i + drawerH / 2;
+          const drawer = new THREE.Mesh(
+            new THREE.BoxGeometry(fw * 0.9, drawerH * 0.88, 0.03 * FT),
+            bodyMat
+          );
+          drawer.position.set(0, dy, frontZ);
+          group.add(drawer);
+          const groove = new THREE.Mesh(
+            new THREE.BoxGeometry(fw * 0.86, 0.008 * FT, 0.01 * FT),
+            trimMat
+          );
+          groove.position.set(0, toeKickH + drawerH * (i + 1), frontZ + 0.01 * FT);
+          group.add(groove);
+          addHandle(fw * 0.32, dy, frontZ + 0.03 * FT);
+        }
+      } else if (style === 'doubleDoor') {
+        [-1, 1].forEach((side) => {
+          const door = new THREE.Mesh(
+            new THREE.BoxGeometry(fw * 0.44, bodyH * 0.9, 0.03 * FT),
+            bodyMat
+          );
+          door.position.set(side * fw * 0.22, toeKickH + bodyH / 2, frontZ);
+          group.add(door);
+          addHandle(side * fw * 0.08, toeKickH + bodyH * 0.52, frontZ + 0.03 * FT);
+        });
+      } else {
+        const door = new THREE.Mesh(
+          new THREE.BoxGeometry(fw * 0.88, bodyH * 0.9, 0.03 * FT),
+          bodyMat
+        );
+        door.position.set(0, toeKickH + bodyH / 2, frontZ);
+        group.add(door);
+        addHandle(fw * 0.35, toeKickH + bodyH * 0.52, frontZ + 0.03 * FT);
+      }
+
+      group.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+      return group;
+    }
+
+    _buildKitchenChimneyGroup(item) {
+      const fw = item.width * FT;
+      const fh = item.height * FT;
+      const fd = item.depth * FT;
+      const style = item.variant || 'wallMounted';
+      const group = new THREE.Group();
+      const preset = this._furniturePresetMaterial(item);
+      const bodyMat = this._makeMaterial(preset.color, preset.roughness, preset.metalness, preset.textureUrl, preset.procType, 1, 1);
+      const glassMat = new THREE.MeshStandardMaterial({
+        color: 0x90A4AE,
+        roughness: 0.05,
+        metalness: 0.1,
+        transparent: true,
+        opacity: 0.45,
+      });
+      const darkMat = new THREE.MeshStandardMaterial({ color: 0x263238, roughness: 0.4, metalness: 0.5 });
+      const lightMat = new THREE.MeshStandardMaterial({
+        color: 0xFFF8E1,
+        emissive: 0xFFF8E1,
+        emissiveIntensity: 0.55,
+        roughness: 0.8,
+      });
+
+      const hoodH = fh * 0.55;
+      const ductH = fh * 0.45;
+      const hoodBottom = hoodH * 0.35;
+
+      const hood = new THREE.Mesh(
+        new THREE.CylinderGeometry(fw * 0.08, fw * 0.48, hoodH, 4, 1, false),
+        bodyMat
+      );
+      hood.rotation.y = Math.PI / 4;
+      hood.position.y = hoodBottom + hoodH / 2;
+      group.add(hood);
+
+      const hoodPanel = new THREE.Mesh(
+        new THREE.BoxGeometry(fw * 0.92, hoodH * 0.35, fd * 0.75),
+        bodyMat
+      );
+      hoodPanel.position.set(0, hoodBottom + hoodH * 0.2, fd * 0.08);
+      group.add(hoodPanel);
+
+      if (style === 'glass') {
+        const glassFront = new THREE.Mesh(
+          new THREE.BoxGeometry(fw * 0.78, hoodH * 0.42, 0.02 * FT),
+          glassMat
+        );
+        glassFront.position.set(0, hoodBottom + hoodH * 0.22, fd * 0.36);
+        group.add(glassFront);
+        [-1, 1].forEach((side) => {
+          const glassSide = new THREE.Mesh(
+            new THREE.BoxGeometry(0.02 * FT, hoodH * 0.42, fd * 0.55),
+            glassMat
+          );
+          glassSide.position.set(side * fw * 0.38, hoodBottom + hoodH * 0.22, fd * 0.12);
+          group.add(glassSide);
+        });
+      }
+
+      const duct = new THREE.Mesh(
+        new THREE.BoxGeometry(fw * 0.32, ductH, fd * 0.28),
+        bodyMat
+      );
+      duct.position.y = hoodBottom + hoodH + ductH / 2;
+      group.add(duct);
+
+      const controlStrip = new THREE.Mesh(
+        new THREE.BoxGeometry(fw * 0.55, 0.04 * FT, 0.03 * FT),
+        darkMat
+      );
+      controlStrip.position.set(0, hoodBottom + hoodH * 0.08, fd * 0.38);
+      group.add(controlStrip);
+
+      const lightBar = new THREE.Mesh(
+        new THREE.BoxGeometry(fw * 0.7, 0.025 * FT, 0.02 * FT),
+        lightMat
+      );
+      lightBar.position.set(0, hoodBottom + 0.04 * FT, fd * 0.32);
+      group.add(lightBar);
+
+      if (style === 'stainlessSteel') {
+        group.traverse((c) => {
+          if (c.isMesh && c.material !== glassMat && c.material !== lightMat && c.material !== darkMat) {
+            c.material = bodyMat;
+          }
+        });
+      }
+
+      const filter = new THREE.Mesh(
+        new THREE.BoxGeometry(fw * 0.6, 0.02 * FT, fd * 0.45),
+        darkMat
+      );
+      filter.position.set(0, hoodBottom + 0.02 * FT, 0);
+      group.add(filter);
 
       group.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
       return group;

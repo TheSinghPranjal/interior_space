@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/room_constants.dart';
+import '../../providers/apartment_placement_history_provider.dart';
 import '../../providers/project_provider.dart';
 import '../common/dimension_control.dart';
 import '../../screens/preview_3d_screen.dart';
@@ -15,11 +17,32 @@ class ApartmentSpaceView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final project = ref.watch(projectProvider);
+    final history = ref.watch(apartmentPlacementHistoryProvider);
     final rooms = project.roomsOrDefault;
     final layout = project.apartmentLayout;
     final theme = Theme.of(context);
+    final historyNotifier = ref.read(apartmentPlacementHistoryProvider.notifier);
 
-    return Column(
+    void undoMove() {
+      if (history.canUndo) historyNotifier.undo();
+    }
+
+    void redoMove() {
+      if (history.canRedo) historyNotifier.redo();
+    }
+
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyZ, control: true): undoMove,
+        const SingleActivator(LogicalKeyboardKey.keyZ, meta: true): undoMove,
+        const SingleActivator(LogicalKeyboardKey.keyZ, shift: true, control: true): redoMove,
+        const SingleActivator(LogicalKeyboardKey.keyZ, shift: true, meta: true): redoMove,
+        const SingleActivator(LogicalKeyboardKey.keyY, control: true): redoMove,
+        const SingleActivator(LogicalKeyboardKey.keyY, meta: true): redoMove,
+      },
+      child: Focus(
+        autofocus: true,
+        child: Column(
       children: [
         if (!showBlueprintOnly)
           Container(
@@ -106,9 +129,21 @@ class ApartmentSpaceView extends ConsumerWidget {
                 if (layout.placements.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      '${layout.placements.length} room(s) on blueprint • Long-press to move',
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${layout.placements.length} room(s) on blueprint • Long-press to move',
+                            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                          ),
+                        ),
+                        _ApartmentUndoRedoButtons(
+                          canUndo: history.canUndo,
+                          canRedo: history.canRedo,
+                          onUndo: undoMove,
+                          onRedo: redoMove,
+                        ),
+                      ],
                     ),
                   ),
                 const SizedBox(height: 12),
@@ -151,6 +186,12 @@ class ApartmentSpaceView extends ConsumerWidget {
                     style: const TextStyle(fontSize: 13),
                   ),
                 ),
+                _ApartmentUndoRedoButtons(
+                  canUndo: history.canUndo,
+                  canRedo: history.canRedo,
+                  onUndo: undoMove,
+                  onRedo: redoMove,
+                ),
               ],
             ),
           ),
@@ -175,6 +216,43 @@ class ApartmentSpaceView extends ConsumerWidget {
               minimumSize: const Size.fromHeight(48),
             ),
           ),
+        ),
+      ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ApartmentUndoRedoButtons extends StatelessWidget {
+  const _ApartmentUndoRedoButtons({
+    required this.canUndo,
+    required this.canRedo,
+    required this.onUndo,
+    required this.onRedo,
+  });
+
+  final bool canUndo;
+  final bool canRedo;
+  final VoidCallback onUndo;
+  final VoidCallback onRedo;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          icon: Icon(Icons.undo, color: canUndo ? null : Colors.grey.shade400),
+          tooltip: 'Undo move',
+          onPressed: canUndo ? onUndo : null,
+        ),
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          icon: Icon(Icons.redo, color: canRedo ? null : Colors.grey.shade400),
+          tooltip: 'Redo move',
+          onPressed: canRedo ? onRedo : null,
         ),
       ],
     );

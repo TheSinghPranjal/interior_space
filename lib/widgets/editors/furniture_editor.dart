@@ -189,6 +189,18 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard> {
               suffix: 'ft',
               onChanged: enabled ? (v) => notifier.updateFurniture(item.copyWith(depth: v)) : null,
             ),
+            if (item.supportsHeightFromFloor)
+              DimensionSlider(
+                label: 'Height from floor',
+                value: item.heightFromFloor,
+                min: 0,
+                max: item.maxHeightFromFloorFt(design.dimensions),
+                suffix: 'ft',
+                onChanged: enabled
+                    ? (v) => notifier.updateFurniture(item.copyWith(heightFromFloor: v))
+                    : null,
+              ),
+            ..._typeSpecificFields(item, enabled, notifier),
             ColorPickerField(
               label: 'Color',
               colorHex: item.color,
@@ -206,9 +218,112 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard> {
                 icon: const Icon(Icons.upload_file),
                 label: Text(item.texturePath == null ? 'Upload Texture' : 'Change Texture'),
               ),
+            if (item.supportsTextureUpload && enabled)
+              FilledButton.icon(
+                onPressed: () async {
+                  final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
+                  if (path != null) {
+                    notifier.updateFurniture(item.copyWith(texturePath: path));
+                  }
+                },
+                icon: const Icon(Icons.upload_file),
+                label: Text(item.texturePath == null ? 'Upload Texture' : 'Change Texture'),
+              ),
           ],
         ),
       ),
     );
+  }
+
+  List<Widget> _typeSpecificFields(
+    FurnitureItem item,
+    bool enabled,
+    RoomDesignNotifier notifier,
+  ) {
+    return switch (item.type) {
+      FurnitureType.diningTable => [
+          DropdownButtonFormField<DiningTableShape>(
+            value: item.diningTableShape,
+            decoration: const InputDecoration(labelText: 'Table Shape'),
+            items: DiningTableShape.values
+                .map((s) => DropdownMenuItem(value: s, child: Text(s.label)))
+                .toList(),
+            onChanged: enabled
+                ? (s) {
+                    if (s != null) {
+                      notifier.updateFurniture(item.copyWith(variant: s.name));
+                    }
+                  }
+                : null,
+          ),
+        ],
+      FurnitureType.storageUnit => [
+          DropdownButtonFormField<StorageUnitStyle>(
+            value: item.storageUnitStyle,
+            decoration: const InputDecoration(labelText: 'Cabinet Style'),
+            items: StorageUnitStyle.values
+                .map((s) => DropdownMenuItem(value: s, child: Text(s.label)))
+                .toList(),
+            onChanged: enabled
+                ? (s) {
+                    if (s != null) {
+                      notifier.updateFurniture(item.copyWith(variant: s.name));
+                    }
+                  }
+                : null,
+          ),
+          DropdownButtonFormField<FurnitureMaterialPreset>(
+            value: item.material,
+            decoration: const InputDecoration(labelText: 'Material'),
+            items: <FurnitureMaterialPreset>[
+              FurnitureMaterialPreset.wood,
+              FurnitureMaterialPreset.whiteMatte,
+              FurnitureMaterialPreset.glossy,
+              FurnitureMaterialPreset.metallic,
+            ].map((m) => DropdownMenuItem(value: m, child: Text(m.label))).toList(),
+            onChanged: enabled
+                ? (m) {
+                    if (m != null) {
+                      notifier.updateFurniture(item.copyWith(materialPreset: m.name));
+                    }
+                  }
+                : null,
+          ),
+        ],
+      FurnitureType.kitchenChimney => [
+          DropdownButtonFormField<KitchenChimneyStyle>(
+            value: item.chimneyStyle,
+            decoration: const InputDecoration(labelText: 'Chimney Style'),
+            items: KitchenChimneyStyle.values
+                .map((s) => DropdownMenuItem(value: s, child: Text(s.label)))
+                .toList(),
+            onChanged: enabled
+                ? (s) {
+                    if (s != null) {
+                      notifier.updateFurniture(item.copyWith(variant: s.name));
+                    }
+                  }
+                : null,
+          ),
+          DropdownButtonFormField<FurnitureMaterialPreset>(
+            value: item.material,
+            decoration: const InputDecoration(labelText: 'Finish'),
+            items: <FurnitureMaterialPreset>[
+              FurnitureMaterialPreset.stainlessSteel,
+              FurnitureMaterialPreset.black,
+              FurnitureMaterialPreset.white,
+              FurnitureMaterialPreset.glossy,
+            ].map((m) => DropdownMenuItem(value: m, child: Text(m.label))).toList(),
+            onChanged: enabled
+                ? (m) {
+                    if (m != null) {
+                      notifier.updateFurniture(item.copyWith(materialPreset: m.name));
+                    }
+                  }
+                : null,
+          ),
+        ],
+      _ => const <Widget>[],
+    };
   }
 }

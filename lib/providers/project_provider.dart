@@ -101,6 +101,12 @@ class ProjectNotifier extends StateNotifier<ProjectDesign> {
     );
   }
 
+  void setApartmentPlacements(List<ApartmentRoomPlacement> placements) {
+    state = state.copyWith(
+      apartmentLayout: state.apartmentLayout.copyWith(placements: placements),
+    );
+  }
+
   void updateApartmentDimensions({double? widthFt, double? lengthFt}) {
     final old = state.apartmentLayout;
     final newW = (widthFt ?? old.widthFt).clamp(

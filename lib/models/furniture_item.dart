@@ -16,6 +16,9 @@ class FurnitureItem {
     this.wall,
     this.positionFromEdge = 1.0,
     this.texturePath,
+    this.variant,
+    this.materialPreset,
+    this.heightFromFloor = 0,
   });
 
   final String id;
@@ -30,6 +33,54 @@ class FurnitureItem {
   final WallId? wall;
   final double positionFromEdge;
   final String? texturePath;
+  /// Style variant — shape/style enum name depending on [type].
+  final String? variant;
+  /// Material finish preset enum name.
+  final String? materialPreset;
+  /// Bottom edge height above floor (ft). Used by storage units and chimneys.
+  final double heightFromFloor;
+
+  bool get supportsHeightFromFloor =>
+      type == FurnitureType.storageUnit || type == FurnitureType.kitchenChimney;
+
+  double maxHeightFromFloorFt(RoomDimensions dims) =>
+      (dims.height - height).clamp(0, dims.height).toDouble();
+
+  DiningTableShape get diningTableShape {
+    if (type != FurnitureType.diningTable) return DiningTableShape.rectangular;
+    return DiningTableShape.values.firstWhere(
+      (s) => s.name == variant,
+      orElse: () => DiningTableShape.rectangular,
+    );
+  }
+
+  StorageUnitStyle get storageUnitStyle {
+    if (type != FurnitureType.storageUnit) return StorageUnitStyle.singleDoor;
+    return StorageUnitStyle.values.firstWhere(
+      (s) => s.name == variant,
+      orElse: () => StorageUnitStyle.singleDoor,
+    );
+  }
+
+  KitchenChimneyStyle get chimneyStyle {
+    if (type != FurnitureType.kitchenChimney) return KitchenChimneyStyle.wallMounted;
+    return KitchenChimneyStyle.values.firstWhere(
+      (s) => s.name == variant,
+      orElse: () => KitchenChimneyStyle.wallMounted,
+    );
+  }
+
+  FurnitureMaterialPreset get material {
+    return FurnitureMaterialPreset.values.firstWhere(
+      (m) => m.name == materialPreset,
+      orElse: () => FurnitureMaterialPreset.wood,
+    );
+  }
+
+  bool get supportsTextureUpload =>
+      type == FurnitureType.storageUnit ||
+      type == FurnitureType.kitchenChimney ||
+      type == FurnitureType.diningTable;
 
   bool get isWallMounted => type.isWallMounted;
 
@@ -84,6 +135,11 @@ class FurnitureItem {
     String? texturePath,
     bool clearTexture = false,
     bool clearWall = false,
+    String? variant,
+    String? materialPreset,
+    bool clearVariant = false,
+    bool clearMaterialPreset = false,
+    double? heightFromFloor,
   }) {
     return FurnitureItem(
       id: id,
@@ -98,6 +154,9 @@ class FurnitureItem {
       wall: clearWall ? null : (wall ?? this.wall),
       positionFromEdge: positionFromEdge ?? this.positionFromEdge,
       texturePath: clearTexture ? null : (texturePath ?? this.texturePath),
+      variant: clearVariant ? null : (variant ?? this.variant),
+      materialPreset: clearMaterialPreset ? null : (materialPreset ?? this.materialPreset),
+      heightFromFloor: heightFromFloor ?? this.heightFromFloor,
     );
   }
 
@@ -132,6 +191,16 @@ class FurnitureItem {
           depth: 2.5,
           color: '#6D4C41',
         ),
+      FurnitureType.diningTable => FurnitureItem(
+          id: id,
+          type: type,
+          width: 5.0,
+          height: 2.5,
+          depth: 3.0,
+          color: '#6D4C41',
+          variant: DiningTableShape.rectangular.name,
+          materialPreset: FurnitureMaterialPreset.wood.name,
+        ),
       FurnitureType.tvUnit => FurnitureItem(
           id: id,
           type: type,
@@ -163,6 +232,28 @@ class FurnitureItem {
           height: 3.0,
           depth: 1.5,
           color: '#8D6E63',
+        ),
+      FurnitureType.storageUnit => FurnitureItem(
+          id: id,
+          type: type,
+          width: 2.0,
+          height: 3.0,
+          depth: 1.5,
+          color: '#558B2F',
+          variant: StorageUnitStyle.singleDoor.name,
+          materialPreset: FurnitureMaterialPreset.wood.name,
+          heightFromFloor: 0,
+        ),
+      FurnitureType.kitchenChimney => FurnitureItem(
+          id: id,
+          type: type,
+          width: 3.0,
+          height: 2.5,
+          depth: 1.2,
+          color: '#37474F',
+          variant: KitchenChimneyStyle.wallMounted.name,
+          materialPreset: FurnitureMaterialPreset.stainlessSteel.name,
+          heightFromFloor: 5.5,
         ),
       FurnitureType.sink => FurnitureItem(
           id: id,
@@ -245,12 +336,16 @@ class FurnitureItem {
         'wall': wall?.name,
         'positionFromEdge': positionFromEdge,
         'texturePath': texturePath,
+        'variant': variant,
+        'materialPreset': materialPreset,
+        'heightFromFloor': heightFromFloor,
       };
 
   factory FurnitureItem.fromJson(Map<String, dynamic> json) {
+    final type = FurnitureType.values.byName(json['type'] as String);
     return FurnitureItem(
       id: json['id'] as String,
-      type: FurnitureType.values.byName(json['type'] as String),
+      type: type,
       width: (json['width'] as num?)?.toDouble() ?? 6.0,
       height: (json['height'] as num?)?.toDouble() ?? 2.0,
       depth: (json['depth'] as num?)?.toDouble() ?? 6.5,
@@ -263,6 +358,10 @@ class FurnitureItem {
           : null,
       positionFromEdge: (json['positionFromEdge'] as num?)?.toDouble() ?? 1.0,
       texturePath: json['texturePath'] as String?,
+      variant: json['variant'] as String?,
+      materialPreset: json['materialPreset'] as String?,
+      heightFromFloor: (json['heightFromFloor'] as num?)?.toDouble() ??
+          (type == FurnitureType.kitchenChimney ? 5.5 : 0),
     );
   }
 }

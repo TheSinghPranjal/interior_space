@@ -10,6 +10,7 @@ import '../../core/utils/blueprint_placement.dart';
 import '../../models/apartment_layout.dart';
 import '../../models/project_design.dart';
 import '../../models/room_design.dart';
+import '../../providers/apartment_placement_history_provider.dart';
 import '../../providers/project_provider.dart';
 import '../blueprint/room_blueprint_layout_painter.dart';
 
@@ -393,6 +394,11 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
   ) {
     final notifier = ref.read(projectProvider.notifier);
     if (_tempBlueprintX != null && _tempBlueprintY != null) {
+      final moved = (_tempBlueprintX! - placement.blueprintX).abs() > 1e-6 ||
+          (_tempBlueprintY! - placement.blueprintY).abs() > 1e-6;
+      if (moved) {
+        ref.read(apartmentPlacementHistoryProvider.notifier).recordBeforeChange();
+      }
       notifier.updateApartmentPlacement(
         placement.copyWith(
           blueprintX: _tempBlueprintX!,

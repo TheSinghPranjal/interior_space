@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/design_menu_action.dart';
+import '../providers/apartment_placement_history_provider.dart';
 import '../providers/app_mode_provider.dart';
 import '../providers/project_provider.dart';
 import '../providers/room_design_provider.dart';
@@ -44,6 +45,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final saved = await storage.loadCurrent();
     if (saved != null && mounted) {
       ref.read(projectProvider.notifier).load(saved);
+      ref.read(apartmentPlacementHistoryProvider.notifier).clear();
     }
   }
 
@@ -284,6 +286,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           FilledButton(
             onPressed: () {
               ref.read(projectProvider.notifier).resetApartmentLayout();
+              ref.read(apartmentPlacementHistoryProvider.notifier).clear();
               Navigator.pop(context);
             },
             child: const Text('Reset'),
