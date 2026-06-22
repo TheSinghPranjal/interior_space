@@ -9,15 +9,21 @@
     return parseInt(hex.replace('#', ''), 16);
   }
 
-  function loadTexture(url, repeatX, repeatY, callback) {
+  function loadTexture(url, repeatX, repeatY, callback, clamp) {
     if (!url) { callback(null); return; }
-    const key = url + '_' + repeatX + '_' + repeatY;
+    const useClamp = clamp === true;
+    const key = url + '_' + repeatX + '_' + repeatY + '_' + (useClamp ? 'clamp' : 'repeat');
     if (textureCache.has(key)) { callback(textureCache.get(key)); return; }
 
     const loader = new THREE.TextureLoader();
     loader.load(url, (tex) => {
-      tex.wrapS = THREE.RepeatWrapping;
-      tex.wrapT = THREE.RepeatWrapping;
+      if (useClamp) {
+        tex.wrapS = THREE.ClampToEdgeWrapping;
+        tex.wrapT = THREE.ClampToEdgeWrapping;
+      } else {
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+      }
       tex.repeat.set(repeatX, repeatY);
       tex.encoding = THREE.sRGBEncoding;
       textureCache.set(key, tex);
@@ -208,6 +214,10 @@
     updateScene(jsonStr) {
       try {
         this.config = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+        this._cachedMaterials.forEach((m) => m.dispose());
+        this._cachedMaterials.clear();
+        this._materialCache.clear();
+        textureCache.clear();
         this._clearRoom();
         this._applyPerformanceSettings();
         if (this.config.mode === 'apartment') {
@@ -307,11 +317,6 @@
           this.camera.position.set(w * 0.75, h * 1.1, l * 0.75);
           this.camera.lookAt(cx, h * 0.3, cz);
           break;
-        case 'walk':
-        case 'firstPerson':
-          this.camera.position.set(cx, h * 0.12, cz);
-          this.camera.lookAt(cx, h * 0.12, cz - 1);
-          break;
         default:
           this.camera.position.set(w * 0.7, h * 0.55, l * 0.7);
           this.camera.lookAt(cx, h * 0.35, cz);
@@ -339,7 +344,7 @@
       const insideRoom =
         Math.abs(dx) < w * 0.45 && Math.abs(dz) < l * 0.45;
 
-      if (this.cameraMode === 'walk' || this.cameraMode === 'firstPerson' || insideRoom) {
+      if (insideRoom) {
         Object.keys(this.wallMeshes).forEach((id) => {
           this.wallMeshes[id].visible = true;
         });
@@ -393,7 +398,9 @@
         this._buildWalls(w, l, h, cfg, layout);
       }
 
-      if (!lightweight) this._buildWallLabels(layout, h);
+      if (this.config.showWallDimensionLabels !== false) {
+        this._buildWallLabels(layout, h);
+      }
       this._buildDoors(cfg.doors, layout);
       this._buildWindows(cfg.windows, layout);
       this._buildCurtains(cfg.curtains || [], layout);
@@ -497,8 +504,11 @@
         if (!wallCfg) return;
         const procType = wallCfg.surfaceType === 'texture' ? wallCfg.texture : null;
         const texUrl = wallCfg.surfaceType === 'wallpaper' ? wallCfg.textureDataUrl : null;
+        const sizeXFt = len / FT;
+        const sizeYFt = h / FT;
+        const { repeatX, repeatY, clamp } = this._wallTextureRepeat(wallCfg, sizeXFt, sizeYFt);
         const mat = this._makeMaterial(
-          wallCfg.color, 0.85, 0.02, texUrl, procType, len / FT, h / FT
+          wallCfg.color, 0.85, 0.02, texUrl, procType, repeatX, repeatY, clamp
         );
         const midX = (a.x + b.x) / 2;
         const midZ = (a.z + b.z) / 2;
@@ -629,8 +639,16 @@
       this.wallMeshes = {};
     }
 
-    _makeMaterial(color, roughness, metalness, textureUrl, procType, repeatX, repeatY) {
-      const key = [color, roughness, metalness, textureUrl || '', procType || '', repeatX, repeatY].join('|');
+    _wallTextureRepeat(wallCfg, sizeXFt, sizeYFt) {
+      if (wallCfg.surfaceType === 'wallpaper' && wallCfg.textureDataUrl && !wallCfg.tileWallpaper) {
+        return { repeatX: 1, repeatY: 1, clamp: true };
+      }
+      return { repeatX: sizeXFt, repeatY: sizeYFt, clamp: false };
+    }
+
+    _makeMaterial(color, roughness, metalness, textureUrl, procType, repeatX, repeatY, clamp) {
+      const useClamp = clamp === true;
+      const key = [color, roughness, metalness, textureUrl || '', procType || '', repeatX, repeatY, useClamp ? 'c' : 'r'].join('|');
       if (this._materialCache.has(key)) {
         return this._materialCache.get(key);
       }
@@ -643,10 +661,10 @@
       });
 
       if (textureUrl) {
-        loadTexture(textureUrl, repeatX || 2, repeatY || 2, (tex) => {
+        loadTexture(textureUrl, repeatX || 1, repeatY || 1, (tex) => {
           if (tex) mat.map = tex;
           mat.needsUpdate = true;
-        });
+        }, useClamp);
       } else if (procType) {
         const tex = proceduralTexture(procType);
         tex.repeat.set(repeatX || 2, repeatY || 2);
@@ -722,11 +740,12 @@
 
         const procType = wallCfg.surfaceType === 'texture' ? wallCfg.texture : null;
         const texUrl = wallCfg.surfaceType === 'wallpaper' ? wallCfg.textureDataUrl : null;
-        const repeatX = def.size[0] / FT;
-        const repeatY = def.size[1] / FT;
+        const sizeXFt = def.size[0] / FT;
+        const sizeYFt = def.size[1] / FT;
+        const { repeatX, repeatY, clamp } = this._wallTextureRepeat(wallCfg, sizeXFt, sizeYFt);
 
         const mat = this._makeMaterial(
-          wallCfg.color, 0.85, 0.02, texUrl, procType, repeatX, repeatY
+          wallCfg.color, 0.85, 0.02, texUrl, procType, repeatX, repeatY, clamp
         );
 
         const geo = new THREE.PlaneGeometry(def.size[0], def.size[1]);
@@ -816,17 +835,28 @@
       doors.forEach(door => {
         const dw = door.width * FT;
         const dh = door.height * FT;
+        const group = new THREE.Group();
         const geo = new THREE.BoxGeometry(dw, dh, 0.08);
         const mat = this._buildDoorMaterial(door, Math.max(dw / FT, 1), Math.max(dh / FT, 1));
         const mesh = new THREE.Mesh(geo, mat);
         mesh.castShadow = false;
         mesh.receiveShadow = true;
+        group.add(mesh);
+
+        const knobMat = new THREE.MeshStandardMaterial({
+          color: 0xB8860B,
+          roughness: 0.25,
+          metalness: 0.85,
+        });
+        const knob = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 12), knobMat);
+        knob.position.set(dw * 0.38, -dh * 0.05, 0.06);
+        group.add(knob);
 
         const pos = this._wallItemPositionFromLayout(door.wall, door.positionFromEdge, dw, layout);
-        mesh.position.set(pos.x, dh / 2, pos.z);
-        if (door.wall === 'left' || door.wall === 'right') mesh.rotation.y = Math.PI / 2;
-        mesh.rotation.y += (door.rotation || 0) * Math.PI / 180;
-        this.roomGroup.add(mesh);
+        group.position.set(pos.x, dh / 2, pos.z);
+        if (door.wall === 'left' || door.wall === 'right') group.rotation.y = Math.PI / 2;
+        group.rotation.y += (door.rotation || 0) * Math.PI / 180;
+        this.roomGroup.add(group);
       });
     }
 
@@ -1013,7 +1043,7 @@
         const uw = unit.width * FT;
         const uh = unit.height * FT;
         const group = new THREE.Group();
-        const bodyMat = this._makeMaterial(unit.color, 0.5, 0.1, null, 'wood', 1, 1);
+        const bodyMat = this._makeMaterial(unit.color, 0.5, 0.1, unit.textureDataUrl, unit.textureDataUrl ? null : 'wood', 1, 1);
 
         const body = new THREE.Mesh(new THREE.BoxGeometry(uw, uh, 0.08), bodyMat);
         body.position.z = 0.04;
@@ -1119,7 +1149,7 @@
 
         switch (item.type) {
           case 'bed':
-            group = this._buildBedGroup(item);
+            group = this._buildBedGroup(item, tex);
             break;
           case 'wardrobe':
           case 'cupboard':
@@ -1135,31 +1165,31 @@
             group = this._buildSofaGroup(item, tex);
             break;
           case 'table':
-            group = this._buildTableGroup(item);
+            group = this._buildTableGroup(item, tex);
             break;
           case 'chair':
-            group = this._buildChairGroup(item);
+            group = this._buildChairGroup(item, tex);
             break;
           case 'tvUnit':
             group = this._buildTvUnitGroup(item, tex);
             break;
           case 'sink':
-            group = this._buildSinkGroup(item);
+            group = this._buildSinkGroup(item, tex);
             break;
           case 'toilet':
-            group = this._buildToiletGroup(item);
+            group = this._buildToiletGroup(item, tex);
             break;
           case 'washingMachine':
-            group = this._buildWashingMachineGroup(item);
+            group = this._buildWashingMachineGroup(item, tex);
             break;
           case 'bathtub':
-            group = this._buildBathtubGroup(item);
+            group = this._buildBathtubGroup(item, tex);
             break;
           case 'flowerPot':
-            group = this._buildFlowerPotGroup(item);
+            group = this._buildFlowerPotGroup(item, tex);
             break;
           case 'fridge':
-            group = this._buildFridgeGroup(item);
+            group = this._buildFridgeGroup(item, tex);
             break;
           case 'diningTable':
             group = this._buildDiningTableGroup(item);
@@ -1183,15 +1213,13 @@
       });
     }
 
-    _buildBedGroup(item) {
+    _buildBedGroup(item, textureUrl) {
       const fw = item.width * FT;
       const fd = item.depth * FT;
       const group = new THREE.Group();
       const frameH = 0.35 * FT;
       const mattressH = 0.45 * FT;
-      const woodColor = hexColor(item.color);
-
-      const frameMat = new THREE.MeshStandardMaterial({ color: woodColor, roughness: 0.75 });
+      const frameMat = this._makeMaterial(item.color, 0.75, 0.05, textureUrl, textureUrl ? null : 'wood', 1, 1);
       const mattressMat = new THREE.MeshStandardMaterial({ color: 0xf3efe6, roughness: 0.95 });
       const sheetMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
       const pillowMat = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.92 });
@@ -1246,16 +1274,12 @@
       return group;
     }
 
-    _buildSinkGroup(item) {
+    _buildSinkGroup(item, textureUrl) {
       const fw = item.width * FT;
       const fd = item.depth * FT;
       const counterH = 0.9 * FT;
       const group = new THREE.Group();
-      const cabinetMat = new THREE.MeshStandardMaterial({
-        color: hexColor(item.color),
-        roughness: 0.55,
-        metalness: 0.05,
-      });
+      const cabinetMat = this._makeMaterial(item.color, 0.55, 0.05, textureUrl, textureUrl ? null : 'wood', 1, 1);
       const counterMat = new THREE.MeshStandardMaterial({
         color: 0xECEFF1,
         roughness: 0.18,
@@ -1339,15 +1363,11 @@
       return group;
     }
 
-    _buildToiletGroup(item) {
+    _buildToiletGroup(item, textureUrl) {
       const fw = item.width * FT;
       const fd = item.depth * FT;
       const group = new THREE.Group();
-      const porcelain = new THREE.MeshStandardMaterial({
-        color: hexColor(item.color),
-        roughness: 0.1,
-        metalness: 0.02,
-      });
+      const porcelain = this._makeMaterial(item.color, 0.1, 0.02, textureUrl, textureUrl ? null : null, 1, 1);
       const seatMat = new THREE.MeshStandardMaterial({
         color: 0xF5F5F5,
         roughness: 0.45,
@@ -1419,18 +1439,13 @@
       return group;
     }
 
-    _buildWashingMachineGroup(item) {
+    _buildWashingMachineGroup(item, textureUrl) {
       const fw = item.width * FT;
       const fd = item.depth * FT;
       const fh = item.height * FT;
       const group = new THREE.Group();
 
-      const bodyColor = hexColor(item.color);
-      const bodyMat = new THREE.MeshStandardMaterial({
-        color: bodyColor,
-        roughness: 0.35,
-        metalness: 0.12,
-      });
+      const bodyMat = this._makeMaterial(item.color, 0.35, 0.12, textureUrl, textureUrl ? null : null, 1, 1);
       const darkMat = new THREE.MeshStandardMaterial({
         color: 0x37474F,
         roughness: 0.4,
@@ -1538,17 +1553,13 @@
       return group;
     }
 
-    _buildBathtubGroup(item) {
+    _buildBathtubGroup(item, textureUrl) {
       const fw = item.width * FT;
       const fd = item.depth * FT;
       const rimH = item.height * FT;
       const group = new THREE.Group();
 
-      const porcelain = new THREE.MeshStandardMaterial({
-        color: hexColor(item.color),
-        roughness: 0.12,
-        metalness: 0.03,
-      });
+      const porcelain = this._makeMaterial(item.color, 0.12, 0.03, textureUrl, textureUrl ? null : null, 1, 1);
       const innerMat = new THREE.MeshStandardMaterial({
         color: 0xF5F5F5,
         roughness: 0.08,
@@ -1668,18 +1679,14 @@
       return group;
     }
 
-    _buildFlowerPotGroup(item) {
+    _buildFlowerPotGroup(item, textureUrl) {
       const fw = item.width * FT;
       const fh = item.height * FT;
       const fd = item.depth * FT;
       const radius = Math.min(fw, fd) * 0.42;
       const group = new THREE.Group();
 
-      const potMat = new THREE.MeshStandardMaterial({
-        color: hexColor(item.color),
-        roughness: 0.82,
-        metalness: 0.04,
-      });
+      const potMat = this._makeMaterial(item.color, 0.82, 0.04, textureUrl, textureUrl ? null : null, 1, 1);
       const soilMat = new THREE.MeshStandardMaterial({
         color: 0x4E342E,
         roughness: 0.95,
@@ -1791,20 +1798,15 @@
       return group;
     }
 
-    _buildFridgeGroup(item) {
+    _buildFridgeGroup(item, textureUrl) {
       const fw = item.width * FT;
       const fh = item.height * FT;
       const fd = item.depth * FT;
       const group = new THREE.Group();
 
-      const bodyColor = hexColor(item.color);
-      const bodyMat = new THREE.MeshStandardMaterial({
-        color: bodyColor,
-        roughness: 0.28,
-        metalness: 0.35,
-      });
+      const bodyMat = this._makeMaterial(item.color, 0.28, 0.35, textureUrl, textureUrl ? null : null, 1, 1);
       const trimMat = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(bodyColor).multiplyScalar(0.88),
+        color: new THREE.Color(hexColor(item.color)).multiplyScalar(0.88),
         roughness: 0.35,
         metalness: 0.45,
       });
@@ -2201,12 +2203,12 @@
       return group;
     }
 
-    _buildTableGroup(item) {
+    _buildTableGroup(item, textureUrl) {
       const fw = item.width * FT;
       const fh = item.height * FT;
       const fd = item.depth * FT;
       const group = new THREE.Group();
-      const mat = this._makeMaterial(item.color, 0.6, 0.1, null, 'wood', 1, 1);
+      const mat = this._makeMaterial(item.color, 0.6, 0.1, textureUrl, textureUrl ? null : 'wood', 1, 1);
 
       const top = new THREE.Mesh(new THREE.BoxGeometry(fw, 0.08 * FT, fd), mat);
       top.position.y = fh;
@@ -2223,13 +2225,13 @@
       return group;
     }
 
-    _buildChairGroup(item) {
+    _buildChairGroup(item, textureUrl) {
       const cw = item.width * FT;
       const ch = item.height * FT;
       const cd = item.depth * FT;
       const group = new THREE.Group();
-      const fabricMat = this._makeMaterial(item.color, 0.82, 0.04, null, 'fabric', 1, 1);
-      const frameMat = this._makeMaterial(item.color, 0.55, 0.12, null, 'wood', 1, 1);
+      const fabricMat = this._makeMaterial(item.color, 0.82, 0.04, textureUrl, textureUrl ? null : 'fabric', 1, 1);
+      const frameMat = this._makeMaterial(item.color, 0.55, 0.12, textureUrl, textureUrl ? null : 'wood', 1, 1);
 
       const seatHeight = ch * 0.42;
       const seatThickness = 0.07 * FT;
@@ -2417,22 +2419,6 @@
     _animate() {
       requestAnimationFrame(() => this._animate());
       const delta = this.clock.getDelta();
-
-      if (this.cameraMode === 'walk' || this.cameraMode === 'firstPerson') {
-        const speed = 3 * delta;
-        const direction = new THREE.Vector3();
-        this.camera.getWorldDirection(direction);
-        direction.y = 0;
-        direction.normalize();
-
-        const right = new THREE.Vector3();
-        right.crossVectors(direction, new THREE.Vector3(0, 1, 0));
-
-        if (this.walkKeys.forward) this.camera.position.addScaledVector(direction, speed);
-        if (this.walkKeys.backward) this.camera.position.addScaledVector(direction, -speed);
-        if (this.walkKeys.left) this.camera.position.addScaledVector(right, -speed);
-        if (this.walkKeys.right) this.camera.position.addScaledVector(right, speed);
-      }
 
       if (this.fanRotors && this.fanRotors.length) {
         this.fanRotors.forEach((rotor) => {
