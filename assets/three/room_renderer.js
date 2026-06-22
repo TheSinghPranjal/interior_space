@@ -143,6 +143,9 @@
       this.lights = [];
       this.fanRotors = [];
       this.wallMeshes = {};
+      this._materialCache = new Map();
+      this._cachedMaterials = new Set();
+      this.isApartmentMode = false;
       this.cameraMode = 'orbit';
       this.walkVelocity = new THREE.Vector3();
       this.walkKeys = { forward: false, backward: false, left: false, right: false };
@@ -180,8 +183,10 @@
         child.traverse((obj) => {
           if (obj.geometry) obj.geometry.dispose();
           if (obj.material) {
-            if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
-            else obj.material.dispose();
+            const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+            mats.forEach((m) => {
+              if (!this._cachedMaterials.has(m)) m.dispose();
+            });
           }
         });
       }
@@ -191,10 +196,20 @@
       this.wallMeshes = {};
     }
 
+    _applyPerformanceSettings() {
+      const apartment = this.config && this.config.mode === 'apartment';
+      this.isApartmentMode = apartment;
+      this.renderer.shadowMap.enabled = !apartment;
+      this.renderer.setPixelRatio(
+        Math.min(window.devicePixelRatio, apartment ? 1.5 : 2)
+      );
+    }
+
     updateScene(jsonStr) {
       try {
         this.config = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
         this._clearRoom();
+        this._applyPerformanceSettings();
         if (this.config.mode === 'apartment') {
           this._buildApartment();
         } else {
@@ -355,10 +370,11 @@
       this.lights.push(hemi);
     }
 
-    _buildRoomContents(cfg, targetGroup) {
+    _buildRoomContents(cfg, targetGroup, opts = {}) {
       const savedGroup = this.roomGroup;
       const savedWallMeshes = this.wallMeshes;
       const savedConfig = this.config;
+      const lightweight = opts.lightweight || false;
 
       this.roomGroup = targetGroup;
       this.wallMeshes = {};
@@ -369,15 +385,15 @@
 
       if (layout.polygon) {
         this._buildPolygonFloor(layout.polygon, cfg.floor);
-        this._buildPolygonCeiling(layout.polygon, h, cfg.ceiling);
+        if (!lightweight) this._buildPolygonCeiling(layout.polygon, h, cfg.ceiling);
         this._buildPolygonWalls(layout, h, cfg);
       } else {
         this._buildFloor(w, l, cfg.floor);
-        this._buildCeiling(w, l, h, cfg.ceiling);
+        if (!lightweight) this._buildCeiling(w, l, h, cfg.ceiling);
         this._buildWalls(w, l, h, cfg, layout);
       }
 
-      this._buildWallLabels(layout, h);
+      if (!lightweight) this._buildWallLabels(layout, h);
       this._buildDoors(cfg.doors, layout);
       this._buildWindows(cfg.windows, layout);
       this._buildCurtains(cfg.curtains || [], layout);
@@ -385,8 +401,21 @@
       this._buildWallTvUnits(cfg.wallTvUnits || [], layout);
       this._buildCupboards(cfg.cupboards, w, l, h);
       this._buildFurniture(cfg.furniture, w, l);
-      this._buildLights(cfg.lights, w, l, h);
-      this._buildFans(cfg.fans || [], w, l, h);
+      if (!lightweight) {
+        this._buildLights(cfg.lights, w, l, h);
+        this._buildFans(cfg.fans || [], w, l, h);
+      } else {
+        this._buildFans(cfg.fans || [], w, l, h, { animate: false });
+      }
+
+      if (lightweight) {
+        targetGroup.traverse((obj) => {
+          if (obj.isMesh) {
+            obj.castShadow = false;
+            obj.receiveShadow = false;
+          }
+        });
+      }
 
       this.roomGroup = savedGroup;
       this.wallMeshes = savedWallMeshes;
@@ -572,19 +601,21 @@
       const base = new THREE.Mesh(new THREE.PlaneGeometry(aptW, aptL), baseMat);
       base.rotation.x = -Math.PI / 2;
       base.position.y = -0.01;
-      base.receiveShadow = true;
+      base.receiveShadow = false;
       this.roomGroup.add(base);
 
       const gridHelper = new THREE.GridHelper(Math.max(aptW, aptL), 12, 0x888888, 0xcccccc);
       gridHelper.position.y = 0.001;
       this.roomGroup.add(gridHelper);
 
+      const lightweight = this.config.performanceMode !== false;
+
       (this.config.placements || []).forEach((placement) => {
         const cfg = placement.room;
         if (!cfg || !cfg.room) return;
 
         const subGroup = new THREE.Group();
-        const dims = this._buildRoomContents(cfg, subGroup);
+        const dims = this._buildRoomContents(cfg, subGroup, { lightweight });
         maxH = Math.max(maxH, dims.h);
 
         const wx = (placement.blueprintX - 0.5) * aptW;
@@ -599,6 +630,11 @@
     }
 
     _makeMaterial(color, roughness, metalness, textureUrl, procType, repeatX, repeatY) {
+      const key = [color, roughness, metalness, textureUrl || '', procType || '', repeatX, repeatY].join('|');
+      if (this._materialCache.has(key)) {
+        return this._materialCache.get(key);
+      }
+
       const mat = new THREE.MeshStandardMaterial({
         color: hexColor(color),
         roughness: roughness,
@@ -616,6 +652,9 @@
         tex.repeat.set(repeatX || 2, repeatY || 2);
         mat.map = tex;
       }
+
+      this._materialCache.set(key, mat);
+      this._cachedMaterials.add(mat);
       return mat;
     }
 
@@ -2007,7 +2046,8 @@
       });
     }
 
-    _buildFans(fans, w, l, h) {
+    _buildFans(fans, w, l, h, opts = {}) {
+      const animate = opts.animate !== false;
       fans.forEach((fan) => {
         const x = (fan.positionX - 0.5) * w;
         const z = (fan.positionY - 0.5) * l;
@@ -2070,7 +2110,7 @@
         group.traverse((obj) => {
           if (obj.isMesh) obj.castShadow = false;
         });
-        this.fanRotors.push(rotor);
+        if (animate) this.fanRotors.push(rotor);
         this.roomGroup.add(group);
       });
     }
@@ -2124,7 +2164,7 @@
       }
 
       this.controls.update();
-      this._updateWallVisibility();
+      if (!this.isApartmentMode) this._updateWallVisibility();
       this.renderer.render(this.scene, this.camera);
     }
   }
