@@ -11,6 +11,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 class TextureService {
   static const _cacheKey = 'texture_cache_index';
   final _picker = ImagePicker();
+  final _dataUrlCache = <String, String?>{};
+
+  void clearDataUrlCache() => _dataUrlCache.clear();
 
   Future<String?> pickAndSaveTexture() async {
     try {
@@ -67,6 +70,14 @@ class TextureService {
 
   Future<String?> resolveTextureDataUrl(String? path) async {
     if (path == null) return null;
+    if (_dataUrlCache.containsKey(path)) return _dataUrlCache[path];
+
+    final result = await _resolveTextureDataUrl(path);
+    _dataUrlCache[path] = result;
+    return result;
+  }
+
+  Future<String?> _resolveTextureDataUrl(String path) async {
     if (path.startsWith('memory://')) {
       final id = path.replaceFirst('memory://', '');
       final prefs = await SharedPreferences.getInstance();
