@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../core/utils/blueprint_placement.dart';
 import '../../core/utils/color_utils.dart';
 import '../../models/ac_unit_config.dart';
@@ -860,7 +861,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       child: Material(
         elevation: 4,
         borderRadius: BorderRadius.circular(20),
-        color: Colors.orange.shade700.withValues(alpha: 1),
+        color: AppTheme.primary,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           child: Row(
@@ -1057,7 +1058,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: isDragging ? 0.9 : 0.75),
                     border: Border.all(
-                      color: isSelected ? Colors.orange : Colors.black54,
+                      color: isSelected ? AppTheme.primary : Colors.black54,
                       width: isSelected ? 2.5 : 1,
                     ),
                     borderRadius: BorderRadius.circular(4),
