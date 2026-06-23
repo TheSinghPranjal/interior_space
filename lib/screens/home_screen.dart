@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/theme/app_spacing.dart';
+import '../core/theme/app_theme.dart';
 import '../models/design_menu_action.dart';
 import '../providers/apartment_placement_history_provider.dart';
 import '../providers/app_mode_provider.dart';
@@ -68,12 +70,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     setState(() => _selectedTab = tab);
   }
 
-  void _toggleAppSpaceMode() {
-    final current = ref.read(appSpaceModeProvider);
-    ref.read(appSpaceModeProvider.notifier).state =
-        current == AppSpaceMode.interior ? AppSpaceMode.apartment : AppSpaceMode.interior;
-  }
-
   void _onDesignMenuAction(DesignMenuAction action) {
     if (action == DesignMenuAction.blueprint) {
       setState(() => _selectedTab = MainNavTab.blueprint);
@@ -98,42 +94,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return switch (action) {
       DesignMenuAction.walls => const EditorScreen(
           title: 'Walls',
-          icon: Icons.wallpaper,
+          icon: Icons.wallpaper_outlined,
           child: WallsEditor(),
         ),
       DesignMenuAction.flooring => const EditorScreen(
           title: 'Flooring',
-          icon: Icons.grid_on,
+          icon: Icons.grid_on_outlined,
           child: FlooringEditor(),
         ),
       DesignMenuAction.ceiling => const EditorScreen(
           title: 'Ceiling',
-          icon: Icons.roofing,
+          icon: Icons.roofing_outlined,
           child: CeilingEditor(),
         ),
       DesignMenuAction.doors => const EditorScreen(
           title: 'Doors',
-          icon: Icons.door_front_door,
+          icon: Icons.door_front_door_outlined,
           child: DoorsEditor(),
         ),
       DesignMenuAction.windows => const EditorScreen(
           title: 'Windows, Curtains & AC',
-          icon: Icons.window,
+          icon: Icons.window_outlined,
           child: WindowsEditor(),
         ),
       DesignMenuAction.cupboards => const EditorScreen(
           title: 'Cupboards',
-          icon: Icons.kitchen,
+          icon: Icons.kitchen_outlined,
           child: CupboardsEditor(),
         ),
       DesignMenuAction.furniture => const EditorScreen(
           title: 'Furniture',
-          icon: Icons.chair,
+          icon: Icons.chair_outlined,
           child: FurnitureEditor(),
         ),
       DesignMenuAction.lighting => const EditorScreen(
           title: 'Lighting and Fan',
-          icon: Icons.lightbulb,
+          icon: Icons.lightbulb_outline,
           child: LightingEditor(),
         ),
       _ => null,
@@ -146,33 +142,56 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final activeRoom = ref.watch(roomDesignProvider);
     final appMode = ref.watch(appSpaceModeProvider);
     final isApartment = appMode == AppSpaceMode.apartment;
+    final theme = Theme.of(context);
 
     ref.listen(projectProvider, (_, next) {
       ref.read(projectStorageProvider).saveCurrent(next);
     });
 
     return Scaffold(
+      backgroundColor: AppTheme.surface,
       appBar: AppBar(
+        titleSpacing: AppSpacing.md,
         title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(appMode.title),
+            Text(appMode.title, style: theme.textTheme.titleLarge),
             Text(
               isApartment
-                  ? '${project.apartmentLayout.name} • ${project.apartmentLayout.placements.length} on plan'
-                  : '${project.apartmentLayout.name} • ${activeRoom.name}',
-              style: Theme.of(context).textTheme.bodySmall,
+                  ? '${project.apartmentLayout.name} · ${project.apartmentLayout.placements.length} on plan'
+                  : '${project.apartmentLayout.name} · ${activeRoom.name}',
+              style: theme.textTheme.bodySmall,
             ),
           ],
         ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
+            child: SegmentedButton<AppSpaceMode>(
+              segments: const [
+                ButtonSegment(
+                  value: AppSpaceMode.interior,
+                  label: Text('Interior'),
+                  icon: Icon(Icons.meeting_room_outlined, size: 18),
+                ),
+                ButtonSegment(
+                  value: AppSpaceMode.apartment,
+                  label: Text('Apartment'),
+                  icon: Icon(Icons.apartment_outlined, size: 18),
+                ),
+              ],
+              selected: {appMode},
+              onSelectionChanged: (selection) {
+                ref.read(appSpaceModeProvider.notifier).state = selection.first;
+              },
+            ),
+          ),
+        ),
         actions: [
           IconButton(
-            icon: Icon(isApartment ? Icons.meeting_room_outlined : Icons.apartment_outlined),
-            tooltip: isApartment ? 'Switch to Interior Space' : 'Switch to Apartment Space',
-            onPressed: _toggleAppSpaceMode,
-          ),
-          IconButton(
             icon: const Icon(Icons.save_outlined),
-            tooltip: 'Save',
+            tooltip: 'Save project',
             onPressed: () async {
               await ref.read(projectStorageProvider).saveProject(project);
               if (mounted) {
@@ -182,12 +201,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               }
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: isApartment ? 'Reset apartment layout' : 'Reset current room',
-            onPressed: () => isApartment
-                ? _confirmResetApartment(context)
-                : _confirmReset(context, activeRoom.name),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            tooltip: 'More actions',
+            onSelected: (value) {
+              if (value == 'reset') {
+                isApartment
+                    ? _confirmResetApartment(context)
+                    : _confirmReset(context, activeRoom.name);
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'reset',
+                child: Row(
+                  children: [
+                    Icon(Icons.refresh, size: 20, color: theme.colorScheme.error),
+                    const SizedBox(width: 12),
+                    Text(
+                      isApartment ? 'Reset apartment layout' : 'Reset current room',
+                      style: TextStyle(color: theme.colorScheme.error),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -199,31 +237,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
       floatingActionButton: isApartment ? null : DesignMenuFab(onAction: _onDesignMenuAction),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedTab.index,
-        onDestinationSelected: _onTabSelected,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.meeting_room_outlined),
-            selectedIcon: Icon(Icons.meeting_room),
-            label: 'Room',
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppTheme.navBarBg,
+          border: Border(
+            top: BorderSide(color: AppTheme.border.withValues(alpha: 0.8)),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.architecture_outlined),
-            selectedIcon: Icon(Icons.architecture),
-            label: 'Blueprint',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.view_in_ar_outlined),
-            selectedIcon: Icon(Icons.view_in_ar),
-            label: '3D',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.auto_awesome_outlined),
-            selectedIcon: Icon(Icons.auto_awesome),
-            label: 'AI Assist',
-          ),
-        ],
+        ),
+        child: NavigationBar(
+          selectedIndex: _selectedTab.index,
+          onDestinationSelected: _onTabSelected,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.meeting_room_outlined),
+              selectedIcon: Icon(Icons.meeting_room),
+              label: 'Room',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.architecture_outlined),
+              selectedIcon: Icon(Icons.architecture),
+              label: 'Blueprint',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.view_in_ar_outlined),
+              selectedIcon: Icon(Icons.view_in_ar),
+              label: '3D',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.auto_awesome_outlined),
+              selectedIcon: Icon(Icons.auto_awesome),
+              label: 'AI Assist',
+            ),
+          ],
+        ),
       ),
     );
   }
