@@ -9,9 +9,11 @@ import '../../models/window_config.dart';
 import '../../providers/room_design_provider.dart';
 import '../../services/texture_service.dart';
 import '../common/color_picker_field.dart';
+import '../common/editor_item_card.dart';
 import '../common/dimension_slider.dart';
 import '../common/item_editor_header.dart';
 import '../common/section_card.dart';
+import '../common/texture_upload_field.dart';
 
 class WindowsEditor extends ConsumerWidget {
   const WindowsEditor({super.key});
@@ -95,12 +97,8 @@ class _WindowCardState extends ConsumerState<_WindowCard> {
       });
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.grey.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
+    return EditorItemCard(
+      child: Column(
           children: [
             ItemEditorHeader(
               title: 'Window',
@@ -110,12 +108,8 @@ class _WindowCardState extends ConsumerState<_WindowCard> {
               onDelete: () => notifier.removeWindow(window.id),
             ),
             if (!enabled)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  'Tap edit to change parameters, or drag in Blueprint view',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                ),
+              const EditorHelperText(
+                'Tap edit to change parameters, or drag in Blueprint view',
               ),
             DropdownButtonFormField<WallId>(
               value: window.wall,
@@ -191,9 +185,8 @@ class _WindowCardState extends ConsumerState<_WindowCard> {
               suffix: '°',
               onChanged: enabled ? (v) => notifier.updateWindow(window.copyWith(rotation: v)) : null,
             ),
-            Text(
+            EditorHelperText(
               'Wall length: ${window.wallLengthFt(design.dimensions).toStringAsFixed(1)} ft',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
             ColorPickerField(
               label: 'Glass Color',
@@ -208,7 +201,6 @@ class _WindowCardState extends ConsumerState<_WindowCard> {
               onChanged: (c) => notifier.updateWindow(window.copyWith(frameColor: c)),
             ),
           ],
-        ),
       ),
     );
   }
@@ -241,12 +233,8 @@ class _AcUnitCardState extends ConsumerState<_AcUnitCard> {
       });
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.grey.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
+    return EditorItemCard(
+      child: Column(
           children: [
             ItemEditorHeader(
               title: 'Split AC Unit',
@@ -256,12 +244,8 @@ class _AcUnitCardState extends ConsumerState<_AcUnitCard> {
               onDelete: () => notifier.removeAcUnit(unit.id),
             ),
             if (!enabled)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  'Tap edit to change parameters, or drag in Blueprint view',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                ),
+              const EditorHelperText(
+                'Tap edit to change parameters, or drag in Blueprint view',
               ),
             DropdownButtonFormField<WallId>(
               value: unit.wall,
@@ -339,9 +323,8 @@ class _AcUnitCardState extends ConsumerState<_AcUnitCard> {
               suffix: '°',
               onChanged: enabled ? (v) => notifier.updateAcUnit(unit.copyWith(rotation: v)) : null,
             ),
-            Text(
+            EditorHelperText(
               'Wall length: ${unit.wallLengthFt(design.dimensions).toStringAsFixed(1)} ft',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
             ColorPickerField(
               label: 'AC Color',
@@ -350,18 +333,21 @@ class _AcUnitCardState extends ConsumerState<_AcUnitCard> {
               onChanged: (c) => notifier.updateAcUnit(unit.copyWith(color: c)),
             ),
             if (enabled)
-              FilledButton.icon(
-                onPressed: () async {
+              TextureUploadField(
+                texturePath: unit.texturePath,
+                uploadLabel: 'Upload AC Image',
+                changeLabel: 'Change AC Image',
+                onPick: () async {
                   final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
                   if (path != null) {
                     notifier.updateAcUnit(unit.copyWith(texturePath: path));
                   }
                 },
-                icon: const Icon(Icons.upload_file),
-                label: Text(unit.texturePath == null ? 'Upload AC Image' : 'Change AC Image'),
+                onClear: unit.texturePath == null
+                    ? null
+                    : () => notifier.updateAcUnit(unit.copyWith(texturePath: null)),
               ),
           ],
-        ),
       ),
     );
   }
@@ -394,12 +380,8 @@ class _CurtainCardState extends ConsumerState<_CurtainCard> {
       });
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.grey.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
+    return EditorItemCard(
+      child: Column(
           children: [
             ItemEditorHeader(
               title: 'Curtains',
@@ -503,7 +485,6 @@ class _CurtainCardState extends ConsumerState<_CurtainCard> {
               onChanged: (c) => notifier.updateCurtain(curtain.copyWith(color: c)),
             ),
           ],
-        ),
       ),
     );
   }
