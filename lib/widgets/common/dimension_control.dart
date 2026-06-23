@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../core/theme/app_theme.dart';
-
 /// Dimension control with slider, stepper buttons, and numeric field.
 class DimensionControl extends StatefulWidget {
   const DimensionControl({
@@ -79,6 +77,7 @@ class _DimensionControlState extends State<DimensionControl> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final clampedMax = widget.max < widget.min ? widget.min : widget.max;
     final sliderValue = widget.value.clamp(widget.min, clampedMax).toDouble();
     final divisions = ((clampedMax - widget.min) / widget.step).round().clamp(1, 400);
@@ -111,7 +110,8 @@ class _DimensionControlState extends State<DimensionControl> {
                 ],
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppTheme.primary,
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
                     ),
                 decoration: InputDecoration(
                   isDense: true,
