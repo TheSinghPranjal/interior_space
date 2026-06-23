@@ -31,7 +31,7 @@ class FurnitureEditor extends ConsumerWidget {
             runSpacing: 8,
             children: FurnitureType.values.map((type) {
               return ActionChip(
-                avatar: Icon(type.icon, size: 18),
+                avatar: Icon(type.icon, size: 16),
                 label: Text(type.label),
                 onPressed: () => ref.read(roomDesignProvider.notifier).addFurniture(type),
               );

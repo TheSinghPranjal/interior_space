@@ -34,7 +34,7 @@ class BlueprintView extends ConsumerWidget {
           ),
           child: Row(
             children: [
-              Icon(Icons.architecture, size: 20, color: theme.colorScheme.primary),
+              Icon(Icons.architecture, size: 18, color: theme.colorScheme.primary),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
@@ -45,7 +45,7 @@ class BlueprintView extends ConsumerWidget {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.info_outline, size: 20),
+                icon: const Icon(Icons.info_outline, size: 18),
                 onPressed: () => _showHelp(context),
                 tooltip: 'Help',
               ),

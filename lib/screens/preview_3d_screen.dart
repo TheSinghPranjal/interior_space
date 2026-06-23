@@ -87,7 +87,7 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.touch_app_outlined, size: 14, color: Colors.white.withValues(alpha: 0.45)),
+              Icon(Icons.touch_app_outlined, size: 12, color: Colors.white.withValues(alpha: 0.45)),
               const SizedBox(width: 6),
               Text(
                 isApartment

@@ -35,12 +35,12 @@ class CupboardsEditor extends ConsumerWidget {
             runSpacing: 8,
             children: [
               ActionChip(
-                avatar: const Icon(Icons.kitchen, size: 18),
+                avatar: const Icon(Icons.kitchen, size: 16),
                 label: const Text('Cupboard'),
                 onPressed: notifier.addCupboard,
               ),
               ActionChip(
-                avatar: const Icon(Icons.tv, size: 18),
+                avatar: const Icon(Icons.tv, size: 16),
                 label: const Text('Wall TV'),
                 onPressed: notifier.addWallTvUnit,
               ),

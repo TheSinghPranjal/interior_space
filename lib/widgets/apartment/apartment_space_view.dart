@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/theme/app_spacing.dart';
 import '../../core/constants/room_constants.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../models/apartment_layout.dart';
+import '../../models/room_design.dart';
 import '../../providers/apartment_placement_history_provider.dart';
 import '../../providers/project_provider.dart';
-import '../common/dimension_control.dart';
 import '../../screens/preview_3d_screen.dart';
+import '../common/dimension_control.dart';
 import 'apartment_canvas.dart';
 
 class ApartmentSpaceView extends ConsumerWidget {
@@ -24,6 +25,7 @@ class ApartmentSpaceView extends ConsumerWidget {
     final layout = project.apartmentLayout;
     final theme = Theme.of(context);
     final historyNotifier = ref.read(apartmentPlacementHistoryProvider.notifier);
+    final isLandscape = MediaQuery.orientationOf(context) == Orientation.landscape;
 
     void undoMove() {
       if (history.canUndo) historyNotifier.undo();
@@ -44,180 +46,245 @@ class ApartmentSpaceView extends ConsumerWidget {
       },
       child: Focus(
         autofocus: true,
-        child: Column(
-      children: [
-        if (!showBlueprintOnly)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.md,
-              AppSpacing.lg,
-              AppSpacing.sm,
-            ),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerLow,
-              border: Border(
-                bottom: BorderSide(
-                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
-                ),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Column(
               children: [
-                Row(
-                  children: [
-                    Icon(Icons.apartment, size: 20, color: theme.colorScheme.primary),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Arrange rooms on the floor plan. Switch to Interior Space to edit a room.',
-                        style: theme.textTheme.bodySmall,
+                if (!showBlueprintOnly)
+                  Flexible(
+                    fit: FlexFit.loose,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: isLandscape
+                            ? constraints.maxHeight * 0.45
+                            : constraints.maxHeight * 0.55,
+                      ),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.lg,
+                          AppSpacing.md,
+                          AppSpacing.lg,
+                          AppSpacing.sm,
+                        ),
+                        child: _ApartmentHeaderPanel(
+                          layout: layout,
+                          rooms: rooms,
+                          compact: isLandscape,
+                          canUndo: history.canUndo,
+                          canRedo: history.canRedo,
+                          onUndo: undoMove,
+                          onRedo: redoMove,
+                          onAddRoom: (roomId) {
+                            ref.read(projectProvider.notifier).addRoomToApartment(roomId);
+                          },
+                        ),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text('Your Rooms — ${layout.name}', style: theme.textTheme.titleSmall),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 48,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: rooms.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (context, index) {
-                      final room = rooms[index];
-                      final onBlueprint =
-                          layout.placements.where((p) => p.roomId == room.id).length;
-                      return Container(
-                        padding: const EdgeInsets.only(right: 4),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                            color: onBlueprint > 0
-                                ? theme.colorScheme.primary.withValues(alpha: 0.5)
-                                : theme.colorScheme.outline.withValues(alpha: 0.3),
+                  ),
+                if (showBlueprintOnly)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.sm + 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
+                      border: Border(
+                        bottom: BorderSide(
+                          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.architecture, size: 18, color: theme.colorScheme.primary),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            'Apartment Blueprint • ${layout.name} • ${layout.placements.length} rooms placed • '
+                            '${layout.widthFt.toStringAsFixed(0)}×${layout.lengthFt.toStringAsFixed(0)} ft',
+                            style: theme.textTheme.bodySmall,
+                            maxLines: isLandscape ? 1 : 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
+                        ),
+                        _ApartmentUndoRedoButtons(
+                          canUndo: history.canUndo,
+                          canRedo: history.canRedo,
+                          onUndo: undoMove,
+                          onRedo: redoMove,
+                        ),
+                      ],
+                    ),
+                  ),
+                const Expanded(child: ApartmentCanvas()),
+                if (!showBlueprintOnly)
+                  Padding(
+                    padding: EdgeInsets.all(isLandscape ? AppSpacing.sm : AppSpacing.md),
+                    child: FilledButton.icon(
+                      onPressed: layout.placements.isEmpty
+                          ? null
+                          : () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const Preview3DScreen(apartmentMode: true),
+                                  fullscreenDialog: true,
+                                ),
+                              );
+                            },
+                      icon: const Icon(Icons.view_in_ar),
+                      label: const Text('Show Apartment 3D'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: Size.fromHeight(isLandscape ? 40 : 48),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _ApartmentHeaderPanel extends StatelessWidget {
+  const _ApartmentHeaderPanel({
+    required this.layout,
+    required this.rooms,
+    required this.compact,
+    required this.canUndo,
+    required this.canRedo,
+    required this.onUndo,
+    required this.onRedo,
+    required this.onAddRoom,
+  });
+
+  final ApartmentLayout layout;
+  final List<RoomDesign> rooms;
+  final bool compact;
+  final bool canUndo;
+  final bool canRedo;
+  final VoidCallback onUndo;
+  final VoidCallback onRedo;
+  final ValueChanged<String> onAddRoom;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLow,
+        border: Border(
+          bottom: BorderSide(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!compact)
+            Row(
+              children: [
+                Icon(Icons.apartment, size: 18, color: theme.colorScheme.primary),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    'Arrange rooms on the floor plan. Switch to Interior Space to edit a room.',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          if (!compact) const SizedBox(height: 10),
+          Text('Your Rooms — ${layout.name}', style: theme.textTheme.titleSmall),
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            height: compact ? 40 : 48,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: rooms.length,
+              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+              itemBuilder: (context, index) {
+                final room = rooms[index];
+                final onBlueprint =
+                    layout.placements.where((p) => p.roomId == room.id).length;
+                return Container(
+                  padding: const EdgeInsets.only(right: 4),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: onBlueprint > 0
+                          ? theme.colorScheme.primary.withValues(alpha: 0.5)
+                          : theme.colorScheme.outline.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: compact ? 6 : 8,
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.meeting_room, size: 16, color: theme.colorScheme.primary),
-                                  const SizedBox(width: 6),
-                                  Text(room.name, style: theme.textTheme.labelMedium),
-                                  if (onBlueprint > 0) ...[
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '($onBlueprint)',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: theme.colorScheme.primary,
-                                      ),
-                                    ),
-                                  ],
-                                ],
+                            Icon(
+                              Icons.meeting_room,
+                              size: 14,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(room.name, style: theme.textTheme.labelMedium),
+                            if (onBlueprint > 0) ...[
+                              const SizedBox(width: 4),
+                              Text(
+                                '($onBlueprint)',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: theme.colorScheme.primary,
+                                ),
                               ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.add_circle_outline, size: 22),
-                              tooltip: 'Add to blueprint',
-                              visualDensity: VisualDensity.compact,
-                              onPressed: () {
-                                ref.read(projectProvider.notifier).addRoomToApartment(room.id);
-                              },
-                            ),
+                            ],
                           ],
                         ),
-                      );
-                    },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline, size: 20),
+                        tooltip: 'Add to blueprint',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => onAddRoom(room.id),
+                      ),
+                    ],
                   ),
-                ),
-                if (layout.placements.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: AppSpacing.xs),
-                    child: Text(
-                      '${layout.placements.length} room(s) on blueprint • Long-press to move',
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ),
-                const SizedBox(height: 12),
-                _ApartmentSizeControls(
-                  layout: layout,
-                  canUndo: history.canUndo,
-                  canRedo: history.canRedo,
-                  onUndo: undoMove,
-                  onRedo: redoMove,
-                ),
-              ],
+                );
+              },
             ),
           ),
-        if (showBlueprintOnly)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-              vertical: AppSpacing.sm + 2,
-            ),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
-              border: Border(
-                bottom: BorderSide(
-                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-                ),
+          if (layout.placements.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: Text(
+                '${layout.placements.length} room(s) on blueprint • Long-press to move',
+                style: theme.textTheme.bodySmall,
               ),
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.architecture, size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Apartment Blueprint • ${layout.name} • ${layout.placements.length} rooms placed • '
-                    '${layout.widthFt.toStringAsFixed(0)}×${layout.lengthFt.toStringAsFixed(0)} ft',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ),
-                _ApartmentUndoRedoButtons(
-                  canUndo: history.canUndo,
-                  canRedo: history.canRedo,
-                  onUndo: undoMove,
-                  onRedo: redoMove,
-                ),
-              ],
-            ),
+          SizedBox(height: compact ? AppSpacing.sm : 12),
+          _ApartmentSizeControls(
+            layout: layout,
+            compact: compact,
+            canUndo: canUndo,
+            canRedo: canRedo,
+            onUndo: onUndo,
+            onRedo: onRedo,
           ),
-        const Expanded(child: ApartmentCanvas()),
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: FilledButton.icon(
-            onPressed: layout.placements.isEmpty
-                ? null
-                : () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const Preview3DScreen(apartmentMode: true),
-                        fullscreenDialog: true,
-                      ),
-                    );
-                  },
-            icon: const Icon(Icons.view_in_ar),
-            label: const Text('Show Apartment 3D'),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
-            ),
-          ),
-        ),
-      ],
-        ),
+        ],
       ),
     );
   }
@@ -226,6 +293,7 @@ class ApartmentSpaceView extends ConsumerWidget {
 class _ApartmentSizeControls extends ConsumerStatefulWidget {
   const _ApartmentSizeControls({
     required this.layout,
+    required this.compact,
     required this.canUndo,
     required this.canRedo,
     required this.onUndo,
@@ -233,6 +301,7 @@ class _ApartmentSizeControls extends ConsumerStatefulWidget {
   });
 
   final ApartmentLayout layout;
+  final bool compact;
   final bool canUndo;
   final bool canRedo;
   final VoidCallback onUndo;
@@ -243,7 +312,21 @@ class _ApartmentSizeControls extends ConsumerStatefulWidget {
 }
 
 class _ApartmentSizeControlsState extends ConsumerState<_ApartmentSizeControls> {
-  bool _expanded = true;
+  late bool _expanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _expanded = !widget.compact;
+  }
+
+  @override
+  void didUpdateWidget(covariant _ApartmentSizeControls oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.compact && widget.compact && _expanded) {
+      setState(() => _expanded = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -265,7 +348,7 @@ class _ApartmentSizeControlsState extends ConsumerState<_ApartmentSizeControls> 
               icon: AnimatedRotation(
                 turns: _expanded ? 0 : 0.5,
                 duration: const Duration(milliseconds: 200),
-                child: const Icon(Icons.keyboard_arrow_down, size: 22),
+                child: const Icon(Icons.keyboard_arrow_down, size: 20),
               ),
             ),
             _ApartmentUndoRedoButtons(

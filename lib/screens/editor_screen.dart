@@ -30,7 +30,7 @@ class EditorScreen extends StatelessWidget {
                 color: theme.colorScheme.primaryContainer.withValues(alpha: 0.45),
                 borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
               ),
-              child: Icon(icon, size: 20, color: theme.colorScheme.primary),
+              child: Icon(icon, size: 18, color: theme.colorScheme.primary),
             ),
             const SizedBox(width: AppSpacing.sm + 4),
             Text(title),

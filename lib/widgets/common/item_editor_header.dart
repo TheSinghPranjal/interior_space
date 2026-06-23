@@ -32,7 +32,7 @@ class ItemEditorHeader extends StatelessWidget {
               color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
               borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
             ),
-            child: Icon(icon, size: 18, color: theme.colorScheme.primary),
+            child: Icon(icon, size: 16, color: theme.colorScheme.primary),
           ),
           const SizedBox(width: AppSpacing.sm),
         ],
@@ -42,7 +42,7 @@ class ItemEditorHeader extends StatelessWidget {
         IconButton(
           icon: Icon(
             editingEnabled ? Icons.edit_off_outlined : Icons.edit_outlined,
-            size: 20,
+            size: 18,
           ),
           tooltip: editingEnabled ? 'Lock parameters' : 'Edit parameters',
           style: IconButton.styleFrom(
@@ -54,7 +54,7 @@ class ItemEditorHeader extends StatelessWidget {
           onPressed: onToggleEdit,
         ),
         IconButton(
-          icon: const Icon(Icons.delete_outline, size: 20),
+          icon: const Icon(Icons.delete_outline, size: 18),
           tooltip: 'Delete',
           style: IconButton.styleFrom(
             foregroundColor: AppTheme.destructive,

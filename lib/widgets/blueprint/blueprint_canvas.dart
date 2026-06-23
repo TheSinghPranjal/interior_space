@@ -870,26 +870,26 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
               if (canRotate) ...[
                 IconButton(
                   visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.rotate_left, color: Colors.white, size: 20),
+                  icon: const Icon(Icons.rotate_left, color: Colors.white, size: 18),
                   tooltip: 'Rotate left',
                   onPressed: () => _rotateSelected(design, -15),
                 ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.rotate_right, color: Colors.white, size: 20),
+                  icon: const Icon(Icons.rotate_right, color: Colors.white, size: 18),
                   tooltip: 'Rotate right',
                   onPressed: () => _rotateSelected(design, 15),
                 ),
               ],
               IconButton(
                 visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.delete_outline, color: Colors.white, size: 20),
+                icon: const Icon(Icons.delete_outline, color: Colors.white, size: 18),
                 tooltip: 'Delete',
                 onPressed: () => _deleteSelected(design),
               ),
               IconButton(
                 visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.close, color: Colors.white, size: 18),
+                icon: const Icon(Icons.close, color: Colors.white, size: 16),
                 tooltip: 'Deselect',
                 onPressed: _deselect,
               ),

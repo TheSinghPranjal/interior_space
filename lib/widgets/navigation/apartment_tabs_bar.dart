@@ -83,7 +83,7 @@ class ApartmentTabsBar extends ConsumerWidget {
                       color: Colors.white.withValues(
                         alpha: project.canAddApartment ? 1 : 0.6,
                       ),
-                      size: 22,
+                      size: 20,
                     ),
                   ),
                 ),
@@ -165,7 +165,7 @@ class _ApartmentTab extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ApartmentBuildingIcon(color: color, size: 28),
+                  ApartmentBuildingIcon(color: color, size: 26),
                   if (canDelete)
                     InkWell(
                       onTap: onDelete,

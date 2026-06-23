@@ -24,8 +24,8 @@ class _DesignMenuFabState extends State<DesignMenuFab>
 
   static const _actions = DesignMenuAction.values;
   static const _itemSpacing = 8.0;
-  static const _iconSize = 36.0;
-  static const _iconGlyphSize = 17.0;
+  static const _iconSize = 34.0;
+  static const _iconGlyphSize = 15.0;
 
   @override
   void initState() {
@@ -129,7 +129,7 @@ class _DesignMenuFabState extends State<DesignMenuFab>
             duration: const Duration(milliseconds: 220),
             child: Icon(
               _isOpen ? Icons.close : Icons.tune,
-              size: 22,
+              size: 18,
             ),
           ),
         ),

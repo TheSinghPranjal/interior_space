@@ -34,12 +34,12 @@ class WallsEditor extends ConsumerWidget {
                   runSpacing: 8,
                   children: [
                     OutlinedButton.icon(
-                      icon: const Icon(Icons.visibility_off, size: 18),
+                      icon: const Icon(Icons.visibility_off, size: 16),
                       label: const Text('Hide all walls'),
                       onPressed: () => ref.read(roomDesignProvider.notifier).setAllWallsVisibility(0),
                     ),
                     OutlinedButton.icon(
-                      icon: const Icon(Icons.visibility, size: 18),
+                      icon: const Icon(Icons.visibility, size: 16),
                       label: const Text('Show all walls'),
                       onPressed: () => ref.read(roomDesignProvider.notifier).setAllWallsVisibility(1),
                     ),

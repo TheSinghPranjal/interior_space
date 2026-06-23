@@ -144,7 +144,7 @@ class _TexturePreviewState extends ConsumerState<_TexturePreview> {
       child: Icon(
         Icons.image_outlined,
         color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-        size: 40,
+        size: 38,
       ),
     );
   }

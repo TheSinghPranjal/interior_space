@@ -20,7 +20,7 @@ Future<bool> showConfirmDeleteDialog(
           color: AppTheme.destructiveContainer,
           shape: BoxShape.circle,
         ),
-        child: const Icon(Icons.delete_outline, color: AppTheme.destructive, size: 28),
+        child: const Icon(Icons.delete_outline, color: AppTheme.destructive, size: 26),
       ),
       iconPadding: const EdgeInsets.only(top: 24),
       title: Text(title),

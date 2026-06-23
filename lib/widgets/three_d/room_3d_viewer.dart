@@ -194,7 +194,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const Icon(Icons.error_outline, color: Colors.red, size: 46),
               const SizedBox(height: 16),
               Text(
                 _loadError!,
@@ -341,7 +341,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
                         padding: const EdgeInsets.all(8),
                         child: Icon(
                           Icons.info_outline,
-                          size: 20,
+                          size: 18,
                           color: showWallLabels ? Colors.black87 : Colors.white,
                         ),
                       ),
@@ -445,7 +445,7 @@ class _ZoomButton extends StatelessWidget {
           child: SizedBox(
             width: 44,
             height: 44,
-            child: Icon(icon, color: Colors.white, size: 22),
+            child: Icon(icon, color: Colors.white, size: 20),
           ),
         ),
       ),

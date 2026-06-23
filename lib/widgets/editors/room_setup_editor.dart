@@ -162,7 +162,7 @@ class _ModeBanner extends StatelessWidget {
         children: [
           Icon(
             useCustom ? Icons.architecture : Icons.crop_square,
-            size: 18,
+            size: 16,
             color: useCustom ? AppTheme.accent : AppTheme.primary,
           ),
           const SizedBox(width: 8),

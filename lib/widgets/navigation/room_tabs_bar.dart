@@ -121,7 +121,7 @@ class _RoomTab extends StatelessWidget {
             children: [
               Icon(
                 Icons.meeting_room,
-                size: 16,
+                size: 14,
                 color: isActive
                     ? theme.colorScheme.onPrimary
                     : theme.colorScheme.onSurfaceVariant,
@@ -145,7 +145,7 @@ class _RoomTab extends StatelessWidget {
                     padding: const EdgeInsets.all(4),
                     child: Icon(
                       Icons.close,
-                      size: 14,
+                      size: 12,
                       color: isActive
                           ? theme.colorScheme.onPrimary.withValues(alpha: 0.8)
                           : theme.colorScheme.onSurfaceVariant,

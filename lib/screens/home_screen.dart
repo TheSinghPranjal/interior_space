@@ -152,41 +152,57 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       backgroundColor: AppTheme.surface,
       appBar: AppBar(
         titleSpacing: AppSpacing.md,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(appMode.title, style: theme.textTheme.titleLarge),
-            Text(
-              isApartment
-                  ? '${project.apartmentLayout.name} · ${project.apartmentLayout.placements.length} on plan'
-                  : '${project.apartmentLayout.name} · ${activeRoom.name}',
-              style: theme.textTheme.bodySmall,
-            ),
-          ],
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
-            child: SegmentedButton<AppSpaceMode>(
-              segments: const [
-                ButtonSegment(
-                  value: AppSpaceMode.interior,
-                  label: Text('Interior'),
-                  icon: Icon(Icons.meeting_room_outlined, size: 18),
-                ),
-                ButtonSegment(
-                  value: AppSpaceMode.apartment,
-                  label: Text('Apartment'),
-                  icon: Icon(Icons.apartment_outlined, size: 18),
-                ),
-              ],
-              selected: {appMode},
-              onSelectionChanged: (selection) {
-                ref.read(appSpaceModeProvider.notifier).state = selection.first;
-              },
-            ),
-          ),
+        title: LayoutBuilder(
+          builder: (context, constraints) {
+            return SizedBox(
+              width: constraints.maxWidth,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(appMode.title, style: theme.textTheme.titleLarge),
+                        Text(
+                          isApartment
+                              ? '${project.apartmentLayout.name} · ${project.apartmentLayout.placements.length} on plan'
+                              : '${project.apartmentLayout.name} · ${activeRoom.name}',
+                          style: theme.textTheme.bodySmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 248),
+                    child: SegmentedButton<AppSpaceMode>(
+                      showSelectedIcon: false,
+                      segments: const [
+                        ButtonSegment(
+                          value: AppSpaceMode.interior,
+                          label: Text('Interior'),
+                          icon: Icon(Icons.meeting_room_outlined, size: 16),
+                        ),
+                        ButtonSegment(
+                          value: AppSpaceMode.apartment,
+                          label: Text('Apartment'),
+                          icon: Icon(Icons.apartment_outlined, size: 16),
+                        ),
+                      ],
+                      selected: {appMode},
+                      onSelectionChanged: (selection) {
+                        ref.read(appSpaceModeProvider.notifier).state = selection.first;
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
         actions: [
           IconButton(
@@ -216,7 +232,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 value: 'reset',
                 child: Row(
                   children: [
-                    Icon(Icons.refresh, size: 20, color: theme.colorScheme.error),
+                    Icon(Icons.refresh, size: 16, color: theme.colorScheme.error),
                     const SizedBox(width: 12),
                     Text(
                       isApartment ? 'Reset apartment layout' : 'Reset current room',

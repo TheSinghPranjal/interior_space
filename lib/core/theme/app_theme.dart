@@ -58,8 +58,8 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
         titleTextStyle: AppTypography.textTheme.titleLarge,
-        iconTheme: const IconThemeData(color: textPrimary, size: 22),
-        actionsIconTheme: const IconThemeData(color: textPrimary, size: 22),
+        iconTheme: const IconThemeData(color: textPrimary, size: 20),
+        actionsIconTheme: const IconThemeData(color: textPrimary, size: 20),
       ),
       cardTheme: CardThemeData(
         color: card,
@@ -89,9 +89,9 @@ class AppTheme {
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const IconThemeData(color: primary, size: 24);
+            return const IconThemeData(color: primary, size: 22);
           }
-          return IconThemeData(color: textSecondary.withValues(alpha: 0.85), size: 24);
+          return IconThemeData(color: textSecondary.withValues(alpha: 0.85), size: 22);
         }),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(

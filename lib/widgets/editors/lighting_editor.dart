@@ -154,7 +154,7 @@ class _FanCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.air, size: 20, color: Theme.of(context).colorScheme.primary),
+              Icon(Icons.air, size: 18, color: Theme.of(context).colorScheme.primary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
