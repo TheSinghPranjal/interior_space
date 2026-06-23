@@ -303,19 +303,19 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
             children: [
               IconButton(
                 visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.rotate_left, color: Colors.white, size: 20),
+                icon: const Icon(Icons.rotate_left, color: Colors.white, size: 18),
                 tooltip: 'Rotate left',
                 onPressed: () => _rotateSelected(placement, -15),
               ),
               IconButton(
                 visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.rotate_right, color: Colors.white, size: 20),
+                icon: const Icon(Icons.rotate_right, color: Colors.white, size: 18),
                 tooltip: 'Rotate right',
                 onPressed: () => _rotateSelected(placement, 15),
               ),
               IconButton(
                 visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.delete_outline, color: Colors.white, size: 20),
+                icon: const Icon(Icons.delete_outline, color: Colors.white, size: 18),
                 tooltip: 'Remove from blueprint',
                 onPressed: () {
                   ref.read(projectProvider.notifier).removeApartmentPlacement(placement.id);
@@ -324,7 +324,7 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
               ),
               IconButton(
                 visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.close, color: Colors.white, size: 18),
+                icon: const Icon(Icons.close, color: Colors.white, size: 16),
                 tooltip: 'Deselect',
                 onPressed: _deselect,
               ),
