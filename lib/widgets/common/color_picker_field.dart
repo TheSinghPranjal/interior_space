@@ -19,16 +19,18 @@ class ColorPickerField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final color = ColorUtils.fromHex(colorHex);
 
     return Opacity(
       opacity: enabled ? 1 : 0.55,
       child: ListTile(
         contentPadding: EdgeInsets.zero,
-        title: Text(label),
+        title: Text(label, style: theme.textTheme.labelLarge),
         subtitle: Text(
           '${ColorUtils.toHex(color)}  •  '
               'RGB(${(color.r * 255).round()}, ${(color.g * 255).round()}, ${(color.b * 255).round()})',
+          style: theme.textTheme.bodySmall,
         ),
         trailing: GestureDetector(
           onTap: enabled ? () => _showPicker(context, color) : null,
@@ -39,8 +41,15 @@ class ColorPickerField extends StatelessWidget {
               color: color,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Colors.grey.shade300,
+                color: theme.colorScheme.outlineVariant,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.shadow.withValues(alpha: 0.08),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
           ),
         ),
