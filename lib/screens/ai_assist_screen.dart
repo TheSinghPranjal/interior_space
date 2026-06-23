@@ -33,7 +33,7 @@ class AiAssistPlaceholder extends StatelessWidget {
                 ),
                 child: Icon(
                   Icons.auto_awesome,
-                  size: 56,
+                  size: 54,
                   color: theme.colorScheme.primary,
                 ),
               ),
@@ -74,7 +74,7 @@ class AiAssistPlaceholder extends StatelessWidget {
                     ),
                   );
                 },
-                icon: const Icon(Icons.notifications_active_outlined, size: 18),
+                icon: const Icon(Icons.notifications_active_outlined, size: 16),
                 label: const Text('Notify me when ready'),
               ),
             ],
