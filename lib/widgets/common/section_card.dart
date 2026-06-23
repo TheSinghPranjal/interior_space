@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_spacing.dart';
+
 class SectionCard extends StatelessWidget {
   const SectionCard({
     super.key,
@@ -7,50 +9,69 @@ class SectionCard extends StatelessWidget {
     required this.child,
     this.trailing,
     this.subtitle,
+    this.icon,
   });
 
   final String title;
   final String? subtitle;
   final Widget child;
   final Widget? trailing;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.55)),
+          boxShadow: AppSpacing.cardShadow(context),
+        ),
+        child: Padding(
+          padding: AppSpacing.cardPadding,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (icon != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.45),
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                       ),
-                      if (subtitle != null)
-                        Text(
-                          subtitle!,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.grey.shade600,
-                              ),
-                        ),
-                    ],
+                      child: Icon(icon, size: 18, color: theme.colorScheme.primary),
+                    ),
+                    const SizedBox(width: AppSpacing.sm + 4),
+                  ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title, style: theme.textTheme.titleMedium),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 2),
+                          Text(subtitle!, style: theme.textTheme.bodySmall),
+                        ],
+                      ],
+                    ),
                   ),
-                ),
-                if (trailing != null) trailing!,
-              ],
-            ),
-            const SizedBox(height: 12),
-            child,
-          ],
+                  if (trailing != null) trailing!,
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md - 4),
+              child,
+            ],
+          ),
         ),
       ),
     );

@@ -7,6 +7,7 @@ import '../../core/utils/room_geometry.dart';
 import '../../models/enums.dart';
 import '../../providers/project_provider.dart';
 import '../../providers/room_design_provider.dart';
+import '../common/editor_item_card.dart';
 import '../common/section_card.dart';
 
 class RoomSetupEditor extends ConsumerWidget {
@@ -108,12 +109,8 @@ class RoomSetupEditor extends ConsumerWidget {
                   value:
                       '${geometry.boundingWidth.toStringAsFixed(1)} × ${geometry.boundingLength.toStringAsFixed(1)} ft',
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    'Use the Walls editor to hide or shorten individual walls for open-plan layouts.',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                  ),
+                const EditorHelperText(
+                  'Use the Walls editor to hide or shorten individual walls for open-plan layouts.',
                 ),
               ],
             ],
