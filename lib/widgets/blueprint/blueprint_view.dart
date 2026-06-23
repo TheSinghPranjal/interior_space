@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_spacing.dart';
 import '../../providers/room_design_provider.dart';
 import '../../screens/preview_3d_screen.dart';
 import 'add_furniture_sheet.dart';
@@ -13,22 +14,34 @@ class BlueprintView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final design = ref.watch(roomDesignProvider);
 
+    final theme = Theme.of(context);
+
     return Column(
       children: [
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.sm + 2,
+          ),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
+            border: Border(
+              bottom: BorderSide(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
           child: Row(
             children: [
-              const Icon(Icons.architecture, size: 20),
-              const SizedBox(width: 8),
+              Icon(Icons.architecture, size: 20, color: theme.colorScheme.primary),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   '${design.name} • ${design.dimensions.width}×${design.dimensions.length} ft • '
                   '${design.furniture.length} furniture • '
                   '${design.cupboards.length} cupboards',
-                  style: const TextStyle(fontSize: 13),
+                  style: theme.textTheme.bodySmall,
                 ),
               ),
               IconButton(
@@ -41,7 +54,7 @@ class BlueprintView extends ConsumerWidget {
         ),
         const Expanded(child: BlueprintCanvas()),
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
             children: [
               Expanded(
