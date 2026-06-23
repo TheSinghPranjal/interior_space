@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../core/utils/blueprint_placement.dart';
 import '../../models/apartment_layout.dart';
 import '../../models/project_design.dart';
@@ -294,7 +295,7 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
       child: Material(
         elevation: 4,
         borderRadius: BorderRadius.circular(20),
-        color: Colors.orange.shade700.withValues(alpha: 0.7),
+        color: AppTheme.primary.withValues(alpha: 0.85),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           child: Row(
