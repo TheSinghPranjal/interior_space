@@ -33,7 +33,7 @@ class TextureUploadField extends ConsumerWidget {
       children: [
         if (texturePath != null) ...[
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
             child: _TexturePreview(path: texturePath!),
           ),
           const SizedBox(height: 8),
@@ -52,7 +52,7 @@ class TextureUploadField extends ConsumerWidget {
               IconButton(
                 tooltip: 'Remove texture',
                 onPressed: onClear,
-                icon: const Icon(Icons.delete_outline),
+                icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error),
               ),
             ],
           ],
@@ -134,12 +134,18 @@ class _TexturePreviewState extends ConsumerState<_TexturePreview> {
   }
 
   Widget _placeholder() {
+    final theme = Theme.of(context);
+
     return Container(
       height: 120,
       width: double.infinity,
-      color: Colors.grey.shade200,
+      color: theme.colorScheme.surfaceContainerHighest,
       alignment: Alignment.center,
-      child: Icon(Icons.image_outlined, color: Colors.grey.shade500, size: 40),
+      child: Icon(
+        Icons.image_outlined,
+        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+        size: 40,
+      ),
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/theme/app_spacing.dart';
 import '../core/theme/app_theme.dart';
 import '../widgets/branding/app_logo.dart';
 import 'home_screen.dart';
@@ -24,8 +25,8 @@ class _SplashScreenState extends State<SplashScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     );
-    _scale = Tween<double>(begin: 0.82, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
+    _scale = Tween<double>(begin: 0.88, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
     );
     _fade = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
@@ -42,8 +43,8 @@ class _SplashScreenState extends State<SplashScreen>
     Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(
         transitionDuration: const Duration(milliseconds: 500),
-        pageBuilder: (_, __, ___) => const HomeScreen(),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => const HomeScreen(),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
@@ -64,9 +65,13 @@ class _SplashScreenState extends State<SplashScreen>
         height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFFDFCFA), AppTheme.surface, Color(0xFFEDE8E1)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFFDFCFA),
+              AppTheme.surface,
+              Color(0xFFEDE8E1),
+            ],
           ),
         ),
         child: SafeArea(
@@ -81,18 +86,23 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               );
             },
-            child: const Column(
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                AppLogo(size: 112),
-                SizedBox(height: 48),
+                const AppLogo(size: 104),
+                const SizedBox(height: AppSpacing.xxl),
                 SizedBox(
-                  width: 28,
-                  height: 28,
+                  width: 24,
+                  height: 24,
                   child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: AppTheme.primary,
+                    strokeWidth: 2,
+                    color: AppTheme.primary.withValues(alpha: 0.85),
                   ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Loading your workspace…',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
             ),
