@@ -6,6 +6,7 @@ import '../../providers/room_design_provider.dart';
 import '../../services/texture_service.dart';
 import '../common/color_picker_field.dart';
 import '../common/section_card.dart';
+import '../common/texture_upload_field.dart';
 
 class FlooringEditor extends ConsumerWidget {
   const FlooringEditor({super.key});
@@ -94,8 +95,11 @@ class FlooringEditor extends ConsumerWidget {
                       floor.copyWith(tileWidth: v),
                     ),
               ),
-              FilledButton.icon(
-                onPressed: () async {
+              TextureUploadField(
+                texturePath: floor.texturePath,
+                uploadLabel: 'Upload Tile Texture',
+                changeLabel: 'Change Texture',
+                onPick: () async {
                   final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
                   if (path != null) {
                     ref.read(roomDesignProvider.notifier).updateFloor(
@@ -106,8 +110,11 @@ class FlooringEditor extends ConsumerWidget {
                         );
                   }
                 },
-                icon: const Icon(Icons.upload_file),
-                label: Text(floor.texturePath == null ? 'Upload Tile Texture' : 'Change Texture'),
+                onClear: floor.texturePath == null
+                    ? null
+                    : () => ref.read(roomDesignProvider.notifier).updateFloor(
+                          floor.copyWith(clearTexture: true),
+                        ),
               ),
             ],
           ),
@@ -145,14 +152,21 @@ class _SliderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label),
-            Text('${value.toStringAsFixed(1)} $suffix'),
+            Text(label, style: theme.textTheme.labelMedium),
+            Text(
+              '${value.toStringAsFixed(1)} $suffix',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
           ],
         ),
         Slider(value: value, min: min, max: max, onChanged: onChanged),
