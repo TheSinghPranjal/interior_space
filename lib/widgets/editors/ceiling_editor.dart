@@ -6,6 +6,7 @@ import '../../providers/room_design_provider.dart';
 import '../../services/texture_service.dart';
 import '../common/color_picker_field.dart';
 import '../common/section_card.dart';
+import '../common/texture_upload_field.dart';
 
 class CeilingEditor extends ConsumerWidget {
   const CeilingEditor({super.key});
@@ -41,8 +42,9 @@ class CeilingEditor extends ConsumerWidget {
                   }
                 },
               ),
-              FilledButton.icon(
-                onPressed: () async {
+              TextureUploadField(
+                texturePath: ceiling.texturePath,
+                onPick: () async {
                   final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
                   if (path != null) {
                     ref.read(roomDesignProvider.notifier).updateCeiling(
@@ -50,8 +52,11 @@ class CeilingEditor extends ConsumerWidget {
                         );
                   }
                 },
-                icon: const Icon(Icons.upload_file),
-                label: Text(ceiling.texturePath == null ? 'Upload Texture' : 'Change Texture'),
+                onClear: ceiling.texturePath == null
+                    ? null
+                    : () => ref.read(roomDesignProvider.notifier).updateCeiling(
+                          ceiling.copyWith(clearTexture: true),
+                        ),
               ),
             ],
           ),
@@ -135,10 +140,24 @@ class _Slider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('$label: ${value.toStringAsFixed(1)} ft'),
+        Row(
+          children: [
+            Expanded(
+              child: Text(label, style: theme.textTheme.labelMedium),
+            ),
+            Text(
+              '${value.toStringAsFixed(1)} ft',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
         Slider(value: value, min: 0.5, max: 3, onChanged: onChanged),
       ],
     );
