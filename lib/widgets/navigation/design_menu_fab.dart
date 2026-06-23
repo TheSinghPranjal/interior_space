@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../models/design_menu_action.dart';
 
 class DesignMenuFab extends StatefulWidget {
@@ -100,9 +101,9 @@ class _DesignMenuFabState extends State<DesignMenuFab>
                             fontWeight: FontWeight.w600,
                             color: colorScheme.onSurface,
                           ),
-                          iconColor: colorScheme.onSecondaryContainer,
-                          iconBackground: colorScheme.secondaryContainer,
-                          labelBackground: colorScheme.surface,
+                          iconColor: colorScheme.onPrimaryContainer,
+                          iconBackground: colorScheme.primaryContainer,
+                          labelBackground: colorScheme.surfaceContainerHighest,
                           onTap: () => _select(action),
                         ),
                       );
@@ -117,7 +118,12 @@ class _DesignMenuFabState extends State<DesignMenuFab>
         FloatingActionButton(
           heroTag: 'design_fab_main',
           onPressed: _toggle,
-          elevation: 4,
+          elevation: 2,
+          backgroundColor: AppTheme.primary,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: AnimatedRotation(
             turns: _isOpen ? 0.125 : 0,
             duration: const Duration(milliseconds: 220),
@@ -157,6 +163,8 @@ class _MenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -167,8 +175,8 @@ class _MenuItem extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Material(
-              elevation: 2,
-              shadowColor: Colors.black26,
+              elevation: 1,
+              shadowColor: theme.colorScheme.shadow.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(16),
               color: labelBackground,
               child: Padding(
@@ -178,8 +186,8 @@ class _MenuItem extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Material(
-              elevation: 3,
-              shadowColor: Colors.black26,
+              elevation: 2,
+              shadowColor: theme.colorScheme.shadow.withValues(alpha: 0.15),
               color: iconBackground,
               shape: const CircleBorder(),
               child: SizedBox(
