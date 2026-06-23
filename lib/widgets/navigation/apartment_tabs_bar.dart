@@ -18,12 +18,12 @@ class ApartmentTabsBar extends ConsumerWidget {
     final activeIndex = project.safeActiveApartmentIndex;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      padding: const EdgeInsets.fromLTRB(10, 6, 10, 3),
       child: Container(
-        height: 92,
+        height: 70,
         decoration: BoxDecoration(
           color: const Color(0xFFE8EEF0),
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(22),
           border: Border.all(color: AppTheme.border.withValues(alpha: 0.6)),
         ),
         child: Row(
@@ -31,7 +31,7 @@ class ApartmentTabsBar extends ConsumerWidget {
             Expanded(
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                 itemCount: apartments.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 6),
                 itemBuilder: (context, index) {
@@ -57,7 +57,7 @@ class ApartmentTabsBar extends ConsumerWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(right: 10),
+              padding: const EdgeInsets.only(right: 8),
               child: Material(
                 color: project.canAddApartment
                     ? _addButtonColor
@@ -75,14 +75,14 @@ class ApartmentTabsBar extends ConsumerWidget {
                         }
                       : null,
                   child: SizedBox(
-                    width: 44,
-                    height: 44,
+                    width: 36,
+                    height: 36,
                     child: Icon(
                       Icons.add,
                       color: Colors.white.withValues(
                         alpha: project.canAddApartment ? 1 : 0.6,
                       ),
-                      size: 26,
+                      size: 22,
                     ),
                   ),
                 ),
@@ -137,21 +137,21 @@ class _ApartmentTab extends StatelessWidget {
       color: isActive ? Colors.white : Colors.transparent,
       elevation: isActive ? 3 : 0,
       shadowColor: Colors.black26,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
         child: Container(
-          constraints: const BoxConstraints(minWidth: 88, maxWidth: 110),
+          constraints: const BoxConstraints(minWidth: 76, maxWidth: 100),
           padding: EdgeInsets.only(
-            left: 8,
-            right: canDelete ? 2 : 8,
-            top: 6,
-            bottom: 4,
+            left: 6,
+            right: canDelete ? 2 : 6,
+            top: 4,
+            bottom: 2,
           ),
           decoration: isActive
               ? BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: AppTheme.border.withValues(alpha: 0.5),
                   ),
@@ -164,29 +164,29 @@ class _ApartmentTab extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ApartmentBuildingIcon(color: color, size: 38),
+                  ApartmentBuildingIcon(color: color, size: 28),
                   if (canDelete)
                     InkWell(
                       onTap: onDelete,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                       child: Padding(
                         padding: const EdgeInsets.all(2),
                         child: Icon(
                           Icons.close,
-                          size: 14,
+                          size: 12,
                           color: AppTheme.textSecondary.withValues(alpha: 0.8),
                         ),
                       ),
                     ),
                 ],
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 1),
               Text(
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 10,
                   fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
                   color: AppTheme.textPrimary,
                 ),

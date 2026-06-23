@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/room_constants.dart';
+import '../../models/apartment_layout.dart';
 import '../../providers/apartment_placement_history_provider.dart';
 import '../../providers/project_provider.dart';
 import '../common/dimension_control.dart';
@@ -129,43 +130,18 @@ class ApartmentSpaceView extends ConsumerWidget {
                 if (layout.placements.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '${layout.placements.length} room(s) on blueprint • Long-press to move',
-                            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                          ),
-                        ),
-                        _ApartmentUndoRedoButtons(
-                          canUndo: history.canUndo,
-                          canRedo: history.canRedo,
-                          onUndo: undoMove,
-                          onRedo: redoMove,
-                        ),
-                      ],
+                    child: Text(
+                      '${layout.placements.length} room(s) on blueprint • Long-press to move',
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                     ),
                   ),
                 const SizedBox(height: 12),
-                Text('Apartment Size', style: theme.textTheme.titleSmall),
-                const SizedBox(height: 4),
-                DimensionControl(
-                  label: 'Width',
-                  value: layout.widthFt,
-                  min: RoomConstants.minApartmentWidth,
-                  max: RoomConstants.maxApartmentWidth,
-                  onChanged: (v) => ref
-                      .read(projectProvider.notifier)
-                      .updateApartmentDimensions(widthFt: v),
-                ),
-                DimensionControl(
-                  label: 'Length',
-                  value: layout.lengthFt,
-                  min: RoomConstants.minApartmentLength,
-                  max: RoomConstants.maxApartmentLength,
-                  onChanged: (v) => ref
-                      .read(projectProvider.notifier)
-                      .updateApartmentDimensions(lengthFt: v),
+                _ApartmentSizeControls(
+                  layout: layout,
+                  canUndo: history.canUndo,
+                  canRedo: history.canRedo,
+                  onUndo: undoMove,
+                  onRedo: redoMove,
                 ),
               ],
             ),
@@ -220,6 +196,97 @@ class ApartmentSpaceView extends ConsumerWidget {
       ],
         ),
       ),
+    );
+  }
+}
+
+class _ApartmentSizeControls extends ConsumerStatefulWidget {
+  const _ApartmentSizeControls({
+    required this.layout,
+    required this.canUndo,
+    required this.canRedo,
+    required this.onUndo,
+    required this.onRedo,
+  });
+
+  final ApartmentLayout layout;
+  final bool canUndo;
+  final bool canRedo;
+  final VoidCallback onUndo;
+  final VoidCallback onRedo;
+
+  @override
+  ConsumerState<_ApartmentSizeControls> createState() => _ApartmentSizeControlsState();
+}
+
+class _ApartmentSizeControlsState extends ConsumerState<_ApartmentSizeControls> {
+  bool _expanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('Apartment Size', style: theme.textTheme.titleSmall),
+            const Spacer(),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              tooltip: _expanded ? 'Hide apartment size' : 'Show apartment size',
+              onPressed: () => setState(() => _expanded = !_expanded),
+              icon: AnimatedRotation(
+                turns: _expanded ? 0 : 0.5,
+                duration: const Duration(milliseconds: 200),
+                child: const Icon(Icons.keyboard_arrow_down, size: 22),
+              ),
+            ),
+            _ApartmentUndoRedoButtons(
+              canUndo: widget.canUndo,
+              canRedo: widget.canRedo,
+              onUndo: widget.onUndo,
+              onRedo: widget.onRedo,
+            ),
+          ],
+        ),
+        AnimatedCrossFade(
+          firstCurve: Curves.easeOut,
+          secondCurve: Curves.easeIn,
+          sizeCurve: Curves.easeInOut,
+          crossFadeState:
+              _expanded ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+          duration: const Duration(milliseconds: 200),
+          firstChild: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 4),
+              DimensionControl(
+                label: 'Width',
+                value: widget.layout.widthFt,
+                min: RoomConstants.minApartmentWidth,
+                max: RoomConstants.maxApartmentWidth,
+                onChanged: (v) => ref
+                    .read(projectProvider.notifier)
+                    .updateApartmentDimensions(widthFt: v),
+              ),
+              DimensionControl(
+                label: 'Length',
+                value: widget.layout.lengthFt,
+                min: RoomConstants.minApartmentLength,
+                max: RoomConstants.maxApartmentLength,
+                onChanged: (v) => ref
+                    .read(projectProvider.notifier)
+                    .updateApartmentDimensions(lengthFt: v),
+              ),
+            ],
+          ),
+          secondChild: const SizedBox.shrink(),
+        ),
+      ],
     );
   }
 }
