@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_spacing.dart';
 import '../../core/constants/room_constants.dart';
 import '../../models/apartment_layout.dart';
 import '../../providers/apartment_placement_history_provider.dart';
@@ -48,8 +49,20 @@ class ApartmentSpaceView extends ConsumerWidget {
         if (!showBlueprintOnly)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.35),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.md,
+              AppSpacing.lg,
+              AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerLow,
+              border: Border(
+                bottom: BorderSide(
+                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -129,10 +142,10 @@ class ApartmentSpaceView extends ConsumerWidget {
                 ),
                 if (layout.placements.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 6),
+                    padding: const EdgeInsets.only(top: AppSpacing.xs),
                     child: Text(
                       '${layout.placements.length} room(s) on blueprint • Long-press to move',
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                      style: theme.textTheme.bodySmall,
                     ),
                   ),
                 const SizedBox(height: 12),
@@ -149,8 +162,18 @@ class ApartmentSpaceView extends ConsumerWidget {
         if (showBlueprintOnly)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.sm + 2,
+            ),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
+              border: Border(
+                bottom: BorderSide(
+                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
+            ),
             child: Row(
               children: [
                 const Icon(Icons.architecture, size: 20),
@@ -159,7 +182,7 @@ class ApartmentSpaceView extends ConsumerWidget {
                   child: Text(
                     'Apartment Blueprint • ${layout.name} • ${layout.placements.length} rooms placed • '
                     '${layout.widthFt.toStringAsFixed(0)}×${layout.lengthFt.toStringAsFixed(0)} ft',
-                    style: const TextStyle(fontSize: 13),
+                    style: theme.textTheme.bodySmall,
                   ),
                 ),
                 _ApartmentUndoRedoButtons(
@@ -306,18 +329,21 @@ class _ApartmentUndoRedoButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final disabledColor = theme.colorScheme.onSurface.withValues(alpha: 0.28);
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
           visualDensity: VisualDensity.compact,
-          icon: Icon(Icons.undo, color: canUndo ? null : Colors.grey.shade400),
+          icon: Icon(Icons.undo, color: canUndo ? null : disabledColor),
           tooltip: 'Undo move',
           onPressed: canUndo ? onUndo : null,
         ),
         IconButton(
           visualDensity: VisualDensity.compact,
-          icon: Icon(Icons.redo, color: canRedo ? null : Colors.grey.shade400),
+          icon: Icon(Icons.redo, color: canRedo ? null : disabledColor),
           tooltip: 'Redo move',
           onPressed: canRedo ? onRedo : null,
         ),
