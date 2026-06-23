@@ -6,6 +6,7 @@ import '../../models/fan_config.dart';
 import '../../models/light_config.dart';
 import '../../providers/room_design_provider.dart';
 import '../common/color_picker_field.dart';
+import '../common/editor_item_card.dart';
 import '../common/section_card.dart';
 
 class LightingEditor extends ConsumerWidget {
@@ -67,33 +68,29 @@ class _LightCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.grey.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _label(light.type),
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
+    return EditorItemCard(
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _label(light.type),
+                  style: Theme.of(context).textTheme.titleSmall,
                 ),
-                Switch(
-                  value: light.enabled,
-                  onChanged: (v) => ref.read(roomDesignProvider.notifier).updateLight(
-                        light.copyWith(enabled: v),
-                      ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  onPressed: () => ref.read(roomDesignProvider.notifier).removeLight(light.id),
-                ),
-              ],
-            ),
+              ),
+              Switch(
+                value: light.enabled,
+                onChanged: (v) => ref.read(roomDesignProvider.notifier).updateLight(
+                      light.copyWith(enabled: v),
+                    ),
+              ),
+              IconButton(
+                icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error),
+                onPressed: () => ref.read(roomDesignProvider.notifier).removeLight(light.id),
+              ),
+            ],
+          ),
             _Slider(label: 'Brightness', value: light.brightness, min: 0.2, max: 2, onChanged: (v) {
               ref.read(roomDesignProvider.notifier).updateLight(light.copyWith(brightness: v));
             }),
@@ -124,7 +121,6 @@ class _LightCard extends ConsumerWidget {
               },
             ),
           ],
-        ),
       ),
     );
   }
@@ -153,29 +149,25 @@ class _FanCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(roomDesignProvider.notifier);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.grey.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.air, size: 20),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'Ceiling Fan',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
+    return EditorItemCard(
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.air, size: 20, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Ceiling Fan',
+                  style: Theme.of(context).textTheme.titleSmall,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  onPressed: () => notifier.removeFan(fan.id),
-                ),
-              ],
-            ),
+              ),
+              IconButton(
+                icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error),
+                onPressed: () => notifier.removeFan(fan.id),
+              ),
+            ],
+          ),
             _Slider(
               label: 'Position X',
               value: fan.positionX,
@@ -203,7 +195,6 @@ class _FanCard extends ConsumerWidget {
               onChanged: (c) => notifier.updateFan(fan.copyWith(color: c)),
             ),
           ],
-        ),
       ),
     );
   }
@@ -229,7 +220,19 @@ class _Slider extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('$label: ${value.toStringAsFixed(2)}'),
+        Row(
+          children: [
+            Expanded(
+              child: Text(label, style: Theme.of(context).textTheme.labelMedium),
+            ),
+            Text(
+              value.toStringAsFixed(2),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ],
+        ),
         Slider(value: value.clamp(min, max), min: min, max: max, onChanged: onChanged),
       ],
     );
