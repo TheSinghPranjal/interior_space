@@ -6,6 +6,7 @@ import '../../models/wall_config.dart';
 import '../../providers/room_design_provider.dart';
 import '../../services/texture_service.dart';
 import '../common/color_picker_field.dart';
+import '../common/editor_item_card.dart';
 import '../common/dimension_slider.dart';
 import '../common/section_card.dart';
 import '../common/texture_upload_field.dart';
@@ -45,18 +46,16 @@ class WallsEditor extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text(
+                const EditorHelperText(
                   'Per wall: set visibility to 0% (open), 50%, or 100%. '
                   'Hide shared walls on adjacent rooms (e.g. kitchen ↔ utility).',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
               ],
             ),
           ),
         ...WallId.values
             .map((id) => walls.firstWhere((w) => w.id == id))
-            .map((wall) => _WallEditorCard(wall: wall, showVisibility: customWalls))
-            .toList(),
+            .map((wall) => _WallEditorCard(wall: wall, showVisibility: customWalls)),
       ],
     );
   }
@@ -129,12 +128,8 @@ class _WallEditorCard extends ConsumerWidget {
                   notifier.updateWall(wall.copyWith(visibleAlign: s.first));
                 },
               ),
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  'Which part of the wall stays solid — e.g. End keeps the segment toward the back/right.',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
-                ),
+              const EditorHelperText(
+                'Which part of the wall stays solid — e.g. End keeps the segment toward the back/right.',
               ),
             ],
             const Divider(height: 24),
