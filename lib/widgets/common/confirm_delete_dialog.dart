@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_theme.dart';
+
 /// Shows a confirmation dialog before destructive delete actions.
 Future<bool> showConfirmDeleteDialog(
   BuildContext context, {
@@ -7,17 +9,33 @@ Future<bool> showConfirmDeleteDialog(
   required String message,
   String confirmLabel = 'Delete',
 }) async {
+  final theme = Theme.of(context);
+
   final result = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
+      icon: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppTheme.destructiveContainer,
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.delete_outline, color: AppTheme.destructive, size: 28),
+      ),
+      iconPadding: const EdgeInsets.only(top: 24),
       title: Text(title),
-      content: Text(message),
+      content: Text(message, style: theme.textTheme.bodyMedium),
+      actionsAlignment: MainAxisAlignment.end,
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
           child: const Text('Cancel'),
         ),
         FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: AppTheme.destructive,
+            foregroundColor: Colors.white,
+          ),
           onPressed: () => Navigator.pop(context, true),
           child: Text(confirmLabel),
         ),
@@ -40,16 +58,16 @@ class ApartmentBuildingIcon extends StatelessWidget {
 
   static Color colorForIndex(int index) {
     const palette = [
-      Color(0xFFE8874A),
-      Color(0xFF5B9BD5),
-      Color(0xFF6BBF59),
-      Color(0xFF9B7FD4),
-      Color(0xFFE05A7A),
-      Color(0xFF4DB6AC),
-      Color(0xFFFFB74D),
-      Color(0xFF7986CB),
-      Color(0xFFA1887F),
-      Color(0xFF4FC3F7),
+      Color(0xFF2D5A4A),
+      Color(0xFF5B7FA8),
+      Color(0xFF6B9080),
+      Color(0xFF8B7355),
+      Color(0xFF7A6B8C),
+      Color(0xFF4A8B8B),
+      Color(0xFF9A7B4F),
+      Color(0xFF6B7FA3),
+      Color(0xFF8C7B6E),
+      Color(0xFF5A8FA8),
     ];
     return palette[index % palette.length];
   }
@@ -133,14 +151,14 @@ class _MiniTree extends StatelessWidget {
           width: size,
           height: size,
           decoration: const BoxDecoration(
-            color: Color(0xFF66BB6A),
+            color: Color(0xFF6B9080),
             shape: BoxShape.circle,
           ),
         ),
         Container(
           width: size * 0.18,
           height: size * 0.35,
-          color: const Color(0xFF8D6E63),
+          color: const Color(0xFF8B7355),
         ),
       ],
     );
