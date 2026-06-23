@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../core/utils/color_utils.dart';
 import '../../models/enums.dart';
 import '../../models/furniture_item.dart';
@@ -415,12 +416,12 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
 
   void _drawSelectionHighlight(Canvas canvas) {
     final highlight = Paint()
-      ..color = Colors.orange.shade400.withValues(alpha: 0.25)
+      ..color = AppTheme.primary.withValues(alpha: 0.2)
       ..style = PaintingStyle.fill;
     canvas.drawRect(roomRect, highlight);
 
     final border = Paint()
-      ..color = Colors.orange.shade700
+      ..color = AppTheme.primary
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5;
     canvas.drawRect(roomRect, border);
