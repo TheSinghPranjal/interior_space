@@ -9,20 +9,21 @@ import '../common/confirm_delete_dialog.dart';
 class ApartmentTabsBar extends ConsumerWidget {
   const ApartmentTabsBar({super.key});
 
-  static const _addButtonColor = Color(0xFFE85D8A);
+  static const _addButtonColor = AppTheme.primary;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final project = ref.watch(projectProvider);
     final apartments = project.apartmentsOrDefault;
     final activeIndex = project.safeActiveApartmentIndex;
+    final theme = Theme.of(context);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 6, 10, 3),
       child: Container(
         height: 70,
         decoration: BoxDecoration(
-          color: const Color(0xFFE8EEF0),
+          color: theme.colorScheme.surfaceContainerLow,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(color: AppTheme.border.withValues(alpha: 0.6)),
         ),
