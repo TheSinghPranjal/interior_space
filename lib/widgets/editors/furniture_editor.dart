@@ -7,6 +7,7 @@ import '../../models/room_design.dart';
 import '../../providers/room_design_provider.dart';
 import '../../services/texture_service.dart';
 import '../common/color_picker_field.dart';
+import '../common/editor_item_card.dart';
 import '../common/dimension_slider.dart';
 import '../common/item_editor_header.dart';
 import '../common/section_card.dart';
@@ -80,29 +81,21 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard> {
     final notifier = ref.read(roomDesignProvider.notifier);
     final enabled = _editingEnabled;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.grey.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ItemEditorHeader(
-              title: FurnitureItem.displayLabel(design.furniture, item),
-              icon: item.type.icon,
-              editingEnabled: _editingEnabled,
-              onToggleEdit: () => setState(() => _editingEnabled = !_editingEnabled),
-              onDelete: () => notifier.removeFurniture(item.id),
+    return EditorItemCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ItemEditorHeader(
+            title: FurnitureItem.displayLabel(design.furniture, item),
+            icon: item.type.icon,
+            editingEnabled: _editingEnabled,
+            onToggleEdit: () => setState(() => _editingEnabled = !_editingEnabled),
+            onDelete: () => notifier.removeFurniture(item.id),
+          ),
+          if (!enabled)
+            const EditorHelperText(
+              'Tap edit to change parameters, or drag in Blueprint view',
             ),
-            if (!enabled)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  'Tap edit to change parameters, or drag in Blueprint view',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                ),
-              ),
             if (item.isWallMounted) ...[
               DropdownButtonFormField<WallId>(
                 value: item.wall ?? WallId.left,
@@ -223,8 +216,7 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard> {
                           item.copyWith(clearTexture: true),
                         ),
               ),
-          ],
-        ),
+        ],
       ),
     );
   }
