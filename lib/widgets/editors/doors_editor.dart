@@ -7,6 +7,7 @@ import '../../models/enums.dart';
 import '../../providers/room_design_provider.dart';
 import '../../services/texture_service.dart';
 import '../common/color_picker_field.dart';
+import '../common/editor_item_card.dart';
 import '../common/dimension_slider.dart';
 import '../common/item_editor_header.dart';
 import '../common/section_card.dart';
@@ -69,29 +70,21 @@ class _DoorCardState extends ConsumerState<_DoorCard> {
       });
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.grey.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ItemEditorHeader(
-              title: DoorConfig.displayLabel(widget.doors, door),
-              icon: Icons.door_front_door,
-              editingEnabled: _editingEnabled,
-              onToggleEdit: () => setState(() => _editingEnabled = !_editingEnabled),
-              onDelete: () => notifier.removeDoor(door.id),
+    return EditorItemCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ItemEditorHeader(
+            title: DoorConfig.displayLabel(widget.doors, door),
+            icon: Icons.door_front_door,
+            editingEnabled: _editingEnabled,
+            onToggleEdit: () => setState(() => _editingEnabled = !_editingEnabled),
+            onDelete: () => notifier.removeDoor(door.id),
+          ),
+          if (!enabled)
+            const EditorHelperText(
+              'Tap edit to change parameters, or drag in Blueprint view',
             ),
-            if (!enabled)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  'Tap edit to change parameters, or drag in Blueprint view',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                ),
-              ),
             DropdownButtonFormField<WallId>(
               value: door.wall,
               decoration: const InputDecoration(labelText: 'Wall'),
@@ -158,9 +151,8 @@ class _DoorCardState extends ConsumerState<_DoorCard> {
               suffix: '°',
               onChanged: enabled ? (v) => notifier.updateDoor(door.copyWith(rotation: v)) : null,
             ),
-            Text(
+            EditorHelperText(
               'Wall length: ${door.wallLengthFt(design.dimensions).toStringAsFixed(1)} ft',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
             ColorPickerField(
               label: 'Door Color',
@@ -195,8 +187,7 @@ class _DoorCardState extends ConsumerState<_DoorCard> {
                     ? null
                     : () => notifier.updateDoor(door.copyWith(clearTexture: true)),
               ),
-          ],
-        ),
+        ],
       ),
     );
   }
