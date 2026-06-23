@@ -28,7 +28,7 @@ class AddFurnitureSheet extends ConsumerWidget {
               children: [
                 ...FurnitureType.values.map((type) {
                   return ActionChip(
-                    avatar: Icon(type.icon, size: 18),
+                    avatar: Icon(type.icon, size: 16),
                     label: Text(type.label),
                     onPressed: () {
                       ref.read(roomDesignProvider.notifier).addFurniture(type);
@@ -36,7 +36,7 @@ class AddFurnitureSheet extends ConsumerWidget {
                   );
                 }),
                 ActionChip(
-                  avatar: const Icon(Icons.tv, size: 18),
+                  avatar: const Icon(Icons.tv, size: 16),
                   label: const Text('Wall TV Unit'),
                   onPressed: () {
                     ref.read(roomDesignProvider.notifier).addWallTvUnit();
@@ -53,9 +53,9 @@ class AddFurnitureSheet extends ConsumerWidget {
                 runSpacing: 8,
                 children: furniture.map((item) {
                   return InputChip(
-                    avatar: Icon(item.type.icon, size: 18),
+                    avatar: Icon(item.type.icon, size: 16),
                     label: Text(FurnitureItem.displayLabel(furniture, item)),
-                    deleteIcon: const Icon(Icons.close, size: 18),
+                    deleteIcon: const Icon(Icons.close, size: 16),
                     onDeleted: () {
                       ref.read(roomDesignProvider.notifier).removeFurniture(item.id);
                     },
