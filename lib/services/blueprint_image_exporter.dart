@@ -62,7 +62,6 @@ class _BlueprintExportPainter {
     _drawAcUnits(canvas);
     _drawWallTvUnits(canvas);
     _drawFurniture(canvas);
-    _drawCupboards(canvas);
     _drawFans(canvas);
     _drawDimensions(canvas);
     _drawWallLabels(canvas);
@@ -181,16 +180,6 @@ class _BlueprintExportPainter {
         final top = _roomRect.top + item.blueprintY * _roomRect.height - d / 2;
         _drawItemBox(canvas, Rect.fromLTWH(left, top, w, d), FurnitureItem.displayLabel(design.furniture, item), ColorUtils.fromHex(item.color));
       }
-    }
-  }
-
-  void _drawCupboards(Canvas canvas) {
-    for (final cupboard in design.cupboards) {
-      final w = cupboard.width * _scale;
-      final d = cupboard.depth * _scale;
-      final left = _roomRect.left + cupboard.blueprintX * _roomRect.width - w / 2;
-      final top = _roomRect.top + cupboard.blueprintY * _roomRect.height - d / 2;
-      _drawItemBox(canvas, Rect.fromLTWH(left, top, w, d), 'Cupboard', ColorUtils.fromHex(cupboard.color));
     }
   }
 
