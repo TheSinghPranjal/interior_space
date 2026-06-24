@@ -4,7 +4,6 @@ import 'package:uuid/uuid.dart';
 import '../models/ac_unit_config.dart';
 import '../models/ceiling_config.dart';
 import '../models/curtain_config.dart';
-import '../models/cupboard_config.dart';
 import '../models/door_config.dart';
 import '../models/enums.dart';
 import '../models/fan_config.dart';
@@ -202,42 +201,6 @@ class RoomDesignNotifier extends StateNotifier<RoomDesign> {
     _mutate(
       (r) => r.copyWith(
         wallTvUnits: r.wallTvUnits.where((t) => t.id != id).toList(),
-      ),
-    );
-  }
-
-  void addCupboard() {
-    _mutate((r) {
-      final index = r.cupboards.length;
-      final cols = 3;
-      final row = index ~/ cols;
-      final col = index % cols;
-      final bx = 0.22 + col * 0.28;
-      final by = 0.28 + row * 0.22;
-      final cupboard = CupboardConfig(
-        id: _uuid.v4(),
-        wall: WallId.left,
-        blueprintX: bx.clamp(0.12, 0.88),
-        blueprintY: by.clamp(0.12, 0.88),
-      );
-      return r.copyWith(cupboards: [...r.cupboards, cupboard]);
-    });
-  }
-
-  void updateCupboard(CupboardConfig cupboard) {
-    _mutate(
-      (r) => r.copyWith(
-        cupboards: r.cupboards
-            .map((c) => c.id == cupboard.id ? cupboard : c)
-            .toList(),
-      ),
-    );
-  }
-
-  void removeCupboard(String id) {
-    _mutate(
-      (r) => r.copyWith(
-        cupboards: r.cupboards.where((c) => c.id != id).toList(),
       ),
     );
   }
