@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../core/utils/blueprint_furniture_paint.dart';
 import '../core/utils/color_utils.dart';
 import '../models/enums.dart';
 import '../models/furniture_item.dart';
@@ -171,14 +172,29 @@ class _BlueprintExportPainter {
 
   void _drawFurniture(Canvas canvas) {
     for (final item in design.furniture) {
+      final label = FurnitureItem.displayLabel(design.furniture, item);
+      final color = ColorUtils.fromHex(item.color);
       if (item.isWallMounted) {
-        _drawItemBox(canvas, _wallItemRect(item), FurnitureItem.displayLabel(design.furniture, item), ColorUtils.fromHex(item.color));
+        _drawItemBox(
+          canvas,
+          BlueprintFurniturePaint.wallItemRect(
+            roomRect: _roomRect,
+            scale: _scale,
+            item: item,
+          ),
+          label,
+          color,
+        );
       } else {
-        final w = item.width * _scale;
-        final d = item.depth * _scale;
-        final left = _roomRect.left + item.blueprintX * _roomRect.width - w / 2;
-        final top = _roomRect.top + item.blueprintY * _roomRect.height - d / 2;
-        _drawItemBox(canvas, Rect.fromLTWH(left, top, w, d), FurnitureItem.displayLabel(design.furniture, item), ColorUtils.fromHex(item.color));
+        BlueprintFurniturePaint.drawFloorItem(
+          canvas: canvas,
+          roomRect: _roomRect,
+          scale: _scale,
+          item: item,
+          label: label,
+          color: color,
+          drawItemBox: _drawItemBox,
+        );
       }
     }
   }
@@ -238,20 +254,6 @@ class _BlueprintExportPainter {
         rect.top + (rect.height - tp.height) / 2,
       ),
     );
-  }
-
-  Rect _wallItemRect(FurnitureItem item) {
-    final wall = item.wall ?? WallId.left;
-    final along = item.positionFromEdge * _scale;
-    final into = item.depth * _scale;
-    final alongSize = item.width * _scale;
-
-    return switch (wall) {
-      WallId.front => Rect.fromLTWH(_roomRect.left + along, _roomRect.top, alongSize, into),
-      WallId.back => Rect.fromLTWH(_roomRect.left + along, _roomRect.bottom - into, alongSize, into),
-      WallId.left => Rect.fromLTWH(_roomRect.left, _roomRect.top + along, into, alongSize),
-      WallId.right => Rect.fromLTWH(_roomRect.right - into, _roomRect.top + along, into, alongSize),
-    };
   }
 
   void _drawDimensions(Canvas canvas) {
