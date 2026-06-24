@@ -188,12 +188,19 @@ class AppTheme {
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.selected) ? primary : null,
+          (states) => states.contains(WidgetState.selected)
+              ? Colors.white
+              : surfaceElevated,
         ),
         trackColor: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.selected)
-              ? primary.withValues(alpha: 0.35)
+              ? primary.withValues(alpha: 0.85)
               : border,
+        ),
+        trackOutlineColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? Colors.transparent
+              : textTertiary.withValues(alpha: 0.45),
         ),
       ),
       snackBarTheme: SnackBarThemeData(
