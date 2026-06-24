@@ -244,6 +244,15 @@ class ProjectNotifier extends StateNotifier<ProjectDesign> {
     _replaceActiveApartment(layout.copyWith(placements: placements));
   }
 
+  void updateApartmentPlacements(Map<String, ApartmentRoomPlacement> updatesById) {
+    if (updatesById.isEmpty) return;
+    final layout = state.apartmentLayout;
+    final placements = layout.placements
+        .map((p) => updatesById[p.id] ?? p)
+        .toList();
+    _replaceActiveApartment(layout.copyWith(placements: placements));
+  }
+
   void setApartmentPlacements(List<ApartmentRoomPlacement> placements) {
     _replaceActiveApartment(
       state.apartmentLayout.copyWith(placements: placements),
