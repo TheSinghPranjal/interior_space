@@ -105,15 +105,6 @@ class RoomSceneBuilder {
       });
     }
 
-    final cupboards = <Map<String, dynamic>>[];
-    for (final cupboard in design.cupboards) {
-      cupboards.add({
-        ...cupboard.toJson(),
-        'textureDataUrl':
-            await _textureService.resolveTextureDataUrl(cupboard.texturePath),
-      });
-    }
-
     final acUnits = <Map<String, dynamic>>[];
     for (final unit in design.acUnits) {
       acUnits.add({
@@ -168,7 +159,7 @@ class RoomSceneBuilder {
       'curtains': design.curtains.map((c) => c.toJson()).toList(),
       'acUnits': acUnits,
       'wallTvUnits': wallTvUnits,
-      'cupboards': cupboards,
+      'cupboards': const <Map<String, dynamic>>[],
       'lights': design.lights.map((l) => l.toJson()).toList(),
       'fans': design.fans.map((f) => f.toJson()).toList(),
       'furniture': await Future.wait(
