@@ -41,7 +41,7 @@ class BlueprintView extends ConsumerWidget {
                 child: Text(
                   '${design.name} • ${design.dimensions.width}×${design.dimensions.length} ft • '
                   '${design.furniture.length} furniture • '
-                  '${design.cupboards.length} cupboards',
+                  '${design.wallTvUnits.length} wall TV',
                   style: theme.textTheme.bodySmall,
                 ),
               ),
