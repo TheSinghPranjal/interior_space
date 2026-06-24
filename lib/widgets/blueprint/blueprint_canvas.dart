@@ -9,7 +9,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/blueprint_placement.dart';
 import '../../core/utils/color_utils.dart';
 import '../../models/ac_unit_config.dart';
-import '../../models/cupboard_config.dart';
 import '../../models/curtain_config.dart';
 import '../../models/door_config.dart';
 import '../../models/enums.dart';
@@ -53,8 +52,6 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       case 'furniture_floor':
       case 'furniture_wall':
         return design.furniture.any((f) => f.id == _selectedId);
-      case 'cupboard_floor':
-        return design.cupboards.any((c) => c.id == _selectedId);
       case 'door_wall':
         return design.doors.any((d) => d.id == _selectedId);
       case 'window_wall':
@@ -139,14 +136,6 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
             ...design.furniture.where((f) => f.isWallMounted).map((item) {
               return _buildWallItem(
                 item: item,
-                design: design,
-                roomRect: roomRect,
-                scale: scale,
-              );
-            }),
-            ...design.cupboards.map((cupboard) {
-              return _buildCupboardItem(
-                cupboard: cupboard,
                 design: design,
                 roomRect: roomRect,
                 scale: scale,
@@ -257,11 +246,6 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     } else if (_selectedType == 'furniture_wall' && _tempPositionFromEdge != null) {
       final item = design.furniture.firstWhere((f) => f.id == _selectedId);
       notifier.updateFurniture(item.copyWith(positionFromEdge: _tempPositionFromEdge!));
-    } else if (_selectedType == 'cupboard_floor' && _tempBlueprintX != null && _tempBlueprintY != null) {
-      final cupboard = design.cupboards.firstWhere((c) => c.id == _selectedId);
-      notifier.updateCupboard(
-        cupboard.copyWith(blueprintX: _tempBlueprintX!, blueprintY: _tempBlueprintY!),
-      );
     } else if (_selectedType == 'door_wall' && _tempPositionFromEdge != null) {
       final door = design.doors.firstWhere((d) => d.id == _selectedId);
       notifier.updateDoor(door.copyWith(positionFromEdge: _tempPositionFromEdge!));
@@ -299,8 +283,6 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       case 'furniture_floor':
       case 'furniture_wall':
         notifier.removeFurniture(id);
-      case 'cupboard_floor':
-        notifier.removeCupboard(id);
       case 'door_wall':
         notifier.removeDoor(id);
       case 'window_wall':
@@ -325,10 +307,6 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       final item = design.furniture.firstWhere((f) => f.id == _selectedId);
       final next = (item.rotation + degrees) % 360;
       notifier.updateFurniture(item.copyWith(rotation: next < 0 ? next + 360 : next));
-    } else if (_selectedType == 'cupboard_floor') {
-      final cupboard = design.cupboards.firstWhere((c) => c.id == _selectedId);
-      final next = (cupboard.rotation + degrees) % 360;
-      notifier.updateCupboard(cupboard.copyWith(rotation: next < 0 ? next + 360 : next));
     } else if (_selectedType == 'door_wall') {
       final door = design.doors.firstWhere((d) => d.id == _selectedId);
       final next = (door.rotation + degrees) % 360;
@@ -353,23 +331,19 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
   }
 
   void _computeFloorPosition({
-    required FurnitureItem? item,
-    required CupboardConfig? cupboard,
+    required FurnitureItem item,
     required RoomDesign design,
     required Rect roomRect,
     required double defaultBx,
     required double defaultBy,
   }) {
-    final width = item?.width ?? cupboard!.width;
-    final depth = item?.depth ?? cupboard!.depth;
-    final rotation = item?.rotation ?? cupboard!.rotation;
     final center = (_dragStartCenter ?? Offset.zero) + _dragDelta;
     final clamped = BlueprintPlacement.clampBlueprintCenter(
       centerXNorm: (center.dx - roomRect.left) / roomRect.width,
       centerYNorm: (center.dy - roomRect.top) / roomRect.height,
-      widthFt: width,
-      depthFt: depth,
-      rotationDeg: rotation,
+      widthFt: item.width,
+      depthFt: item.depth,
+      rotationDeg: item.rotation,
       roomWidthFt: design.dimensions.effectiveWidth,
       roomLengthFt: design.dimensions.effectiveLength,
     );
@@ -425,7 +399,6 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       onFloorDrag: () {
         _computeFloorPosition(
           item: item,
-          cupboard: null,
           design: design,
           roomRect: roomRect,
           defaultBx: item.blueprintX,
@@ -696,64 +669,6 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     );
   }
 
-  Widget _buildCupboardItem({
-    required CupboardConfig cupboard,
-    required RoomDesign design,
-    required Rect roomRect,
-    required double scale,
-  }) {
-    final bx = (_isDragging && _selectedId == cupboard.id && _tempBlueprintX != null)
-        ? _tempBlueprintX!
-        : cupboard.blueprintX;
-    final by = (_isDragging && _selectedId == cupboard.id && _tempBlueprintY != null)
-        ? _tempBlueprintY!
-        : cupboard.blueprintY;
-    final footprint = BlueprintPlacement.footprintLayout(
-      blueprintX: bx,
-      blueprintY: by,
-      widthFt: cupboard.width,
-      depthFt: cupboard.depth,
-      roomRect: roomRect,
-      scale: scale,
-    );
-    final hit = BlueprintPlacement.layoutPixels(
-      blueprintX: bx,
-      blueprintY: by,
-      widthFt: cupboard.width,
-      depthFt: cupboard.depth,
-      rotationDeg: cupboard.rotation,
-      roomRect: roomRect,
-      scale: scale,
-    );
-
-    return _itemBox(
-      id: cupboard.id,
-      dragType: 'cupboard_floor',
-      left: hit.left,
-      top: hit.top,
-      width: hit.bboxW,
-      height: hit.bboxH,
-      innerWidth: footprint.innerW,
-      innerHeight: footprint.innerH,
-      label: 'Cupboard',
-      color: ColorUtils.fromHex(cupboard.color),
-      rotation: cupboard.rotation,
-      design: design,
-      roomRect: roomRect,
-      scale: scale,
-      onFloorDrag: () {
-        _computeFloorPosition(
-          item: null,
-          cupboard: cupboard,
-          design: design,
-          roomRect: roomRect,
-          defaultBx: cupboard.blueprintX,
-          defaultBy: cupboard.blueprintY,
-        );
-      },
-    );
-  }
-
   Widget _buildSelectionToolbar({
     required RoomDesign design,
     required Rect roomRect,
@@ -762,7 +677,6 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     if (!_selectionValid(design)) return const SizedBox.shrink();
 
     final canRotate = _selectedType == 'furniture_floor' ||
-        _selectedType == 'cupboard_floor' ||
         _selectedType == 'door_wall' ||
         _selectedType == 'window_wall' ||
         _selectedType == 'curtain_wall' ||
@@ -780,20 +694,6 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
         widthFt: item.width,
         depthFt: item.depth,
         rotationDeg: item.rotation,
-        roomRect: roomRect,
-        scale: scale,
-      );
-      itemRect = Rect.fromLTWH(hit.left, hit.top, hit.bboxW, hit.bboxH);
-    } else if (_selectedType == 'cupboard_floor') {
-      final cupboard = design.cupboards.firstWhere((c) => c.id == _selectedId);
-      final bx = _tempBlueprintX ?? cupboard.blueprintX;
-      final by = _tempBlueprintY ?? cupboard.blueprintY;
-      final hit = BlueprintPlacement.layoutPixels(
-        blueprintX: bx,
-        blueprintY: by,
-        widthFt: cupboard.width,
-        depthFt: cupboard.depth,
-        rotationDeg: cupboard.rotation,
         roomRect: roomRect,
         scale: scale,
       );
