@@ -9,7 +9,6 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
 import '../models/ac_unit_config.dart';
-import '../models/cupboard_config.dart';
 import '../models/door_config.dart';
 import '../models/enums.dart';
 import '../models/fan_config.dart';
@@ -217,15 +216,6 @@ class ExportService {
           rows: room.acUnits.map(_acUnitRow).toList(),
         ),
       pw.SizedBox(height: 10),
-      _sectionTitle('Wall TV Units (${room.wallTvUnits.length})'),
-      if (room.wallTvUnits.isEmpty)
-        pw.Text('None')
-      else
-        _detailTable(
-          headers: const ['Wall', 'Width', 'Height', 'From edge', 'From floor', 'Rotation', 'Color'],
-          rows: room.wallTvUnits.map(_wallTvUnitRow).toList(),
-        ),
-      pw.SizedBox(height: 10),
       _sectionTitle('Furniture (${room.furniture.length})'),
       if (room.furniture.isEmpty)
         pw.Text('None')
@@ -234,15 +224,14 @@ class ExportService {
           headers: const ['Item', 'W×D×H (ft)', 'Position', 'Rotation', 'Color'],
           rows: room.furniture.map((f) => _furnitureRow(f, room)).toList(),
         ),
-      pw.SizedBox(height: 10),
-      _sectionTitle('Cupboards (${room.cupboards.length})'),
-      if (room.cupboards.isEmpty)
-        pw.Text('None')
-      else
+      if (room.wallTvUnits.isNotEmpty) ...[
+        pw.SizedBox(height: 10),
+        _sectionTitle('Wall TV Units (${room.wallTvUnits.length})'),
         _detailTable(
-          headers: const ['W×D×H (ft)', 'From left', 'From front', 'Rotation', 'Finish', 'Color'],
-          rows: room.cupboards.map((c) => _cupboardRow(c, room)).toList(),
+          headers: const ['Wall', 'Width', 'Height', 'From edge', 'From floor', 'Rotation', 'Color'],
+          rows: room.wallTvUnits.map(_wallTvUnitRow).toList(),
         ),
+      ],
       pw.SizedBox(height: 10),
       _sectionTitle('Lighting (${room.lights.length})'),
       if (room.lights.isEmpty)
@@ -347,15 +336,6 @@ class ExportService {
       item.color,
     ];
   }
-
-  List<String> _cupboardRow(CupboardConfig cupboard, RoomDesign room) => [
-        '${cupboard.width.toStringAsFixed(1)}×${cupboard.depth.toStringAsFixed(1)}×${cupboard.height.toStringAsFixed(1)}',
-        '${cupboard.positionFromLeftFt(room.dimensions).toStringAsFixed(1)} ft',
-        '${cupboard.positionFromFrontFt(room.dimensions).toStringAsFixed(1)} ft',
-        '${cupboard.rotation.toStringAsFixed(0)}°',
-        cupboard.texture.name,
-        cupboard.color,
-      ];
 
   List<String> _lightRow(LightConfig light) => [
         light.type.name,
