@@ -113,6 +113,37 @@ class RoomDesign {
       };
 
   factory RoomDesign.fromJson(Map<String, dynamic> json, {String? fallbackId}) {
+    final legacyCupboards = (json['cupboards'] as List<dynamic>?)
+            ?.map((e) => CupboardConfig.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [];
+
+    var furniture = (json['furniture'] as List<dynamic>?)
+            ?.map((e) => FurnitureItem.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [];
+
+    if (legacyCupboards.isNotEmpty) {
+      furniture = [
+        ...furniture,
+        ...legacyCupboards.map(
+          (c) => FurnitureItem(
+            id: c.id,
+            type: FurnitureType.wardrobe,
+            width: c.width,
+            height: c.height,
+            depth: c.depth,
+            rotation: c.rotation,
+            blueprintX: c.blueprintX,
+            blueprintY: c.blueprintY,
+            color: c.color,
+            texturePath: c.texturePath,
+            variant: c.texture.name,
+          ),
+        ),
+      ];
+    }
+
     return RoomDesign(
       id: json['id'] as String? ?? fallbackId ?? 'room-default',
       name: json['name'] as String? ?? 'My Room',
@@ -150,10 +181,7 @@ class RoomDesign {
               ?.map((e) => WallTvUnitConfig.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      cupboards: (json['cupboards'] as List<dynamic>?)
-              ?.map((e) => CupboardConfig.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
+      cupboards: const [],
       lights: (json['lights'] as List<dynamic>?)
               ?.map((e) => LightConfig.fromJson(e as Map<String, dynamic>))
               .toList() ??
@@ -162,10 +190,7 @@ class RoomDesign {
               ?.map((e) => FanConfig.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      furniture: (json['furniture'] as List<dynamic>?)
-              ?.map((e) => FurnitureItem.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
+      furniture: furniture,
       aiPromptHistory: (json['aiPromptHistory'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
