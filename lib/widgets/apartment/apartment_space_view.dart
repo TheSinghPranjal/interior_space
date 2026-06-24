@@ -6,6 +6,7 @@ import '../../core/constants/room_constants.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../models/apartment_layout.dart';
 import '../../models/room_design.dart';
+import '../../providers/apartment_blueprint_selection_provider.dart';
 import '../../providers/apartment_placement_history_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../screens/preview_3d_screen.dart';
@@ -21,6 +22,7 @@ class ApartmentSpaceView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final project = ref.watch(projectProvider);
     final history = ref.watch(apartmentPlacementHistoryProvider);
+    final selectedPlacementIds = ref.watch(apartmentBlueprintSelectionProvider);
     final rooms = project.roomsForActiveApartment;
     final layout = project.apartmentLayout;
     final theme = Theme.of(context);
@@ -109,11 +111,21 @@ class ApartmentSpaceView extends ConsumerWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        _ApartmentUndoRedoButtons(
+                        _ApartmentBlueprintToolbar(
                           canUndo: history.canUndo,
                           canRedo: history.canRedo,
                           onUndo: undoMove,
                           onRedo: redoMove,
+                          selectedCount: selectedPlacementIds.length,
+                          allSelected: layout.placements.isNotEmpty &&
+                              selectedPlacementIds.length == layout.placements.length,
+                          onSelectAll: layout.placements.isEmpty
+                              ? null
+                              : () {
+                                  ref
+                                      .read(apartmentBlueprintSelectionProvider.notifier)
+                                      .selectAll(layout.placements.map((p) => p.id));
+                                },
                         ),
                       ],
                     ),
@@ -271,7 +283,7 @@ class _ApartmentHeaderPanel extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: AppSpacing.xs),
               child: Text(
-                '${layout.placements.length} room(s) on blueprint • Long-press to move',
+                '${layout.placements.length} room(s) on blueprint • Long-press to move • Select all to move together',
                 style: theme.textTheme.bodySmall,
               ),
             ),
@@ -391,6 +403,64 @@ class _ApartmentSizeControlsState extends ConsumerState<_ApartmentSizeControls> 
             ],
           ),
           secondChild: const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+}
+
+class _ApartmentBlueprintToolbar extends StatelessWidget {
+  const _ApartmentBlueprintToolbar({
+    required this.canUndo,
+    required this.canRedo,
+    required this.onUndo,
+    required this.onRedo,
+    required this.selectedCount,
+    required this.allSelected,
+    required this.onSelectAll,
+  });
+
+  final bool canUndo;
+  final bool canRedo;
+  final VoidCallback onUndo;
+  final VoidCallback onRedo;
+  final int selectedCount;
+  final bool allSelected;
+  final VoidCallback? onSelectAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final disabledColor = theme.colorScheme.onSurface.withValues(alpha: 0.28);
+    final selectActive = selectedCount > 0;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          icon: Icon(
+            allSelected ? Icons.deselect : Icons.select_all,
+            color: onSelectAll == null
+                ? disabledColor
+                : (selectActive ? theme.colorScheme.primary : null),
+          ),
+          tooltip: allSelected
+              ? 'Deselect all rooms'
+              : 'Select all rooms on blueprint',
+          onPressed: onSelectAll,
+        ),
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          icon: Icon(Icons.undo, color: canUndo ? null : disabledColor),
+          tooltip: 'Undo move',
+          onPressed: canUndo ? onUndo : null,
+        ),
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          icon: Icon(Icons.redo, color: canRedo ? null : disabledColor),
+          tooltip: 'Redo move',
+          onPressed: canRedo ? onRedo : null,
         ),
       ],
     );
