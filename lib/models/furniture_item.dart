@@ -84,6 +84,7 @@ class FurnitureItem {
         FurnitureType.diningTable ||
         FurnitureType.tvUnit ||
         FurnitureType.chair ||
+        FurnitureType.wardrobe ||
         FurnitureType.storageUnit ||
         FurnitureType.kitchenChimney ||
         FurnitureType.sink ||
@@ -248,14 +249,6 @@ class FurnitureItem {
           depth: 2.0,
           color: '#6D4C41',
         ),
-      FurnitureType.cupboard => FurnitureItem(
-          id: id,
-          type: type,
-          width: 4.0,
-          height: 3.0,
-          depth: 1.5,
-          color: '#8D6E63',
-        ),
       FurnitureType.storageUnit => FurnitureItem(
           id: id,
           type: type,
@@ -365,7 +358,11 @@ class FurnitureItem {
       };
 
   factory FurnitureItem.fromJson(Map<String, dynamic> json) {
-    final type = FurnitureType.values.byName(json['type'] as String);
+    final typeName = json['type'] as String;
+    final type = switch (typeName) {
+      'cupboard' => FurnitureType.wardrobe,
+      _ => FurnitureType.values.byName(typeName),
+    };
     return FurnitureItem(
       id: json['id'] as String,
       type: type,
