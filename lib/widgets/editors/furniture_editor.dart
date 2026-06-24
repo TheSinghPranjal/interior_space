@@ -12,6 +12,7 @@ import '../common/dimension_slider.dart';
 import '../common/item_editor_header.dart';
 import '../common/section_card.dart';
 import '../common/texture_upload_field.dart';
+import 'wall_tv_unit_card.dart';
 
 class FurnitureEditor extends ConsumerWidget {
   const FurnitureEditor({super.key});
@@ -20,36 +21,51 @@ class FurnitureEditor extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final design = ref.watch(roomDesignProvider);
     final furniture = design.furniture;
+    final wallTvUnits = design.wallTvUnits;
+    final notifier = ref.read(roomDesignProvider.notifier);
 
     return ListView(
       children: [
         SectionCard(
           title: 'Furniture Placement',
-          subtitle: 'Tap edit icon to adjust parameters • Drag in Blueprint',
+          subtitle: 'Add items to the blueprint • Wardrobe & Wall TV included • Drag in Blueprint',
           child: Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: FurnitureType.values.map((type) {
-              return ActionChip(
-                avatar: Icon(type.icon, size: 16),
-                label: Text(type.label),
-                onPressed: () => ref.read(roomDesignProvider.notifier).addFurniture(type),
-              );
-            }).toList(),
+            children: [
+              ...FurnitureType.values.map((type) {
+                return ActionChip(
+                  avatar: Icon(type.icon, size: 16),
+                  label: Text(type.label),
+                  onPressed: () => notifier.addFurniture(type),
+                );
+              }),
+              ActionChip(
+                avatar: const Icon(Icons.tv, size: 16),
+                label: const Text('Wall TV Unit'),
+                onPressed: notifier.addWallTvUnit,
+              ),
+            ],
           ),
         ),
-        if (furniture.isNotEmpty)
+        if (furniture.isNotEmpty || wallTvUnits.isNotEmpty)
           SectionCard(
             title: 'Placed Items',
             child: Column(
-              children: furniture
-                  .map(
-                    (item) => _FurnitureCard(
-                      item: item,
-                      design: design,
-                    ),
-                  )
-                  .toList(),
+              children: [
+                ...furniture.map(
+                  (item) => _FurnitureCard(
+                    item: item,
+                    design: design,
+                  ),
+                ),
+                ...wallTvUnits.map(
+                  (unit) => WallTvUnitCard(
+                    unit: unit,
+                    units: wallTvUnits,
+                  ),
+                ),
+              ],
             ),
           ),
       ],
