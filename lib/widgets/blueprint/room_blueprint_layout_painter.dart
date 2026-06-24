@@ -39,7 +39,6 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
     _drawCurtains(canvas);
     _drawAcUnits(canvas);
     _drawWallTvUnits(canvas);
-    _drawCupboards(canvas);
     _drawFurniture(canvas);
     _drawFans(canvas);
     _drawRoomBorder(canvas);
@@ -243,21 +242,6 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
           ColorUtils.fromHex(item.color),
         );
       }
-    }
-  }
-
-  void _drawCupboards(Canvas canvas) {
-    for (final cupboard in design.cupboards) {
-      final w = cupboard.width * scale;
-      final d = cupboard.depth * scale;
-      final left = roomRect.left + cupboard.blueprintX * roomRect.width - w / 2;
-      final top = roomRect.top + cupboard.blueprintY * roomRect.height - d / 2;
-      _drawItemBox(
-        canvas,
-        Rect.fromLTWH(left, top, w, d),
-        'Cupboard',
-        ColorUtils.fromHex(cupboard.color),
-      );
     }
   }
 

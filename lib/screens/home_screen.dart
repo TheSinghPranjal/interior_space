@@ -12,7 +12,6 @@ import '../services/project_storage_service.dart';
 import '../widgets/apartment/apartment_space_view.dart';
 import '../widgets/blueprint/blueprint_view.dart';
 import '../widgets/editors/ceiling_editor.dart';
-import '../widgets/editors/cupboards_editor.dart';
 import '../widgets/editors/doors_editor.dart';
 import '../widgets/editors/flooring_editor.dart';
 import '../widgets/editors/furniture_editor.dart';
@@ -117,11 +116,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         title: 'Windows, Curtains & AC',
         icon: Icons.window_outlined,
         child: WindowsEditor(),
-      ),
-      DesignMenuAction.cupboards => const EditorScreen(
-        title: 'Cupboards',
-        icon: Icons.kitchen_outlined,
-        child: CupboardsEditor(),
       ),
       DesignMenuAction.furniture => const EditorScreen(
         title: 'Furniture',
