@@ -1353,6 +1353,23 @@
       return this.renderer.domElement.toDataURL('image/png');
     }
 
+    captureExportViews() {
+      const previousMode = this.cameraMode || 'orbit';
+      const captureMode = (mode) => {
+        this.setCameraMode(mode);
+        this.renderer.render(this.scene, this.camera);
+        return this.renderer.domElement.toDataURL('image/png');
+      };
+
+      const views = {
+        front: captureMode('front'),
+        top: captureMode('top'),
+      };
+
+      this.setCameraMode(previousMode);
+      return JSON.stringify(views);
+    }
+
     _notifyReady() {
       if (window.flutter_inappwebview) {
         window.flutter_inappwebview.callHandler('onSceneReady');
@@ -3638,6 +3655,11 @@
 
   window.captureScreenshot = function () {
     if (window.roomRenderer) return window.roomRenderer.captureScreenshot();
+    return null;
+  };
+
+  window.captureExportViews = function () {
+    if (window.roomRenderer) return window.roomRenderer.captureExportViews();
     return null;
   };
 
