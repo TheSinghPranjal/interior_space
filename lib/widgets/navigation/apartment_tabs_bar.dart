@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../providers/apartment_blueprint_selection_provider.dart';
 import '../../providers/apartment_placement_history_provider.dart';
 import '../../providers/project_provider.dart';
 import '../common/confirm_delete_dialog.dart';
@@ -45,6 +46,7 @@ class ApartmentTabsBar extends ConsumerWidget {
                     canDelete: project.canRemoveApartment,
                     onTap: () {
                       ref.read(apartmentPlacementHistoryProvider.notifier).clear();
+                      ref.read(apartmentBlueprintSelectionProvider.notifier).clear();
                       ref.read(projectProvider.notifier).setActiveApartment(index);
                     },
                     onDelete: () => _confirmDeleteApartment(
