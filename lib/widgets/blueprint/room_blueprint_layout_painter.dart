@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/blueprint_furniture_paint.dart';
 import '../../core/utils/color_utils.dart';
 import '../../models/enums.dart';
 import '../../models/furniture_item.dart';
@@ -228,18 +229,28 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
 
   void _drawFurniture(Canvas canvas) {
     for (final item in design.furniture) {
+      final label = FurnitureItem.displayLabel(design.furniture, item);
+      final color = ColorUtils.fromHex(item.color);
       if (item.isWallMounted) {
-        _drawItemBox(canvas, _wallItemRect(item), FurnitureItem.displayLabel(design.furniture, item), ColorUtils.fromHex(item.color));
-      } else {
-        final w = item.width * scale;
-        final d = item.depth * scale;
-        final left = roomRect.left + item.blueprintX * roomRect.width - w / 2;
-        final top = roomRect.top + item.blueprintY * roomRect.height - d / 2;
         _drawItemBox(
           canvas,
-          Rect.fromLTWH(left, top, w, d),
-          FurnitureItem.displayLabel(design.furniture, item),
-          ColorUtils.fromHex(item.color),
+          BlueprintFurniturePaint.wallItemRect(
+            roomRect: roomRect,
+            scale: scale,
+            item: item,
+          ),
+          label,
+          color,
+        );
+      } else {
+        BlueprintFurniturePaint.drawFloorItem(
+          canvas: canvas,
+          roomRect: roomRect,
+          scale: scale,
+          item: item,
+          label: label,
+          color: color,
+          drawItemBox: _drawItemBox,
         );
       }
     }
@@ -275,20 +286,6 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
         );
       }
     }
-  }
-
-  Rect _wallItemRect(FurnitureItem item) {
-    final wall = item.wall ?? WallId.left;
-    final along = item.positionFromEdge * scale;
-    final into = item.depth * scale;
-    final alongSize = item.width * scale;
-
-    return switch (wall) {
-      WallId.front => Rect.fromLTWH(roomRect.left + along, roomRect.top, alongSize, into),
-      WallId.back => Rect.fromLTWH(roomRect.left + along, roomRect.bottom - into, alongSize, into),
-      WallId.left => Rect.fromLTWH(roomRect.left, roomRect.top + along, into, alongSize),
-      WallId.right => Rect.fromLTWH(roomRect.right - into, roomRect.top + along, into, alongSize),
-    };
   }
 
   void _drawItemBox(Canvas canvas, Rect rect, String label, Color color) {

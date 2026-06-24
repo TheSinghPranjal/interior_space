@@ -7,6 +7,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/enums.dart';
+import '../../models/room_3d_export_images.dart';
 import '../../providers/app_mode_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../providers/room_design_provider.dart';
@@ -14,7 +15,7 @@ import '../../services/room_scene_builder.dart';
 import '../../services/room_viewer_html_loader.dart';
 
 typedef Room3DControllerCallback = void Function(
-  Future<Uint8List?> Function() captureRender,
+  Future<Map<int, Room3DExportImages>> Function() captureAllRoomsForExport,
 );
 
 class Room3DViewer extends ConsumerStatefulWidget {
@@ -73,6 +74,42 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     }
   }
 
+  Future<bool> _pushSceneJson(String json) async {
+    if (_controller == null) return false;
+    try {
+      final escaped = jsonEncode(json);
+      final result = await _controller!.evaluateJavascript(
+        source: '''
+          (function() {
+            try {
+              if (typeof updateRoomScene === 'function') {
+                updateRoomScene($escaped);
+                return 'ok';
+              }
+              return 'no_handler';
+            } catch(e) {
+              return 'error:' + e.message;
+            }
+          })();
+        ''',
+      );
+
+      if (result != null && result.toString().startsWith('error:')) {
+        if (mounted) setState(() => _loadError = result.toString());
+        return false;
+      }
+      return true;
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadError = 'Scene update failed: $e';
+          _isLoading = false;
+        });
+      }
+      return false;
+    }
+  }
+
   Future<void> _pushScene() async {
     if (_controller == null) return;
     try {
@@ -95,27 +132,9 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
           showWallDimensionLabels: showLabels,
         );
       }
-      final escaped = jsonEncode(json);
 
-      final result = await _controller!.evaluateJavascript(
-        source: '''
-          (function() {
-            try {
-              if (typeof updateRoomScene === 'function') {
-                updateRoomScene($escaped);
-                return 'ok';
-              }
-              return 'no_handler';
-            } catch(e) {
-              return 'error:' + e.message;
-            }
-          })();
-        ''',
-      );
-
-      if (result != null && result.toString().startsWith('error:')) {
-        if (mounted) setState(() => _loadError = result.toString());
-      } else if (mounted) {
+      final ok = await _pushSceneJson(json);
+      if (ok && mounted) {
         setState(() => _isLoading = false);
       }
     } catch (e) {
@@ -142,28 +161,67 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     );
   }
 
-  Future<Uint8List?> _captureRender() async {
+  Future<Room3DExportImages?> _captureExportViews() async {
     if (_controller == null || !_isReady) return null;
     try {
       final result = await _controller!.evaluateJavascript(
-        source: 'captureScreenshot();',
+        source: 'captureExportViews();',
       );
       if (result == null) return null;
-      var dataUrl = result.toString();
-      if (dataUrl.startsWith('"') && dataUrl.endsWith('"')) {
-        dataUrl = dataUrl.substring(1, dataUrl.length - 1);
+
+      var jsonString = result.toString();
+      if (jsonString.startsWith('"') && jsonString.endsWith('"')) {
+        jsonString = jsonDecode(jsonString) as String;
       }
-      if (!dataUrl.startsWith('data:image')) return null;
-      final base64 = dataUrl.split(',').last;
-      return base64Decode(base64);
+
+      final views = jsonDecode(jsonString) as Map<String, dynamic>;
+      return Room3DExportImages(
+        front: _decodeDataUrl(views['front'] as String?),
+        top: _decodeDataUrl(views['top'] as String?),
+      );
     } catch (e) {
-      if (kDebugMode) debugPrint('3D capture failed: $e');
+      if (kDebugMode) debugPrint('3D export capture failed: $e');
       return null;
     }
   }
 
+  Future<Map<int, Room3DExportImages>> _captureAllRoomsForExport() async {
+    if (_controller == null || !_isReady) return {};
+
+    final project = ref.read(projectProvider);
+    final rooms = project.roomsOrDefault;
+    if (rooms.isEmpty) return {};
+
+    final builder = ref.read(roomSceneBuilderProvider);
+    final showLabels = ref.read(showWallDimensionLabelsProvider);
+    final captures = <int, Room3DExportImages>{};
+
+    for (var i = 0; i < rooms.length; i++) {
+      final sceneJson = await builder.buildSceneJson(
+        rooms[i],
+        showWallDimensionLabels: showLabels,
+      );
+      final pushed = await _pushSceneJson(sceneJson);
+      if (!pushed) continue;
+
+      await Future.delayed(const Duration(milliseconds: 450));
+      final views = await _captureExportViews();
+      if (views != null && views.hasAny) {
+        captures[i] = views;
+      }
+    }
+
+    await _pushScene();
+    return captures;
+  }
+
+  Uint8List? _decodeDataUrl(String? dataUrl) {
+    if (dataUrl == null || !dataUrl.startsWith('data:image')) return null;
+    return base64Decode(dataUrl.split(',').last);
+  }
+
   void _notifyCaptureReady() {
-    widget.onCaptureReady?.call(_captureRender);
+    widget.onCaptureReady?.call(_captureAllRoomsForExport);
   }
 
   @override
