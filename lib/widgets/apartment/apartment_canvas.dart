@@ -11,6 +11,7 @@ import '../../core/utils/blueprint_placement.dart';
 import '../../models/apartment_layout.dart';
 import '../../models/project_design.dart';
 import '../../models/room_design.dart';
+import '../../providers/apartment_blueprint_selection_provider.dart';
 import '../../providers/apartment_placement_history_provider.dart';
 import '../../providers/project_provider.dart';
 import '../blueprint/room_blueprint_layout_painter.dart';
@@ -25,15 +26,15 @@ class ApartmentCanvas extends ConsumerStatefulWidget {
 class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
   static const _holdDuration = Duration(milliseconds: 420);
 
-  String? _selectedId;
+  String? _dragAnchorId;
   bool _isDragging = false;
   Offset _dragDelta = Offset.zero;
   Offset? _dragStartCenter;
   Timer? _holdTimer;
   String? _holdItemId;
 
-  double? _tempBlueprintX;
-  double? _tempBlueprintY;
+  final Map<String, ({double x, double y})> _groupStartPositions = {};
+  final Map<String, ({double x, double y})> _tempGroupPositions = {};
 
   @override
   void dispose() {
@@ -47,15 +48,17 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
   }
 
   void _clearStaleSelection(ProjectDesign project) {
-    if (_selectedId == null) return;
-    final exists = project.apartmentLayout.placements.any((p) => p.id == _selectedId);
-    if (!exists) {
-      _selectedId = null;
+    ref
+        .read(apartmentBlueprintSelectionProvider.notifier)
+        .pruneMissing(project.apartmentLayout.placements.map((p) => p.id));
+    if (_dragAnchorId != null &&
+        !project.apartmentLayout.placements.any((p) => p.id == _dragAnchorId)) {
+      _dragAnchorId = null;
       _isDragging = false;
       _dragDelta = Offset.zero;
       _dragStartCenter = null;
-      _tempBlueprintX = null;
-      _tempBlueprintY = null;
+      _groupStartPositions.clear();
+      _tempGroupPositions.clear();
       _cancelHold();
     }
   }
@@ -63,6 +66,7 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
   @override
   Widget build(BuildContext context) {
     final project = ref.watch(projectProvider);
+    final selectedIds = ref.watch(apartmentBlueprintSelectionProvider);
     _clearStaleSelection(project);
     final layout = project.apartmentLayout;
 
@@ -115,15 +119,17 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
                     layout: layout,
                     aptRect: aptRect,
                     scale: scale,
+                    selectedIds: selectedIds,
+                    project: project,
                   );
                 }),
-                if (_selectedId != null &&
-                    project.apartmentLayout.placements.any((p) => p.id == _selectedId))
+                if (selectedIds.isNotEmpty)
                   _buildSelectionToolbar(
                     project: project,
                     layout: layout,
                     aptRect: aptRect,
                     scale: scale,
+                    selectedIds: selectedIds,
                   ),
               ],
             ),
@@ -139,13 +145,12 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
     required ApartmentLayout layout,
     required Rect aptRect,
     required double scale,
+    required Set<String> selectedIds,
+    required ProjectDesign project,
   }) {
-    final bx = (_isDragging && _selectedId == placement.id && _tempBlueprintX != null)
-        ? _tempBlueprintX!
-        : placement.blueprintX;
-    final by = (_isDragging && _selectedId == placement.id && _tempBlueprintY != null)
-        ? _tempBlueprintY!
-        : placement.blueprintY;
+    final (bx, by) = _displayPosition(placement);
+    final isSelected = selectedIds.contains(placement.id);
+    final isDragging = _isDragging && isSelected && _dragAnchorId != null;
 
     final pixelLayout = BlueprintPlacement.layoutPixels(
       blueprintX: bx,
@@ -157,8 +162,6 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
       scale: scale,
     );
 
-    final isSelected = _selectedId == placement.id;
-    final isDragging = isSelected && _isDragging;
     final itemCenter = Offset(
       pixelLayout.left + pixelLayout.bboxW / 2,
       pixelLayout.top + pixelLayout.bboxH / 2,
@@ -170,40 +173,49 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
       width: pixelLayout.bboxW,
       height: pixelLayout.bboxH,
       child: GestureDetector(
-        onLongPress: () => _selectPlacement(placement.id),
+        onLongPress: () => _activatePlacement(
+          placement: placement,
+          itemCenter: itemCenter,
+          selectedIds: selectedIds,
+        ),
         onPanDown: (_) {
           _holdItemId = placement.id;
           _holdTimer?.cancel();
           _holdTimer = Timer(_holdDuration, () {
             if (_holdItemId != placement.id) return;
-            _selectPlacement(placement.id);
-            _beginDrag(itemCenter);
+            _activatePlacement(
+              placement: placement,
+              itemCenter: itemCenter,
+              selectedIds: selectedIds,
+            );
           });
         },
         onPanUpdate: (details) {
-          if (_selectedId != placement.id || !_isDragging) return;
+          if (_dragAnchorId != placement.id || !_isDragging) return;
           setState(() {
             _dragDelta += details.delta;
             final center = (_dragStartCenter ?? itemCenter) + _dragDelta;
-            _updateTempPosition(
-              center: center,
-              room: room,
+            _updateGroupDrag(
+              anchorCenter: center,
+              anchorPlacement: placement,
+              anchorRoom: room,
               layout: layout,
               aptRect: aptRect,
-              placement: placement,
+              project: project,
+              selectedIds: selectedIds,
             );
           });
         },
         onPanEnd: (_) {
           _cancelHold();
-          if (_selectedId == placement.id && _isDragging) {
-            _commitDrag(placement, layout, room);
+          if (_dragAnchorId == placement.id && _isDragging) {
+            _commitGroupDrag(project, layout);
           }
         },
         onPanCancel: () {
           _cancelHold();
-          if (_selectedId == placement.id && _isDragging) {
-            _commitDrag(placement, layout, room);
+          if (_dragAnchorId == placement.id && _isDragging) {
+            _commitGroupDrag(project, layout);
           }
         },
         child: SizedBox(
@@ -223,25 +235,26 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
                   curve: Curves.easeOut,
                   width: pixelLayout.innerW,
                   height: pixelLayout.innerH,
-                decoration: isDragging
-                    ? BoxDecoration(
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.25),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      )
-                    : null,
-                child: CustomPaint(
-                  size: Size(pixelLayout.innerW, pixelLayout.innerH),
-                  painter: RoomBlueprintLayoutPainter(
-                    design: room,
-                    roomRect: Rect.fromLTWH(0, 0, pixelLayout.innerW, pixelLayout.innerH),
-                    scale: scale,
-                    isSelected: isSelected,
-                    showWallLabels: pixelLayout.innerW >= 70,
+                  decoration: isDragging
+                      ? BoxDecoration(
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        )
+                      : null,
+                  child: CustomPaint(
+                    size: Size(pixelLayout.innerW, pixelLayout.innerH),
+                    painter: RoomBlueprintLayoutPainter(
+                      design: room,
+                      roomRect: Rect.fromLTWH(0, 0, pixelLayout.innerW, pixelLayout.innerH),
+                      scale: scale,
+                      isSelected: isSelected,
+                      showWallLabels: pixelLayout.innerW >= 70,
+                    ),
                   ),
                 ),
               ),
@@ -249,7 +262,6 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
           ),
         ),
       ),
-    ),
     );
   }
 
@@ -258,20 +270,26 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
     required ApartmentLayout layout,
     required Rect aptRect,
     required double scale,
+    required Set<String> selectedIds,
   }) {
+    if (selectedIds.length > 1) {
+      return _buildGroupSelectionToolbar(
+        project: project,
+        layout: layout,
+        aptRect: aptRect,
+        scale: scale,
+        selectedIds: selectedIds,
+      );
+    }
+
     final placement =
-        layout.placements.firstWhereOrNull((p) => p.id == _selectedId);
+        layout.placements.firstWhereOrNull((p) => selectedIds.contains(p.id));
     if (placement == null) return const SizedBox.shrink();
 
     final room = project.roomById(placement.roomId);
     if (room == null) return const SizedBox.shrink();
 
-    final bx = (_isDragging && _selectedId == placement.id && _tempBlueprintX != null)
-        ? _tempBlueprintX!
-        : placement.blueprintX;
-    final by = (_isDragging && _selectedId == placement.id && _tempBlueprintY != null)
-        ? _tempBlueprintY!
-        : placement.blueprintY;
+    final (bx, by) = _displayPosition(placement);
     final pixelLayout = BlueprintPlacement.layoutPixels(
       blueprintX: bx,
       blueprintY: by,
@@ -335,84 +353,198 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
     );
   }
 
-  void _selectPlacement(String id) {
+  Widget _buildGroupSelectionToolbar({
+    required ProjectDesign project,
+    required ApartmentLayout layout,
+    required Rect aptRect,
+    required double scale,
+    required Set<String> selectedIds,
+  }) {
+    Rect? bounds;
+    for (final placement in layout.placements.where((p) => selectedIds.contains(p.id))) {
+      final room = project.roomById(placement.roomId);
+      if (room == null) continue;
+      final (bx, by) = _displayPosition(placement);
+      final pixelLayout = BlueprintPlacement.layoutPixels(
+        blueprintX: bx,
+        blueprintY: by,
+        widthFt: room.dimensions.width,
+        depthFt: room.dimensions.length,
+        rotationDeg: placement.rotation,
+        roomRect: aptRect,
+        scale: scale,
+      );
+      final rect = Rect.fromLTWH(
+        pixelLayout.left,
+        pixelLayout.top,
+        pixelLayout.bboxW,
+        pixelLayout.bboxH,
+      );
+      bounds = bounds == null ? rect : bounds.expandToInclude(rect);
+    }
+    if (bounds == null) return const SizedBox.shrink();
+
+    return Positioned(
+      left: bounds.center.dx - 72,
+      top: bounds.top - 44,
+      child: Material(
+        elevation: 4,
+        borderRadius: BorderRadius.circular(20),
+        color: AppTheme.primary.withValues(alpha: 0.85),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${selectedIds.length} rooms',
+                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.close, color: Colors.white, size: 16),
+                tooltip: 'Deselect all',
+                onPressed: _deselect,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _activatePlacement({
+    required ApartmentRoomPlacement placement,
+    required Offset itemCenter,
+    required Set<String> selectedIds,
+  }) {
+    final selection = ref.read(apartmentBlueprintSelectionProvider.notifier);
+    if (selectedIds.contains(placement.id) && selectedIds.length > 1) {
+      // Keep the current multi-selection.
+    } else {
+      selection.selectOne(placement.id);
+    }
+    final activeSelection = ref.read(apartmentBlueprintSelectionProvider);
+    _selectPlacementForDrag(placement.id, itemCenter, activeSelection);
+  }
+
+  (double, double) _displayPosition(ApartmentRoomPlacement placement) {
+    final temp = _tempGroupPositions[placement.id];
+    if (_isDragging && temp != null) {
+      return (temp.x, temp.y);
+    }
+    return (placement.blueprintX, placement.blueprintY);
+  }
+
+  void _selectPlacementForDrag(String anchorId, Offset center, Set<String> selectedIds) {
     HapticFeedback.mediumImpact();
     setState(() {
-      _selectedId = id;
-      _isDragging = false;
+      _dragAnchorId = anchorId;
+      _isDragging = true;
+      _dragStartCenter = center;
       _dragDelta = Offset.zero;
-      _dragStartCenter = null;
-      _tempBlueprintX = null;
-      _tempBlueprintY = null;
+      _groupStartPositions.clear();
+      _tempGroupPositions.clear();
+
+      final project = ref.read(projectProvider);
+      for (final id in selectedIds) {
+        final placement = project.apartmentLayout.placements.firstWhereOrNull((p) => p.id == id);
+        if (placement == null) continue;
+        final pos = (x: placement.blueprintX, y: placement.blueprintY);
+        _groupStartPositions[id] = pos;
+        _tempGroupPositions[id] = pos;
+      }
     });
   }
 
   void _deselect() {
-    if (_selectedId == null) return;
+    if (ref.read(apartmentBlueprintSelectionProvider).isEmpty && !_isDragging) return;
+    ref.read(apartmentBlueprintSelectionProvider.notifier).clear();
     setState(() {
-      _selectedId = null;
+      _dragAnchorId = null;
       _isDragging = false;
       _dragDelta = Offset.zero;
       _dragStartCenter = null;
-      _tempBlueprintX = null;
-      _tempBlueprintY = null;
+      _groupStartPositions.clear();
+      _tempGroupPositions.clear();
     });
   }
 
-  void _beginDrag(Offset center) {
-    setState(() {
-      _isDragging = true;
-      _dragStartCenter = center;
-    });
-  }
-
-  void _updateTempPosition({
-    required Offset center,
-    required RoomDesign room,
+  void _updateGroupDrag({
+    required Offset anchorCenter,
+    required ApartmentRoomPlacement anchorPlacement,
+    required RoomDesign anchorRoom,
     required ApartmentLayout layout,
     required Rect aptRect,
-    required ApartmentRoomPlacement placement,
+    required ProjectDesign project,
+    required Set<String> selectedIds,
   }) {
-    final normX = ((center.dx - aptRect.left) / aptRect.width).clamp(0.0, 1.0);
-    final normY = ((center.dy - aptRect.top) / aptRect.height).clamp(0.0, 1.0);
-    final clamped = BlueprintPlacement.clampBlueprintCenter(
-      centerXNorm: normX,
-      centerYNorm: normY,
-      widthFt: room.dimensions.width,
-      depthFt: room.dimensions.length,
-      rotationDeg: placement.rotation,
+    final anchorStart = _groupStartPositions[anchorPlacement.id];
+    if (anchorStart == null) return;
+
+    final anchorNormX = ((anchorCenter.dx - aptRect.left) / aptRect.width).clamp(0.0, 1.0);
+    final anchorNormY = ((anchorCenter.dy - aptRect.top) / aptRect.height).clamp(0.0, 1.0);
+    final anchorClamped = BlueprintPlacement.clampBlueprintCenter(
+      centerXNorm: anchorNormX,
+      centerYNorm: anchorNormY,
+      widthFt: anchorRoom.dimensions.width,
+      depthFt: anchorRoom.dimensions.length,
+      rotationDeg: anchorPlacement.rotation,
       roomWidthFt: layout.widthFt,
       roomLengthFt: layout.lengthFt,
     );
-    _tempBlueprintX = clamped.bx;
-    _tempBlueprintY = clamped.by;
+    final deltaX = anchorClamped.bx - anchorStart.x;
+    final deltaY = anchorClamped.by - anchorStart.y;
+
+    for (final id in selectedIds) {
+      final start = _groupStartPositions[id];
+      final placement = layout.placements.firstWhereOrNull((p) => p.id == id);
+      final room = placement == null ? null : project.roomById(placement.roomId);
+      if (start == null || placement == null || room == null) continue;
+
+      final clamped = BlueprintPlacement.clampBlueprintCenter(
+        centerXNorm: start.x + deltaX,
+        centerYNorm: start.y + deltaY,
+        widthFt: room.dimensions.width,
+        depthFt: room.dimensions.length,
+        rotationDeg: placement.rotation,
+        roomWidthFt: layout.widthFt,
+        roomLengthFt: layout.lengthFt,
+      );
+      _tempGroupPositions[id] = (x: clamped.bx, y: clamped.by);
+    }
   }
 
-  void _commitDrag(
-    ApartmentRoomPlacement placement,
-    ApartmentLayout layout,
-    RoomDesign room,
-  ) {
+  void _commitGroupDrag(ProjectDesign project, ApartmentLayout layout) {
     final notifier = ref.read(projectProvider.notifier);
-    if (_tempBlueprintX != null && _tempBlueprintY != null) {
-      final moved = (_tempBlueprintX! - placement.blueprintX).abs() > 1e-6 ||
-          (_tempBlueprintY! - placement.blueprintY).abs() > 1e-6;
-      if (moved) {
-        ref.read(apartmentPlacementHistoryProvider.notifier).recordBeforeChange();
+    final updates = <String, ApartmentRoomPlacement>{};
+    var moved = false;
+
+    for (final entry in _tempGroupPositions.entries) {
+      final placement = layout.placements.firstWhereOrNull((p) => p.id == entry.key);
+      if (placement == null) continue;
+      if ((entry.value.x - placement.blueprintX).abs() > 1e-6 ||
+          (entry.value.y - placement.blueprintY).abs() > 1e-6) {
+        moved = true;
       }
-      notifier.updateApartmentPlacement(
-        placement.copyWith(
-          blueprintX: _tempBlueprintX!,
-          blueprintY: _tempBlueprintY!,
-        ),
+      updates[entry.key] = placement.copyWith(
+        blueprintX: entry.value.x,
+        blueprintY: entry.value.y,
       );
     }
+
+    if (moved) {
+      ref.read(apartmentPlacementHistoryProvider.notifier).recordBeforeChange();
+      notifier.updateApartmentPlacements(updates);
+    }
+
     setState(() {
+      _dragAnchorId = null;
       _isDragging = false;
       _dragDelta = Offset.zero;
       _dragStartCenter = null;
-      _tempBlueprintX = null;
-      _tempBlueprintY = null;
+      _groupStartPositions.clear();
+      _tempGroupPositions.clear();
     });
   }
 
