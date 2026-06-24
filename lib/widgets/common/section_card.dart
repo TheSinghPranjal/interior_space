@@ -10,6 +10,7 @@ class SectionCard extends StatelessWidget {
     this.trailing,
     this.subtitle,
     this.icon,
+    this.titleBadge,
   });
 
   final String title;
@@ -17,6 +18,7 @@ class SectionCard extends StatelessWidget {
   final Widget child;
   final Widget? trailing;
   final IconData? icon;
+  final Widget? titleBadge;
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +59,15 @@ class SectionCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(title, style: theme.textTheme.titleMedium),
+                        Wrap(
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.xs,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(title, style: theme.textTheme.titleMedium),
+                            if (titleBadge != null) titleBadge!,
+                          ],
+                        ),
                         if (subtitle != null) ...[
                           const SizedBox(height: 2),
                           Text(subtitle!, style: theme.textTheme.bodySmall),

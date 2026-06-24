@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/room_constants.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/room_geometry.dart';
 import '../../models/enums.dart';
@@ -15,168 +16,276 @@ class RoomSetupEditor extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final design = ref.watch(roomDesignProvider);
-    final dims = design.dimensions;
-    final notifier = ref.read(roomDesignProvider.notifier);
-    final geometry = RoomGeometry.fromDimensions(dims);
-
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),
-      children: [
+      children: const [
+        _RoomDimensionsSection(),
         SectionCard(
-          title: 'Room Dimensions',
-          subtitle: dims.useCustomWallLengths
-              ? 'Custom wall mode — individual wall lengths'
-              : 'Standard mode — Width × Length × Height',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _ModeBanner(useCustom: dims.useCustomWallLengths),
-              const SizedBox(height: 12),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Custom Wall Dimensions'),
-                subtitle: const Text(
-                  'Set each wall length individually (Front, Back, Left, Right)',
-                ),
-                value: dims.useCustomWallLengths,
-                onChanged: notifier.setCustomWallLengthsEnabled,
-              ),
-              if (!dims.useCustomWallLengths) ...[
-                _DimensionSlider(
-                  label: 'Width (Front & Back walls)',
-                  value: dims.width,
-                  min: RoomConstants.minWidth,
-                  max: RoomConstants.maxWidth,
-                  onChanged: (v) => notifier.updateDimensions(dims.copyWith(width: v)),
-                ),
-                _DimensionSlider(
-                  label: 'Length (Left & Right walls)',
-                  value: dims.length,
-                  min: RoomConstants.minLength,
-                  max: RoomConstants.maxLength,
-                  onChanged: (v) => notifier.updateDimensions(dims.copyWith(length: v)),
-                ),
-              ] else ...[
-                _DimensionSlider(
-                  label: WallId.front.shortLabel,
-                  value: dims.lengthForWall(WallId.front),
-                  min: RoomConstants.minWidth,
-                  max: RoomConstants.maxWidth,
-                  onChanged: (v) => notifier.updateCustomWallLength(WallId.front, v),
-                ),
-                _DimensionSlider(
-                  label: WallId.back.shortLabel,
-                  value: dims.lengthForWall(WallId.back),
-                  min: RoomConstants.minWidth,
-                  max: RoomConstants.maxWidth,
-                  onChanged: (v) => notifier.updateCustomWallLength(WallId.back, v),
-                ),
-                _DimensionSlider(
-                  label: WallId.left.shortLabel,
-                  value: dims.lengthForWall(WallId.left),
-                  min: RoomConstants.minLength,
-                  max: RoomConstants.maxLength,
-                  onChanged: (v) => notifier.updateCustomWallLength(WallId.left, v),
-                ),
-                _DimensionSlider(
-                  label: WallId.right.shortLabel,
-                  value: dims.lengthForWall(WallId.right),
-                  min: RoomConstants.minLength,
-                  max: RoomConstants.maxLength,
-                  onChanged: (v) => notifier.updateCustomWallLength(WallId.right, v),
-                ),
-                if (!geometry.isValid)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      geometry.validationMessage ?? 'Invalid wall configuration',
-                      style: const TextStyle(color: AppTheme.warning, fontSize: 13),
-                    ),
-                  ),
-              ],
-              _DimensionSlider(
-                label: 'Height',
-                value: dims.height,
-                min: RoomConstants.minHeight,
-                max: RoomConstants.maxHeight,
-                onChanged: (v) => notifier.updateDimensions(dims.copyWith(height: v)),
-              ),
-              if (dims.useCustomWallLengths && geometry.isValid) ...[
-                const SizedBox(height: 8),
-                _WallSummaryChip(
-                  label: 'Floor footprint',
-                  value:
-                      '${geometry.boundingWidth.toStringAsFixed(1)} × ${geometry.boundingLength.toStringAsFixed(1)} ft',
-                ),
-                const EditorHelperText(
-                  'Use the Walls editor to hide or shorten individual walls for open-plan layouts.',
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SectionCard(
           title: 'Room',
           child: _RoomNameField(),
         ),
-        SectionCard(
-          title: 'AI Assistant (Future Ready)',
-          subtitle: 'Try: "Make room modern" or "Generate luxury bedroom"',
-          child: TextField(
-            decoration: const InputDecoration(
-              labelText: 'Design prompt',
-              hintText: 'Describe your ideal room...',
-              suffixIcon: Icon(Icons.auto_awesome),
-            ),
-            onSubmitted: ref.read(roomDesignProvider.notifier).applyAiSuggestion,
-          ),
-        ),
+        _AiAssistantSection(),
       ],
     );
   }
 }
 
-class _ModeBanner extends StatelessWidget {
-  const _ModeBanner({required this.useCustom});
+class _RoomDimensionsSection extends ConsumerStatefulWidget {
+  const _RoomDimensionsSection();
 
-  final bool useCustom;
+  @override
+  ConsumerState<_RoomDimensionsSection> createState() =>
+      _RoomDimensionsSectionState();
+}
+
+class _RoomDimensionsSectionState extends ConsumerState<_RoomDimensionsSection> {
+  bool _expanded = true;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: useCustom
-            ? AppTheme.secondary.withValues(alpha: 0.18)
-            : AppTheme.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: useCustom
-              ? AppTheme.secondary.withValues(alpha: 0.45)
-              : AppTheme.primary.withValues(alpha: 0.2),
+    final design = ref.watch(roomDesignProvider);
+    final dims = design.dimensions;
+    final notifier = ref.read(roomDesignProvider.notifier);
+    final geometry = RoomGeometry.fromDimensions(dims);
+    final useCustom = dims.useCustomWallLengths;
+    final theme = Theme.of(context);
+    final compact = MediaQuery.sizeOf(context).width < 480;
+
+    final dimensionSummary = useCustom
+        ? 'Custom wall lengths · ${dims.height.toStringAsFixed(1)} ft high'
+        : '${dims.width.toStringAsFixed(1)} × ${dims.length.toStringAsFixed(1)} × ${dims.height.toStringAsFixed(1)} ft';
+
+    final modeChipLabel = useCustom
+        ? (compact ? 'Custom walls' : 'Custom wall dimensions active')
+        : (compact ? 'Standard room' : 'Standard rectangular room dimensions');
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.55)),
+          boxShadow: AppSpacing.cardShadow(context),
+        ),
+        child: Padding(
+          padding: AppSpacing.cardPadding,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.xs,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text('Room Dimensions', style: theme.textTheme.titleMedium),
+                        _DimensionModeChip(
+                          useCustom: useCustom,
+                          label: modeChipLabel,
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                    tooltip: _expanded ? 'Hide dimensions' : 'Show dimensions',
+                    onPressed: () => setState(() => _expanded = !_expanded),
+                    icon: AnimatedRotation(
+                      turns: _expanded ? 0 : 0.5,
+                      duration: const Duration(milliseconds: 200),
+                      child: const Icon(Icons.keyboard_arrow_down, size: 20),
+                    ),
+                  ),
+                  if (!compact)
+                    Padding(
+                      padding: const EdgeInsets.only(right: AppSpacing.xs),
+                      child: Text(
+                        'Custom walls',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ),
+                  Switch(
+                    value: useCustom,
+                    onChanged: notifier.setCustomWallLengthsEnabled,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ],
+              ),
+              if (!_expanded)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.xs),
+                  child: Text(dimensionSummary, style: theme.textTheme.bodySmall),
+                ),
+              AnimatedCrossFade(
+                firstCurve: Curves.easeOut,
+                secondCurve: Curves.easeIn,
+                sizeCurve: Curves.easeInOut,
+                crossFadeState:
+                    _expanded ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+                duration: const Duration(milliseconds: 200),
+                firstChild: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: AppSpacing.sm),
+                    if (!useCustom) ...[
+                      _DimensionSlider(
+                        label: 'Width (Front & Back walls)',
+                        value: dims.width,
+                        min: RoomConstants.minWidth,
+                        max: RoomConstants.maxWidth,
+                        onChanged: (v) =>
+                            notifier.updateDimensions(dims.copyWith(width: v)),
+                      ),
+                      _DimensionSlider(
+                        label: 'Length (Left & Right walls)',
+                        value: dims.length,
+                        min: RoomConstants.minLength,
+                        max: RoomConstants.maxLength,
+                        onChanged: (v) =>
+                            notifier.updateDimensions(dims.copyWith(length: v)),
+                      ),
+                    ] else ...[
+                      _DimensionSlider(
+                        label: WallId.front.shortLabel,
+                        value: dims.lengthForWall(WallId.front),
+                        min: RoomConstants.minWidth,
+                        max: RoomConstants.maxWidth,
+                        onChanged: (v) =>
+                            notifier.updateCustomWallLength(WallId.front, v),
+                      ),
+                      _DimensionSlider(
+                        label: WallId.back.shortLabel,
+                        value: dims.lengthForWall(WallId.back),
+                        min: RoomConstants.minWidth,
+                        max: RoomConstants.maxWidth,
+                        onChanged: (v) =>
+                            notifier.updateCustomWallLength(WallId.back, v),
+                      ),
+                      _DimensionSlider(
+                        label: WallId.left.shortLabel,
+                        value: dims.lengthForWall(WallId.left),
+                        min: RoomConstants.minLength,
+                        max: RoomConstants.maxLength,
+                        onChanged: (v) =>
+                            notifier.updateCustomWallLength(WallId.left, v),
+                      ),
+                      _DimensionSlider(
+                        label: WallId.right.shortLabel,
+                        value: dims.lengthForWall(WallId.right),
+                        min: RoomConstants.minLength,
+                        max: RoomConstants.maxLength,
+                        onChanged: (v) =>
+                            notifier.updateCustomWallLength(WallId.right, v),
+                      ),
+                      if (!geometry.isValid)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            geometry.validationMessage ?? 'Invalid wall configuration',
+                            style: const TextStyle(
+                              color: AppTheme.warning,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                    ],
+                    _DimensionSlider(
+                      label: 'Height',
+                      value: dims.height,
+                      min: RoomConstants.minHeight,
+                      max: RoomConstants.maxHeight,
+                      onChanged: (v) =>
+                          notifier.updateDimensions(dims.copyWith(height: v)),
+                    ),
+                    if (useCustom && geometry.isValid) ...[
+                      const SizedBox(height: 8),
+                      _WallSummaryChip(
+                        label: 'Floor footprint',
+                        value:
+                            '${geometry.boundingWidth.toStringAsFixed(1)} × ${geometry.boundingLength.toStringAsFixed(1)} ft',
+                      ),
+                      const EditorHelperText(
+                        'Use the Walls editor to hide or shorten individual walls for open-plan layouts.',
+                      ),
+                    ],
+                  ],
+                ),
+                secondChild: const SizedBox.shrink(),
+              ),
+            ],
+          ),
         ),
       ),
-      child: Row(
-        children: [
-          Icon(
-            useCustom ? Icons.architecture : Icons.crop_square,
-            size: 16,
-            color: useCustom ? AppTheme.accent : AppTheme.primary,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              useCustom ? 'Custom wall dimensions active' : 'Standard rectangular room',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: useCustom ? AppTheme.accent : AppTheme.primary,
-              ),
-            ),
-          ),
-        ],
+    );
+  }
+}
+
+class _DimensionModeChip extends StatelessWidget {
+  const _DimensionModeChip({
+    required this.useCustom,
+    required this.label,
+  });
+
+  final bool useCustom;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Chip(
+      avatar: Icon(
+        useCustom ? Icons.architecture : Icons.crop_square,
+        size: 14,
+        color: useCustom ? AppTheme.accent : AppTheme.primary,
+      ),
+      label: Text(
+        label,
+        style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      backgroundColor: useCustom
+          ? AppTheme.secondary.withValues(alpha: 0.18)
+          : AppTheme.primary.withValues(alpha: 0.08),
+      side: BorderSide(
+        color: useCustom
+            ? AppTheme.secondary.withValues(alpha: 0.45)
+            : AppTheme.primary.withValues(alpha: 0.2),
+      ),
+    );
+  }
+}
+
+class _AiAssistantSection extends ConsumerWidget {
+  const _AiAssistantSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SectionCard(
+      title: 'AI Assistant (Future Ready)',
+      subtitle: 'Try: "Make room modern" or "Generate luxury bedroom"',
+      child: TextField(
+        decoration: const InputDecoration(
+          labelText: 'Design prompt',
+          hintText: 'Describe your ideal room...',
+          suffixIcon: Icon(Icons.auto_awesome),
+        ),
+        onSubmitted: ref.read(roomDesignProvider.notifier).applyAiSuggestion,
       ),
     );
   }

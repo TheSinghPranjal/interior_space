@@ -160,6 +160,44 @@ class ProjectNotifier extends StateNotifier<ProjectDesign> {
         ).copyWith(name: room.name));
   }
 
+  /// Load a room shared from another device into the active room or as a new tab.
+  void importSharedRoom(RoomDesign imported, {required bool asNewRoom}) {
+    if (asNewRoom) {
+      final aptIndex = state.safeActiveApartmentIndex;
+      final newRoom = imported.copyWith(
+        id: _uuid.v4(),
+        apartmentIndex: aptIndex,
+        name: _uniqueRoomName(imported.name),
+      );
+      final rooms = [...state.roomsOrDefault, newRoom];
+      state = state.copyWith(
+        rooms: rooms,
+        activeRoomIndex: rooms.length - 1,
+      );
+      return;
+    }
+
+    final active = state.activeRoom;
+    updateActiveRoom(
+      (_) => imported.copyWith(
+        id: active.id,
+        apartmentIndex: active.apartmentIndex,
+        name: imported.name.trim().isEmpty ? active.name : imported.name,
+      ),
+    );
+  }
+
+  String _uniqueRoomName(String base) {
+    final trimmed = base.trim().isEmpty ? 'Imported Room' : base.trim();
+    final names = state.roomsForActiveApartment.map((r) => r.name).toSet();
+    if (!names.contains(trimmed)) return trimmed;
+    var i = 2;
+    while (names.contains('$trimmed ($i)')) {
+      i++;
+    }
+    return '$trimmed ($i)';
+  }
+
   void updateActiveRoom(RoomDesign Function(RoomDesign) update) {
     final rooms = [...state.roomsOrDefault];
     final active = state.activeRoom;

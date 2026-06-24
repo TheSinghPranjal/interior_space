@@ -21,6 +21,7 @@ import '../widgets/editors/room_setup_editor.dart';
 import '../widgets/editors/walls_editor.dart';
 import '../widgets/editors/windows_editor.dart';
 import '../widgets/navigation/apartment_tabs_bar.dart';
+import '../widgets/navigation/app_space_mode_toggle.dart';
 import '../widgets/navigation/design_menu_fab.dart';
 import '../widgets/navigation/room_tabs_bar.dart';
 import 'ai_assist_screen.dart';
@@ -93,45 +94,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   EditorScreen? _editorForAction(DesignMenuAction action) {
     return switch (action) {
       DesignMenuAction.walls => const EditorScreen(
-          title: 'Walls',
-          icon: Icons.wallpaper_outlined,
-          child: WallsEditor(),
-        ),
+        title: 'Walls',
+        icon: Icons.wallpaper_outlined,
+        child: WallsEditor(),
+      ),
       DesignMenuAction.flooring => const EditorScreen(
-          title: 'Flooring',
-          icon: Icons.grid_on_outlined,
-          child: FlooringEditor(),
-        ),
+        title: 'Flooring',
+        icon: Icons.grid_on_outlined,
+        child: FlooringEditor(),
+      ),
       DesignMenuAction.ceiling => const EditorScreen(
-          title: 'Ceiling',
-          icon: Icons.roofing_outlined,
-          child: CeilingEditor(),
-        ),
+        title: 'Ceiling',
+        icon: Icons.roofing_outlined,
+        child: CeilingEditor(),
+      ),
       DesignMenuAction.doors => const EditorScreen(
-          title: 'Doors',
-          icon: Icons.door_front_door_outlined,
-          child: DoorsEditor(),
-        ),
+        title: 'Doors',
+        icon: Icons.door_front_door_outlined,
+        child: DoorsEditor(),
+      ),
       DesignMenuAction.windows => const EditorScreen(
-          title: 'Windows, Curtains & AC',
-          icon: Icons.window_outlined,
-          child: WindowsEditor(),
-        ),
+        title: 'Windows, Curtains & AC',
+        icon: Icons.window_outlined,
+        child: WindowsEditor(),
+      ),
       DesignMenuAction.cupboards => const EditorScreen(
-          title: 'Cupboards',
-          icon: Icons.kitchen_outlined,
-          child: CupboardsEditor(),
-        ),
+        title: 'Cupboards',
+        icon: Icons.kitchen_outlined,
+        child: CupboardsEditor(),
+      ),
       DesignMenuAction.furniture => const EditorScreen(
-          title: 'Furniture',
-          icon: Icons.chair_outlined,
-          child: FurnitureEditor(),
-        ),
+        title: 'Furniture',
+        icon: Icons.chair_outlined,
+        child: FurnitureEditor(),
+      ),
       DesignMenuAction.lighting => const EditorScreen(
-          title: 'Lighting and Fan',
-          icon: Icons.lightbulb_outline,
-          child: LightingEditor(),
-        ),
+        title: 'Lighting and Fan',
+        icon: Icons.lightbulb_outline,
+        child: LightingEditor(),
+      ),
       _ => null,
     };
   }
@@ -150,100 +151,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
-      appBar: AppBar(
-        titleSpacing: AppSpacing.md,
-        title: LayoutBuilder(
-          builder: (context, constraints) {
-            return SizedBox(
-              width: constraints.maxWidth,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(appMode.title, style: theme.textTheme.titleLarge),
-                        Text(
-                          isApartment
-                              ? '${project.apartmentLayout.name} · ${project.apartmentLayout.placements.length} on plan'
-                              : '${project.apartmentLayout.name} · ${activeRoom.name}',
-                          style: theme.textTheme.bodySmall,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 248),
-                    child: SegmentedButton<AppSpaceMode>(
-                      showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(
-                          value: AppSpaceMode.interior,
-                          label: Text('Interior'),
-                          icon: Icon(Icons.meeting_room_outlined, size: 16),
-                        ),
-                        ButtonSegment(
-                          value: AppSpaceMode.apartment,
-                          label: Text('Apartment'),
-                          icon: Icon(Icons.apartment_outlined, size: 16),
-                        ),
-                      ],
-                      selected: {appMode},
-                      onSelectionChanged: (selection) {
-                        ref.read(appSpaceModeProvider.notifier).state = selection.first;
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.save_outlined),
-            tooltip: 'Save project',
-            onPressed: () async {
-              await ref.read(projectStorageProvider).saveProject(project);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Project saved')),
-                );
-              }
-            },
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            tooltip: 'More actions',
-            onSelected: (value) {
-              if (value == 'reset') {
-                isApartment
-                    ? _confirmResetApartment(context)
-                    : _confirmReset(context, activeRoom.name);
-              }
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'reset',
-                child: Row(
-                  children: [
-                    Icon(Icons.refresh, size: 16, color: theme.colorScheme.error),
-                    const SizedBox(width: 12),
-                    Text(
-                      isApartment ? 'Reset apartment layout' : 'Reset current room',
-                      style: TextStyle(color: theme.colorScheme.error),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
+      appBar: _buildAppBar(
+        context,
+        theme: theme,
+        project: project,
+        activeRoom: activeRoom,
+        appMode: appMode,
+        isApartment: isApartment,
       ),
       body: Column(
         children: [
@@ -285,6 +199,134 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               label: 'AI Assist',
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(
+      BuildContext context, {
+        required ThemeData theme,
+        required dynamic project,
+        required dynamic activeRoom,
+        required AppSpaceMode appMode,
+        required bool isApartment,
+      }) {
+    final breadcrumb = isApartment
+        ? '${project.apartmentLayout.name} · ${project.apartmentLayout.placements.length} spaces'
+        : '${project.apartmentLayout.name} · ${activeRoom.name}';
+
+    const double appBarHeight = 56.0;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final compactToggle = screenWidth < 720;
+
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(appBarHeight),
+      child: SafeArea(
+        bottom: false,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: theme.appBarTheme.backgroundColor ?? AppTheme.surface,
+            border: Border(
+              bottom: BorderSide(
+                color: AppTheme.border.withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+          child: SizedBox(
+            height: appBarHeight,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: Stack(
+                clipBehavior: Clip.hardEdge,
+                alignment: Alignment.center,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: SizedBox(
+                      width: (screenWidth * 0.34).clamp(120, 240),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            appMode.title,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: -0.2,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            breadcrumb,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Center(
+                    child: AppSpaceModeToggle(compact: compactToggle),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.save_outlined),
+                          tooltip: 'Save project',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () async {
+                            await ref.read(projectStorageProvider).saveProject(project);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Project saved')),
+                              );
+                            }
+                          },
+                        ),
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert),
+                          tooltip: 'More actions',
+                          onSelected: (value) {
+                            if (value == 'reset') {
+                              isApartment
+                                  ? _confirmResetApartment(context)
+                                  : _confirmReset(context, activeRoom.name);
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'reset',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.refresh,
+                                      size: 16, color: theme.colorScheme.error),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    isApartment
+                                        ? 'Reset apartment layout'
+                                        : 'Reset current room',
+                                    style: TextStyle(color: theme.colorScheme.error),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -340,7 +382,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         title: const Text('Reset Apartment Layout?'),
         content: Text(
           'This will remove all rooms from "${ref.read(projectProvider).apartmentLayout.name}" '
-          'blueprint. Your individual room designs are not affected.',
+              'blueprint. Your individual room designs are not affected.',
         ),
         actions: [
           TextButton(
