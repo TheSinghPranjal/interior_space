@@ -1,9 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
@@ -15,10 +13,12 @@ import '../models/fan_config.dart';
 import '../models/furniture_item.dart';
 import '../models/light_config.dart';
 import '../models/project_design.dart';
+import '../models/room_3d_export_images.dart';
 import '../models/room_design.dart';
 import '../models/wall_tv_unit_config.dart';
 import '../models/window_config.dart';
 import 'blueprint_image_exporter.dart';
+import 'public_download_saver.dart';
 
 class ExportService {
   Future<void> shareProjectFile(ProjectDesign project, String? filePath) async {
@@ -32,21 +32,14 @@ class ExportService {
 
   Future<String?> saveScreenshot(Uint8List bytes, String name) async {
     if (kIsWeb) return null;
-    final dir = await getApplicationDocumentsDirectory();
-    final exportsDir = Directory('${dir.path}/exports');
-    if (!await exportsDir.exists()) {
-      await exportsDir.create(recursive: true);
-    }
-    final file = File(
-      '${exportsDir.path}/${name.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.png',
-    );
-    await file.writeAsBytes(bytes);
-    return file.path;
+    final fileName =
+        '${name.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.png';
+    return PublicDownloadSaver.saveBytes(bytes: bytes, fileName: fileName);
   }
 
   Future<String?> generatePdf(
     ProjectDesign project, {
-    Map<int, Uint8List>? render3dImagesByRoomIndex,
+    Map<int, Room3DExportImages>? render3dImagesByRoomIndex,
   }) async {
     if (kIsWeb) return null;
 
@@ -84,31 +77,27 @@ class ExportService {
               room: room,
               roomIndex: index,
               blueprintImage: blueprintImages[index]!,
-              render3dImage: render3dImagesByRoomIndex?[index],
+              render3dImages: render3dImagesByRoomIndex?[index],
             );
           }),
         ],
       ),
     );
 
-    final dir = await getApplicationDocumentsDirectory();
-    final exportsDir = Directory('${dir.path}/exports');
-    if (!await exportsDir.exists()) {
-      await exportsDir.create(recursive: true);
-    }
     final fileName = rooms.length == 1
         ? '${rooms.first.name.replaceAll(' ', '_')}_design.pdf'
         : '${project.projectName.replaceAll(' ', '_')}_design.pdf';
-    final file = File('${exportsDir.path}/$fileName');
-    await file.writeAsBytes(await pdf.save());
-    return file.path;
+    return PublicDownloadSaver.saveBytes(
+      bytes: Uint8List.fromList(await pdf.save()),
+      fileName: fileName,
+    );
   }
 
   List<pw.Widget> _buildRoomSection({
     required RoomDesign room,
     required int roomIndex,
     required Uint8List blueprintImage,
-    Uint8List? render3dImage,
+    Room3DExportImages? render3dImages,
   }) {
     final d = room.dimensions;
     final floorArea = (d.width * d.length).toStringAsFixed(1);
@@ -135,16 +124,32 @@ class ExportService {
           height: 260,
         ),
       ),
-      if (render3dImage != null) ...[
+      if (render3dImages != null && render3dImages.hasAny) ...[
         pw.SizedBox(height: 12),
         _sectionTitle('3D Preview'),
-        pw.Center(
-          child: pw.Image(
-            pw.MemoryImage(render3dImage),
-            fit: pw.BoxFit.contain,
-            height: 240,
+        if (render3dImages.front != null) ...[
+          pw.Text('Front view', style: const pw.TextStyle(fontSize: 10)),
+          pw.SizedBox(height: 4),
+          pw.Center(
+            child: pw.Image(
+              pw.MemoryImage(render3dImages.front!),
+              fit: pw.BoxFit.contain,
+              height: 200,
+            ),
           ),
-        ),
+        ],
+        if (render3dImages.top != null) ...[
+          pw.SizedBox(height: 8),
+          pw.Text('Top view', style: const pw.TextStyle(fontSize: 10)),
+          pw.SizedBox(height: 4),
+          pw.Center(
+            child: pw.Image(
+              pw.MemoryImage(render3dImages.top!),
+              fit: pw.BoxFit.contain,
+              height: 200,
+            ),
+          ),
+        ],
       ],
       pw.SizedBox(height: 12),
       _sectionTitle('Walls'),
@@ -188,42 +193,38 @@ class ExportService {
           'Depth: ${room.ceiling.falseCeilingDepth.toStringAsFixed(1)} ft  •  '
           'Thickness: ${room.ceiling.falseCeilingThickness.toStringAsFixed(1)} ft',
         ),
-      pw.SizedBox(height: 10),
-      _sectionTitle('Doors (${room.doors.length})'),
-      if (room.doors.isEmpty)
-        pw.Text('None')
-      else
+      if (room.doors.isNotEmpty) ...[
+        pw.SizedBox(height: 10),
+        _sectionTitle('Doors (${room.doors.length})'),
         _detailTable(
           headers: const ['Wall', 'Width', 'Height', 'From edge', 'Rotation', 'Material', 'Color'],
           rows: room.doors.map(_doorRow).toList(),
         ),
-      pw.SizedBox(height: 10),
-      _sectionTitle('Windows (${room.windows.length})'),
-      if (room.windows.isEmpty)
-        pw.Text('None')
-      else
+      ],
+      if (room.windows.isNotEmpty) ...[
+        pw.SizedBox(height: 10),
+        _sectionTitle('Windows (${room.windows.length})'),
         _detailTable(
           headers: const ['Wall', 'Width', 'Height', 'From edge', 'From floor', 'Rotation', 'Color'],
           rows: room.windows.map(_windowRow).toList(),
         ),
-      pw.SizedBox(height: 10),
-      _sectionTitle('AC Units (${room.acUnits.length})'),
-      if (room.acUnits.isEmpty)
-        pw.Text('None')
-      else
+      ],
+      if (room.acUnits.isNotEmpty) ...[
+        pw.SizedBox(height: 10),
+        _sectionTitle('AC Units (${room.acUnits.length})'),
         _detailTable(
           headers: const ['Wall', 'Width', 'Height', 'From edge', 'From floor', 'Rotation', 'Color'],
           rows: room.acUnits.map(_acUnitRow).toList(),
         ),
-      pw.SizedBox(height: 10),
-      _sectionTitle('Furniture (${room.furniture.length})'),
-      if (room.furniture.isEmpty)
-        pw.Text('None')
-      else
+      ],
+      if (room.furniture.isNotEmpty) ...[
+        pw.SizedBox(height: 10),
+        _sectionTitle('Furniture (${room.furniture.length})'),
         _detailTable(
           headers: const ['Item', 'W×D×H (ft)', 'Position', 'Rotation', 'Color'],
           rows: room.furniture.map((f) => _furnitureRow(f, room)).toList(),
         ),
+      ],
       if (room.wallTvUnits.isNotEmpty) ...[
         pw.SizedBox(height: 10),
         _sectionTitle('Wall TV Units (${room.wallTvUnits.length})'),
@@ -232,24 +233,22 @@ class ExportService {
           rows: room.wallTvUnits.map(_wallTvUnitRow).toList(),
         ),
       ],
-      pw.SizedBox(height: 10),
-      _sectionTitle('Lighting (${room.lights.length})'),
-      if (room.lights.isEmpty)
-        pw.Text('None')
-      else
+      if (room.lights.isNotEmpty) ...[
+        pw.SizedBox(height: 10),
+        _sectionTitle('Lighting (${room.lights.length})'),
         _detailTable(
           headers: const ['Type', 'Brightness', 'Temperature', 'Position (X,Y,Z)', 'Color', 'On'],
           rows: room.lights.map(_lightRow).toList(),
         ),
-      pw.SizedBox(height: 10),
-      _sectionTitle('Ceiling Fans (${room.fans.length})'),
-      if (room.fans.isEmpty)
-        pw.Text('None')
-      else
+      ],
+      if (room.fans.isNotEmpty) ...[
+        pw.SizedBox(height: 10),
+        _sectionTitle('Ceiling Fans (${room.fans.length})'),
         _detailTable(
           headers: const ['Position (X,Y)', 'Height', 'Color'],
           rows: room.fans.map(_fanRow).toList(),
         ),
+      ],
       pw.SizedBox(height: 8),
       pw.Divider(),
     ];
