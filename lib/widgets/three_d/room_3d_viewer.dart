@@ -189,7 +189,11 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     if (_controller == null || !_isReady) return {};
 
     final project = ref.read(projectProvider);
-    final rooms = project.roomsOrDefault;
+    final isApartment = widget.apartmentMode ||
+        ref.read(appSpaceModeProvider) == AppSpaceMode.apartment;
+    final rooms = isApartment
+        ? project.roomsForActiveApartment
+        : project.roomsOrDefault;
     if (rooms.isEmpty) return {};
 
     final builder = ref.read(roomSceneBuilderProvider);
