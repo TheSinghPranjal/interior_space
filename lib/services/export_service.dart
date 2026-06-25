@@ -40,11 +40,22 @@ class ExportService {
   Future<String?> generatePdf(
     ProjectDesign project, {
     Map<int, Room3DExportImages>? render3dImagesByRoomIndex,
+    int? apartmentIndex,
   }) async {
     if (kIsWeb) return null;
 
     final pdf = pw.Document();
-    final rooms = project.roomsOrDefault;
+    final aptIndex = apartmentIndex ?? project.safeActiveApartmentIndex;
+    final scopedToApartment = apartmentIndex != null;
+    final rooms = scopedToApartment
+        ? project.roomsForApartment(aptIndex)
+        : project.roomsOrDefault;
+    final apartmentName = project
+        .apartmentsOrDefault[aptIndex.clamp(0, project.apartmentsOrDefault.length - 1)]
+        .name;
+    final reportTitle = scopedToApartment
+        ? apartmentName
+        : (rooms.length == 1 ? rooms.first.name : project.projectName);
     final generatedAt = DateFormat('MMMM d, yyyy • h:mm a').format(DateTime.now());
 
     final blueprintImages = <int, Uint8List>{};
@@ -60,7 +71,7 @@ class ExportService {
           pw.Header(
             level: 0,
             child: pw.Text(
-              project.projectName,
+              reportTitle,
               style: pw.TextStyle(fontSize: 26, fontWeight: pw.FontWeight.bold),
             ),
           ),
@@ -84,9 +95,9 @@ class ExportService {
       ),
     );
 
-    final fileName = rooms.length == 1
-        ? '${rooms.first.name.replaceAll(' ', '_')}_design.pdf'
-        : '${project.projectName.replaceAll(' ', '_')}_design.pdf';
+    final fileName = scopedToApartment || rooms.length > 1
+        ? '${reportTitle.replaceAll(' ', '_')}_design.pdf'
+        : '${rooms.first.name.replaceAll(' ', '_')}_design.pdf';
     return PublicDownloadSaver.saveBytes(
       bytes: Uint8List.fromList(await pdf.save()),
       fileName: fileName,
