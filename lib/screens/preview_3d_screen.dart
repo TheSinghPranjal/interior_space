@@ -34,7 +34,7 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
         ref.watch(appSpaceModeProvider) == AppSpaceMode.apartment;
     final design = ref.watch(roomDesignProvider);
     final project = ref.watch(projectProvider);
-    final title = isApartment ? 'Apartment Preview' : design.name;
+    final title = isApartment ? project.apartmentLayout.name : design.name;
 
     return Scaffold(
       backgroundColor: _immersiveBg,
@@ -60,12 +60,11 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
           ],
         ),
         actions: [
-          if (!isApartment)
-            IconButton(
-              icon: const Icon(Icons.ios_share_outlined, color: Colors.white),
-              tooltip: 'Export',
-              onPressed: () => _showExportSheet(context),
-            ),
+          IconButton(
+            icon: const Icon(Icons.ios_share_outlined, color: Colors.white),
+            tooltip: 'Export',
+            onPressed: () => _showExportSheet(context),
+          ),
           IconButton(
             icon: const Icon(Icons.close, color: Colors.white),
             onPressed: () => Navigator.pop(context),
@@ -157,14 +156,17 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
   Future<void> _handleExport(String action) async {
     final design = ref.read(roomDesignProvider);
     final project = ref.read(projectProvider);
+    final isApartment = widget.apartmentMode ||
+        ref.read(appSpaceModeProvider) == AppSpaceMode.apartment;
     final exportService = ref.read(exportServiceProvider);
     final storage = ref.read(projectStorageProvider);
+    final exportName = isApartment ? project.apartmentLayout.name : design.name;
 
     switch (action) {
       case 'screenshot':
         final image = await _screenshotController.capture();
         if (image != null) {
-          final path = await exportService.saveScreenshot(image, design.name);
+          final path = await exportService.saveScreenshot(image, exportName);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -190,6 +192,7 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
         final render3dByRoom = await _capture3dAllRooms?.call() ?? {};
         final path = await exportService.generatePdf(
           project,
+          apartmentIndex: isApartment ? project.safeActiveApartmentIndex : null,
           render3dImagesByRoomIndex:
               render3dByRoom.isNotEmpty ? render3dByRoom : null,
         );
