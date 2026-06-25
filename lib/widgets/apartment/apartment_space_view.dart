@@ -382,6 +382,8 @@ class _ApartmentSizeControlsState extends ConsumerState<_ApartmentSizeControls> 
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 4),
+              const _ApartmentNameField(),
+              const SizedBox(height: AppSpacing.sm),
               DimensionControl(
                 label: 'Width',
                 value: widget.layout.widthFt,
@@ -405,6 +407,46 @@ class _ApartmentSizeControlsState extends ConsumerState<_ApartmentSizeControls> 
           secondChild: const SizedBox.shrink(),
         ),
       ],
+    );
+  }
+}
+
+class _ApartmentNameField extends ConsumerStatefulWidget {
+  const _ApartmentNameField();
+
+  @override
+  ConsumerState<_ApartmentNameField> createState() => _ApartmentNameFieldState();
+}
+
+class _ApartmentNameFieldState extends ConsumerState<_ApartmentNameField> {
+  TextEditingController? _controller;
+  int? _trackedApartmentIndex;
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final layout = ref.watch(projectProvider).apartmentLayout;
+    final apartmentIndex = ref.watch(projectProvider).safeActiveApartmentIndex;
+
+    _controller ??= TextEditingController(text: layout.name);
+    _trackedApartmentIndex ??= apartmentIndex;
+
+    if (_trackedApartmentIndex != apartmentIndex) {
+      _trackedApartmentIndex = apartmentIndex;
+      _controller!
+        ..text = layout.name
+        ..selection = TextSelection.collapsed(offset: layout.name.length);
+    }
+
+    return TextField(
+      controller: _controller,
+      decoration: const InputDecoration(labelText: 'Apartment Name'),
+      onChanged: ref.read(projectProvider.notifier).updateApartmentName,
     );
   }
 }
