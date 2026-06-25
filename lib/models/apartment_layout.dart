@@ -1,4 +1,5 @@
 import '../core/constants/room_constants.dart';
+import '../sketch/domain/sketch_models.dart';
 
 class ApartmentRoomPlacement {
   const ApartmentRoomPlacement({
@@ -55,24 +56,28 @@ class ApartmentLayout {
     this.widthFt = 60,
     this.lengthFt = 60,
     this.placements = const [],
+    this.sketch = const SketchDocument(),
   });
 
   final String name;
   final double widthFt;
   final double lengthFt;
   final List<ApartmentRoomPlacement> placements;
+  final SketchDocument sketch;
 
   ApartmentLayout copyWith({
     String? name,
     double? widthFt,
     double? lengthFt,
     List<ApartmentRoomPlacement>? placements,
+    SketchDocument? sketch,
   }) {
     return ApartmentLayout(
       name: name ?? this.name,
       widthFt: widthFt ?? this.widthFt,
       lengthFt: lengthFt ?? this.lengthFt,
       placements: placements ?? this.placements,
+      sketch: sketch ?? this.sketch,
     );
   }
 
@@ -94,6 +99,7 @@ class ApartmentLayout {
         'widthFt': widthFt,
         'lengthFt': lengthFt,
         'placements': placements.map((p) => p.toJson()).toList(),
+        'sketch': sketch.toJson(),
       };
 
   factory ApartmentLayout.fromJson(Map<String, dynamic> json) {
@@ -105,6 +111,7 @@ class ApartmentLayout {
               ?.map((e) => ApartmentRoomPlacement.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      sketch: SketchDocument.fromJson(json['sketch'] as Map<String, dynamic>?),
     );
   }
 
