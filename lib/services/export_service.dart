@@ -18,6 +18,7 @@ import '../models/room_design.dart';
 import '../models/wall_tv_unit_config.dart';
 import '../models/window_config.dart';
 import 'blueprint_image_exporter.dart';
+import '../sketch/data/sketch_composite_exporter.dart';
 import 'public_download_saver.dart';
 
 class ExportService {
@@ -60,7 +61,21 @@ class ExportService {
 
     final blueprintImages = <int, Uint8List>{};
     for (var i = 0; i < rooms.length; i++) {
-      blueprintImages[i] = await BlueprintImageExporter.render(rooms[i]);
+      blueprintImages[i] = await _renderRoomBlueprint(project, rooms[i], aptIndex, scopedToApartment);
+    }
+
+    final apartmentLayout = project.apartmentsOrDefault[
+        aptIndex.clamp(0, project.apartmentsOrDefault.length - 1)];
+
+    Uint8List? apartmentSketchImage;
+    if (scopedToApartment &&
+        apartmentLayout.sketch.includeInPdfExport &&
+        !apartmentLayout.sketch.isEmpty) {
+      apartmentSketchImage = await SketchCompositeExporter.renderApartment(
+        project: project,
+        apartmentIndex: aptIndex,
+        sketch: apartmentLayout.sketch,
+      );
     }
 
     pdf.addPage(
@@ -81,6 +96,18 @@ class ExportService {
           pw.Text('Total rooms: ${rooms.length}'),
           pw.SizedBox(height: 8),
           pw.Divider(),
+          if (apartmentSketchImage != null) ...[
+            _sectionTitle('Apartment Sketch'),
+            pw.Center(
+              child: pw.Image(
+                pw.MemoryImage(apartmentSketchImage),
+                fit: pw.BoxFit.contain,
+                height: 420,
+              ),
+            ),
+            pw.SizedBox(height: 16),
+            pw.Divider(),
+          ],
           ...rooms.asMap().entries.expand((entry) {
             final index = entry.key;
             final room = entry.value;
@@ -361,6 +388,18 @@ class ExportService {
         fan.height.toStringAsFixed(2),
         fan.color,
       ];
+
+  Future<Uint8List> _renderRoomBlueprint(
+    ProjectDesign project,
+    RoomDesign room,
+    int aptIndex,
+    bool scopedToApartment,
+  ) async {
+    if (room.sketch.includeInPdfExport && !room.sketch.isEmpty) {
+      return SketchCompositeExporter.renderRoom(room: room, sketch: room.sketch);
+    }
+    return BlueprintImageExporter.render(room);
+  }
 }
 
 final exportServiceProvider = Provider<ExportService>((ref) {

@@ -23,6 +23,7 @@ import '../widgets/navigation/apartment_tabs_bar.dart';
 import '../widgets/navigation/app_space_mode_toggle.dart';
 import '../widgets/navigation/design_menu_fab.dart';
 import '../widgets/navigation/room_tabs_bar.dart';
+import '../sketch/presentation/sketch_view.dart';
 import 'ai_assist_screen.dart';
 import 'editor_screen.dart';
 import 'preview_3d_screen.dart';
@@ -171,23 +172,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: NavigationBar(
           selectedIndex: _selectedTab.index,
           onDestinationSelected: _onTabSelected,
-          destinations: const [
+          destinations: [
             NavigationDestination(
-              icon: Icon(Icons.meeting_room_outlined),
-              selectedIcon: Icon(Icons.meeting_room),
-              label: 'Room',
+              icon: Icon(isApartment ? Icons.apartment_outlined : Icons.meeting_room_outlined),
+              selectedIcon: Icon(isApartment ? Icons.apartment : Icons.meeting_room),
+              label: isApartment ? 'Apartment' : 'Room',
             ),
-            NavigationDestination(
+            const NavigationDestination(
               icon: Icon(Icons.architecture_outlined),
               selectedIcon: Icon(Icons.architecture),
               label: 'Blueprint',
             ),
-            NavigationDestination(
+            const NavigationDestination(
+              icon: Icon(Icons.draw_outlined),
+              selectedIcon: Icon(Icons.draw),
+              label: 'Sketch',
+            ),
+            const NavigationDestination(
               icon: Icon(Icons.view_in_ar_outlined),
               selectedIcon: Icon(Icons.view_in_ar),
               label: '3D',
             ),
-            NavigationDestination(
+            const NavigationDestination(
               icon: Icon(Icons.auto_awesome_outlined),
               selectedIcon: Icon(Icons.auto_awesome),
               label: 'AI Assist',
@@ -327,21 +333,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildBody(bool isApartment) {
+    final stackIndex = switch (_selectedTab) {
+      MainNavTab.room => 0,
+      MainNavTab.blueprint => 1,
+      MainNavTab.sketch => 2,
+      MainNavTab.preview3d => 1,
+      MainNavTab.aiAssist => 3,
+    };
+
     if (isApartment) {
-      return switch (_selectedTab) {
-        MainNavTab.room => const ApartmentSpaceView(),
-        MainNavTab.blueprint => const ApartmentSpaceView(showBlueprintOnly: true),
-        MainNavTab.preview3d => const ApartmentSpaceView(showBlueprintOnly: true),
-        MainNavTab.aiAssist => const AiAssistPlaceholder(),
-      };
+      return IndexedStack(
+        index: stackIndex,
+        children: const [
+          ApartmentSpaceView(),
+          ApartmentSpaceView(showBlueprintOnly: true),
+          SketchView(),
+          AiAssistPlaceholder(),
+        ],
+      );
     }
 
-    return switch (_selectedTab) {
-      MainNavTab.room => const RoomSetupEditor(),
-      MainNavTab.blueprint => const BlueprintView(),
-      MainNavTab.preview3d => const RoomSetupEditor(),
-      MainNavTab.aiAssist => const AiAssistPlaceholder(),
-    };
+    return IndexedStack(
+      index: stackIndex,
+      children: const [
+        RoomSetupEditor(),
+        BlueprintView(),
+        SketchView(),
+        AiAssistPlaceholder(),
+      ],
+    );
   }
 
   void _confirmReset(BuildContext context, String roomName) {
