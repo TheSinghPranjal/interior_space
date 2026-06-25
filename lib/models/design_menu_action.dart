@@ -38,4 +38,4 @@ extension DesignMenuActionInfo on DesignMenuAction {
       };
 }
 
-enum MainNavTab { room, blueprint, preview3d, aiAssist }
+enum MainNavTab { room, blueprint, sketch, preview3d, aiAssist }
