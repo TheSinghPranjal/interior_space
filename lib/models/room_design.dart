@@ -1,4 +1,5 @@
 import 'curtain_config.dart';
+import '../sketch/domain/sketch_models.dart';
 import 'enums.dart';
 import 'ac_unit_config.dart';
 import 'ceiling_config.dart';
@@ -32,6 +33,7 @@ class RoomDesign {
     this.fans = const [],
     this.furniture = const [],
     this.aiPromptHistory = const [],
+    this.sketch = const SketchDocument(),
   });
 
   final String id;
@@ -51,6 +53,7 @@ class RoomDesign {
   final List<FanConfig> fans;
   final List<FurnitureItem> furniture;
   final List<String> aiPromptHistory;
+  final SketchDocument sketch;
 
   RoomDesign copyWith({
     String? id,
@@ -70,6 +73,7 @@ class RoomDesign {
     List<FanConfig>? fans,
     List<FurnitureItem>? furniture,
     List<String>? aiPromptHistory,
+    SketchDocument? sketch,
   }) {
     return RoomDesign(
       id: id ?? this.id,
@@ -89,6 +93,7 @@ class RoomDesign {
       fans: fans ?? this.fans,
       furniture: furniture ?? this.furniture,
       aiPromptHistory: aiPromptHistory ?? this.aiPromptHistory,
+      sketch: sketch ?? this.sketch,
     );
   }
 
@@ -110,6 +115,7 @@ class RoomDesign {
         'fans': fans.map((f) => f.toJson()).toList(),
         'furniture': furniture.map((f) => f.toJson()).toList(),
         'aiPromptHistory': aiPromptHistory,
+        'sketch': sketch.toJson(),
       };
 
   factory RoomDesign.fromJson(Map<String, dynamic> json, {String? fallbackId}) {
@@ -195,6 +201,7 @@ class RoomDesign {
               ?.map((e) => e as String)
               .toList() ??
           [],
+      sketch: SketchDocument.fromJson(json['sketch'] as Map<String, dynamic>?),
     );
   }
 

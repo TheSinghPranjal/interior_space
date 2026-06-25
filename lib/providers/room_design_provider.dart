@@ -16,6 +16,7 @@ import '../models/room_dimensions.dart';
 import '../models/wall_config.dart';
 import '../models/wall_tv_unit_config.dart';
 import '../models/window_config.dart';
+import '../sketch/domain/sketch_models.dart';
 import 'project_provider.dart';
 
 final roomDesignProvider =
@@ -318,6 +319,10 @@ class RoomDesignNotifier extends StateNotifier<RoomDesign> {
         return r.copyWith(aiPromptHistory: history);
       }
     });
+  }
+
+  void updateSketch(SketchDocument sketch) {
+    _mutate((r) => r.copyWith(sketch: sketch));
   }
 
   final _uuid = const Uuid();
