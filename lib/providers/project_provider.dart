@@ -5,6 +5,7 @@ import '../core/constants/room_constants.dart';
 import '../models/apartment_layout.dart';
 import '../models/project_design.dart';
 import '../models/room_design.dart';
+import '../sketch/domain/sketch_models.dart';
 
 final projectProvider =
     StateNotifierProvider<ProjectNotifier, ProjectDesign>((ref) {
@@ -259,6 +260,11 @@ class ProjectNotifier extends StateNotifier<ProjectDesign> {
     );
   }
 
+  void updateApartmentName(String name) {
+    final layout = state.apartmentLayout;
+    _replaceActiveApartment(layout.copyWith(name: name.trim()));
+  }
+
   void updateApartmentDimensions({double? widthFt, double? lengthFt}) {
     final old = state.apartmentLayout;
     final newW = (widthFt ?? old.widthFt).clamp(
@@ -285,6 +291,7 @@ class ProjectNotifier extends StateNotifier<ProjectDesign> {
         widthFt: newW,
         lengthFt: newL,
         placements: placements,
+        sketch: old.sketch,
       ),
     );
   }
@@ -299,7 +306,11 @@ class ProjectNotifier extends StateNotifier<ProjectDesign> {
   void resetApartmentLayout() {
     final layout = state.apartmentLayout;
     _replaceActiveApartment(
-      ApartmentLayout.initial(name: layout.name),
+      ApartmentLayout.initial(name: layout.name).copyWith(sketch: layout.sketch),
     );
+  }
+
+  void updateApartmentSketch(SketchDocument sketch) {
+    _replaceActiveApartment(state.apartmentLayout.copyWith(sketch: sketch));
   }
 }
