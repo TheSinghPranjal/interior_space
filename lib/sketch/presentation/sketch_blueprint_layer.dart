@@ -22,12 +22,13 @@ class SketchRoomBlueprintLayer extends ConsumerWidget {
         const padding = 32.0;
         final availW = constraints.maxWidth - padding * 2;
         final availH = constraints.maxHeight - padding * 2;
+        final dims = room.dimensions;
         final scale = math.min(
-          availW / room.dimensions.width,
-          availH / room.dimensions.length,
+          availW / dims.effectiveWidth,
+          availH / dims.effectiveLength,
         );
-        final roomW = room.dimensions.width * scale;
-        final roomH = room.dimensions.length * scale;
+        final roomW = dims.effectiveWidth * scale;
+        final roomH = dims.effectiveLength * scale;
         final offsetX = (constraints.maxWidth - roomW) / 2;
         final offsetY = (constraints.maxHeight - roomH) / 2;
         final roomRect = Rect.fromLTWH(offsetX, offsetY, roomW, roomH);
