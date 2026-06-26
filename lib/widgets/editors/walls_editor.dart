@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_spacing.dart';
 import '../../models/enums.dart';
 import '../../models/wall_config.dart';
 import '../../providers/room_design_provider.dart';
@@ -19,9 +20,49 @@ class WallsEditor extends ConsumerWidget {
     final design = ref.watch(roomDesignProvider);
     final walls = design.walls;
     final customWalls = design.dimensions.useCustomWallLengths;
+    final notifier = ref.read(roomDesignProvider.notifier);
+    final theme = Theme.of(context);
 
     return ListView(
       children: [
+        SectionCard(
+          title: 'Wall layout',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      customWalls
+                          ? 'Custom wall visibility active'
+                          : 'Standard rectangular room walls',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
+                  Text(
+                    'Custom walls',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Switch(
+                    value: customWalls,
+                    onChanged: notifier.setCustomWallLengthsEnabled,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ],
+              ),
+              if (customWalls) ...[
+                const SizedBox(height: AppSpacing.sm),
+                const EditorHelperText(
+                  'Use the Walls editor to hide or shorten individual walls for open-plan layouts.',
+                ),
+              ],
+            ],
+          ),
+        ),
         if (customWalls)
           SectionCard(
             title: 'Wall Visibility',
