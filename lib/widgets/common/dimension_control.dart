@@ -1,6 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+/// Formats a dimension in feet (supports quarter-foot steps).
+String formatDimensionFt(double value) {
+  final rounded = (value * 4).round() / 4;
+  if (rounded == rounded.roundToDouble()) {
+    return rounded.toStringAsFixed(0);
+  }
+  return rounded.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+}
+
+/// Snaps [value] to the nearest [step] increment within [min]–[max].
+double snapDimension(double value, {required double min, required double max, required double step}) {
+  if (step <= 0) return value.clamp(min, max).toDouble();
+  final steps = ((value - min) / step).round();
+  return (min + steps * step).clamp(min, max).toDouble();
+}
+
 /// Dimension control with slider, stepper buttons, and numeric field.
 class DimensionControl extends StatefulWidget {
   const DimensionControl({
@@ -10,8 +26,9 @@ class DimensionControl extends StatefulWidget {
     required this.min,
     required this.max,
     required this.onChanged,
-    this.step = 1.0,
+    this.step = 0.25,
     this.suffix = 'ft',
+    this.enabled = true,
   });
 
   final String label;
@@ -21,6 +38,7 @@ class DimensionControl extends StatefulWidget {
   final ValueChanged<double> onChanged;
   final double step;
   final String suffix;
+  final bool enabled;
 
   @override
   State<DimensionControl> createState() => _DimensionControlState();
@@ -33,7 +51,7 @@ class _DimensionControlState extends State<DimensionControl> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.value.toStringAsFixed(1));
+    _controller = TextEditingController(text: formatDimensionFt(widget.value));
     _focusNode = FocusNode();
     _focusNode.addListener(_onFocusChange);
   }
@@ -42,7 +60,10 @@ class _DimensionControlState extends State<DimensionControl> {
   void didUpdateWidget(covariant DimensionControl oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!_focusNode.hasFocus && oldWidget.value != widget.value) {
-      _controller.text = widget.value.toStringAsFixed(1);
+      _controller.text = formatDimensionFt(widget.value);
+    }
+    if (!widget.enabled && _focusNode.hasFocus) {
+      _focusNode.unfocus();
     }
   }
 
@@ -51,20 +72,32 @@ class _DimensionControlState extends State<DimensionControl> {
   }
 
   void _commitText() {
+    if (!widget.enabled) return;
     final parsed = double.tryParse(_controller.text.trim());
     if (parsed == null) {
-      _controller.text = widget.value.toStringAsFixed(1);
+      _controller.text = formatDimensionFt(widget.value);
       return;
     }
-    final clamped = parsed.clamp(widget.min, widget.max).toDouble();
-    _controller.text = clamped.toStringAsFixed(1);
-    if (clamped != widget.value) widget.onChanged(clamped);
+    final snapped = snapDimension(
+      parsed,
+      min: widget.min,
+      max: widget.max,
+      step: widget.step,
+    );
+    _controller.text = formatDimensionFt(snapped);
+    if (snapped != widget.value) widget.onChanged(snapped);
   }
 
   void _nudge(double delta) {
-    final next = (widget.value + delta).clamp(widget.min, widget.max).toDouble();
+    if (!widget.enabled) return;
+    final next = snapDimension(
+      widget.value + delta,
+      min: widget.min,
+      max: widget.max,
+      step: widget.step,
+    );
     widget.onChanged(next);
-    _controller.text = next.toStringAsFixed(1);
+    _controller.text = formatDimensionFt(next);
   }
 
   @override
@@ -79,69 +112,89 @@ class _DimensionControlState extends State<DimensionControl> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final clampedMax = widget.max < widget.min ? widget.min : widget.max;
-    final sliderValue = widget.value.clamp(widget.min, clampedMax).toDouble();
+    final sliderValue = snapDimension(
+      widget.value,
+      min: widget.min,
+      max: clampedMax,
+      step: widget.step,
+    );
     final divisions = ((clampedMax - widget.min) / widget.step).round().clamp(1, 400);
+    final atMin = sliderValue <= widget.min + 1e-9;
+    final atMax = sliderValue >= clampedMax - 1e-9;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                widget.label,
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-            ),
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              icon: const Icon(Icons.remove_circle_outline),
-              tooltip: 'Decrease',
-              onPressed: widget.value <= widget.min ? null : () => _nudge(-widget.step),
-            ),
-            SizedBox(
-              width: 72,
-              child: TextField(
-                controller: _controller,
-                focusNode: _focusNode,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,1}')),
-                ],
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                decoration: InputDecoration(
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                  suffixText: widget.suffix,
-                  suffixStyle: Theme.of(context).textTheme.labelSmall,
-                  border: const OutlineInputBorder(),
+    return Opacity(
+      opacity: widget.enabled ? 1 : 0.55,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.label,
+                  style: Theme.of(context).textTheme.labelLarge,
                 ),
-                onSubmitted: (_) => _commitText(),
               ),
-            ),
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              icon: const Icon(Icons.add_circle_outline),
-              tooltip: 'Increase',
-              onPressed: widget.value >= clampedMax ? null : () => _nudge(widget.step),
-            ),
-          ],
-        ),
-        Slider(
-          value: sliderValue,
-          min: widget.min,
-          max: clampedMax,
-          divisions: divisions,
-          onChanged: (v) {
-            _controller.text = v.toStringAsFixed(1);
-            widget.onChanged(v);
-          },
-        ),
-      ],
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.remove_circle_outline),
+                tooltip: 'Decrease',
+                onPressed: !widget.enabled || atMin ? null : () => _nudge(-widget.step),
+              ),
+              SizedBox(
+                width: 72,
+                child: TextField(
+                  controller: _controller,
+                  focusNode: _focusNode,
+                  enabled: widget.enabled,
+                  readOnly: !widget.enabled,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                  ],
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    suffixText: widget.suffix,
+                    suffixStyle: Theme.of(context).textTheme.labelSmall,
+                    border: const OutlineInputBorder(),
+                  ),
+                  onSubmitted: (_) => _commitText(),
+                ),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.add_circle_outline),
+                tooltip: 'Increase',
+                onPressed: !widget.enabled || atMax ? null : () => _nudge(widget.step),
+              ),
+            ],
+          ),
+          Slider(
+            value: sliderValue,
+            min: widget.min,
+            max: clampedMax,
+            divisions: divisions,
+            onChanged: widget.enabled
+                ? (v) {
+                    final snapped = snapDimension(
+                      v,
+                      min: widget.min,
+                      max: clampedMax,
+                      step: widget.step,
+                    );
+                    _controller.text = formatDimensionFt(snapped);
+                    widget.onChanged(snapped);
+                  }
+                : null,
+          ),
+        ],
+      ),
     );
   }
 }
