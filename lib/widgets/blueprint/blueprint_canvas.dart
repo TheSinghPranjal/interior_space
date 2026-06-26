@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/blueprint_placement.dart';
+import '../../core/utils/blueprint_wall_border_paint.dart';
 import '../../core/utils/color_utils.dart';
 import '../../models/ac_unit_config.dart';
 import '../../models/curtain_config.dart';
@@ -1021,7 +1022,13 @@ class _BlueprintPainter extends CustomPainter {
       ..color = Colors.blueGrey.shade800
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
-    canvas.drawRect(roomRect, borderPaint);
+    BlueprintWallBorderPaint.drawRoomBorder(
+      canvas,
+      roomRect: roomRect,
+      design: design,
+      scale: scale,
+      paint: borderPaint,
+    );
 
     final gridLinePaint = Paint()
       ..color = Colors.blueGrey.shade200
