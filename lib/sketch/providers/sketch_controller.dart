@@ -158,6 +158,12 @@ class SketchController extends StateNotifier<SketchDocument> {
   void extendStroke(Offset normalized) {
     if (state.strokes.isEmpty) return;
     final last = state.strokes.last;
+    if (last.points.isNotEmpty) {
+      final prev = last.points.last;
+      final dx = normalized.dx - prev.x;
+      final dy = normalized.dy - prev.y;
+      if ((dx * dx + dy * dy) < 1e-6) return;
+    }
     final points = [...last.points, SketchPoint(normalized.dx, normalized.dy)];
     final strokes = [...state.strokes];
     strokes[strokes.length - 1] = last.copyWith(points: points);
@@ -239,7 +245,49 @@ class SketchController extends StateNotifier<SketchDocument> {
       height: 0.2,
       storagePath: storagePath,
     );
-    _commit(state.copyWith(images: [...state.images, image]));
+    _commit(
+      state.copyWith(
+        images: [...state.images, image],
+        selectedObjectId: image.id,
+        toolSettings: state.toolSettings.copyWith(activeTool: SketchTool.select),
+      ),
+    );
+  }
+
+  void updateImage(
+    String id, {
+    double? x,
+    double? y,
+    double? width,
+    double? height,
+    double? rotation,
+  }) {
+    final images = state.images.map((img) {
+      if (img.id != id) return img;
+      return img.copyWith(
+        x: x ?? img.x,
+        y: y ?? img.y,
+        width: width ?? img.width,
+        height: height ?? img.height,
+        rotation: rotation ?? img.rotation,
+      );
+    }).toList();
+    state = state.copyWith(images: images);
+    _persist();
+  }
+
+  void selectObject(String? id) {
+    _commit(
+      state.copyWith(selectedObjectId: id, clearSelection: id == null),
+      recordUndo: false,
+    );
+  }
+
+  /// Removes the in-progress stroke when pinch/multi-touch interrupts drawing.
+  void cancelActiveStroke() {
+    if (state.strokes.isEmpty) return;
+    final strokes = [...state.strokes]..removeLast();
+    state = state.copyWith(strokes: strokes);
   }
 
   void selectAt(Offset local, Size canvasSize) {
