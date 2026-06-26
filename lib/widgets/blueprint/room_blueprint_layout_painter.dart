@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/blueprint_furniture_paint.dart';
+import '../../core/utils/blueprint_wall_border_paint.dart';
 import '../../core/utils/color_utils.dart';
 import '../../models/enums.dart';
 import '../../models/furniture_item.dart';
 import '../../models/room_design.dart';
-import '../../models/wall_config.dart';
 
 /// Draws a complete room floor-plan layout (floor, grid, furniture, doors, etc.)
 /// at the given [roomRect] using feet-to-pixel [scale].
@@ -62,60 +62,13 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 
-    if (!design.dimensions.useCustomWallLengths) {
-      canvas.drawRect(roomRect, borderPaint);
-      return;
-    }
-
-    for (final wall in design.walls) {
-      if (wall.isFullyHidden) continue;
-      _drawWallEdge(canvas, borderPaint, wall);
-    }
-  }
-
-  void _drawWallEdge(Canvas canvas, Paint paint, WallConfig wall) {
-    final fraction = wall.visibleFraction.clamp(0.0, 1.0);
-    if (fraction <= 0) return;
-
-    final w = roomRect.width;
-    final h = roomRect.height;
-    final isHorizontal = wall.id == WallId.front || wall.id == WallId.back;
-    final fullLen = isHorizontal ? w : h;
-    final visLen = fullLen * fraction;
-
-    double offset = 0;
-    if (wall.visibleAlign == WallVisibleAlign.center) {
-      offset = (fullLen - visLen) / 2;
-    } else if (wall.visibleAlign == WallVisibleAlign.end) {
-      offset = fullLen - visLen;
-    }
-
-    switch (wall.id) {
-      case WallId.front:
-        canvas.drawLine(
-          Offset(roomRect.left + offset, roomRect.top),
-          Offset(roomRect.left + offset + visLen, roomRect.top),
-          paint,
-        );
-      case WallId.back:
-        canvas.drawLine(
-          Offset(roomRect.left + offset, roomRect.bottom),
-          Offset(roomRect.left + offset + visLen, roomRect.bottom),
-          paint,
-        );
-      case WallId.left:
-        canvas.drawLine(
-          Offset(roomRect.left, roomRect.top + offset),
-          Offset(roomRect.left, roomRect.top + offset + visLen),
-          paint,
-        );
-      case WallId.right:
-        canvas.drawLine(
-          Offset(roomRect.right, roomRect.top + offset),
-          Offset(roomRect.right, roomRect.top + offset + visLen),
-          paint,
-        );
-    }
+    BlueprintWallBorderPaint.drawRoomBorder(
+      canvas,
+      roomRect: roomRect,
+      design: design,
+      scale: scale,
+      paint: borderPaint,
+    );
   }
 
   void _drawGrid(Canvas canvas) {
