@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_spacing.dart';
 import '../../models/enums.dart';
 import '../../models/furniture_item.dart';
 import '../../models/room_design.dart';
@@ -86,11 +87,39 @@ class _FurnitureCard extends ConsumerStatefulWidget {
   ConsumerState<_FurnitureCard> createState() => _FurnitureCardState();
 }
 
-class _FurnitureCardState extends ConsumerState<_FurnitureCard> {
+class _FurnitureCardState extends ConsumerState<_FurnitureCard>
+    with SingleTickerProviderStateMixin {
+  static const _expandDuration = Duration(milliseconds: 340);
+
+  bool _expanded = false;
   bool _editingEnabled = false;
+  late final AnimationController _expandController = AnimationController(
+    vsync: this,
+    duration: _expandDuration,
+  );
+  late final Animation<double> _expandAnimation = CurvedAnimation(
+    parent: _expandController,
+    curve: Curves.easeInOutCubic,
+    reverseCurve: Curves.easeInOutCubic,
+  );
 
   FurnitureItem get item => widget.item;
   RoomDesign get design => widget.design;
+
+  @override
+  void dispose() {
+    _expandController.dispose();
+    super.dispose();
+  }
+
+  void _toggleExpand() {
+    setState(() => _expanded = !_expanded);
+    if (_expanded) {
+      _expandController.forward();
+    } else {
+      _expandController.reverse();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,15 +133,40 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard> {
           ItemEditorHeader(
             title: FurnitureItem.displayLabel(design.furniture, item),
             icon: item.type.icon,
+            expanded: _expanded,
+            onToggleExpand: _toggleExpand,
+            expandAnimationDuration: _expandDuration,
             editingEnabled: _editingEnabled,
             onToggleEdit: () => setState(() => _editingEnabled = !_editingEnabled),
             onDelete: () => notifier.removeFurniture(item.id),
           ),
-          if (!enabled)
-            const EditorHelperText(
-              'Tap edit to change parameters, or drag in Blueprint view',
+          ClipRect(
+            child: SizeTransition(
+              sizeFactor: _expandAnimation,
+              axisAlignment: -1,
+              child: FadeTransition(
+                opacity: _expandAnimation,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.sm),
+                  child: _buildExpandedContent(notifier, enabled),
+                ),
+              ),
             ),
-            if (item.isWallMounted) ...[
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpandedContent(RoomDesignNotifier notifier, bool enabled) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!enabled)
+          const EditorHelperText(
+            'Tap edit to change parameters, or drag in Blueprint view',
+          ),
+        if (item.isWallMounted) ...[
               DropdownButtonFormField<WallId>(
                 value: item.wall ?? WallId.left,
                 decoration: const InputDecoration(labelText: 'Wall'),
@@ -232,8 +286,7 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard> {
                           item.copyWith(clearTexture: true),
                         ),
               ),
-        ],
-      ),
+      ],
     );
   }
 

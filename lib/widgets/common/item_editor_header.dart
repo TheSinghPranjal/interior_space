@@ -11,6 +11,9 @@ class ItemEditorHeader extends StatelessWidget {
     required this.onToggleEdit,
     required this.onDelete,
     this.icon,
+    this.expanded,
+    this.onToggleExpand,
+    this.expandAnimationDuration = const Duration(milliseconds: 340),
   });
 
   final String title;
@@ -18,6 +21,9 @@ class ItemEditorHeader extends StatelessWidget {
   final bool editingEnabled;
   final VoidCallback onToggleEdit;
   final VoidCallback onDelete;
+  final bool? expanded;
+  final VoidCallback? onToggleExpand;
+  final Duration expandAnimationDuration;
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +45,21 @@ class ItemEditorHeader extends StatelessWidget {
         Expanded(
           child: Text(title, style: theme.textTheme.titleSmall),
         ),
+        if (onToggleExpand != null && expanded != null)
+          IconButton(
+            icon: AnimatedRotation(
+              turns: expanded! ? 0.5 : 0,
+              duration: expandAnimationDuration,
+              curve: Curves.easeInOutCubic,
+              child: const Icon(Icons.keyboard_arrow_down, size: 20),
+            ),
+            tooltip: expanded! ? 'Collapse' : 'Expand',
+            style: IconButton.styleFrom(
+              foregroundColor: theme.colorScheme.onSurfaceVariant,
+              backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            ),
+            onPressed: onToggleExpand,
+          ),
         IconButton(
           icon: Icon(
             editingEnabled ? Icons.edit_off_outlined : Icons.edit_outlined,
