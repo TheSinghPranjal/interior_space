@@ -54,7 +54,13 @@ class RoomDesignNotifier extends StateNotifier<RoomDesign> {
   void setName(String name) => _mutate((r) => r.copyWith(name: name));
 
   void updateDimensions(RoomDimensions dimensions) {
-    _mutate((r) => r.copyWith(dimensions: dimensions.clamped()));
+    _mutate((r) {
+      var dims = dimensions.clamped();
+      if (dims.useCustomWallLengths) {
+        dims = dims.withSyncedCustomWalls();
+      }
+      return r.copyWith(dimensions: dims);
+    });
   }
 
   void setCustomWallLengthsEnabled(bool enabled) {
