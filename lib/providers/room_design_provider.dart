@@ -10,6 +10,7 @@ import '../models/fan_config.dart';
 import '../models/floor_config.dart';
 import '../models/furniture_item.dart';
 import '../models/light_config.dart';
+import '../models/placed_item_config_snapshot.dart';
 import '../models/project_design.dart';
 import '../models/room_design.dart';
 import '../models/room_dimensions.dart';
@@ -269,6 +270,37 @@ class RoomDesignNotifier extends StateNotifier<RoomDesign> {
         furniture: r.furniture.map((f) => f.id == item.id ? item : f).toList(),
       ),
     );
+  }
+
+  /// Applies a copied furniture configuration to [targetId] in the active room.
+  bool pasteFurnitureConfig(String targetId, FurnitureConfigSnapshot snapshot) {
+    var applied = false;
+    _mutate((r) {
+      final index = r.furniture.indexWhere((f) => f.id == targetId);
+      if (index < 0) return r;
+      final target = r.furniture[index];
+      if (target.type != snapshot.type) return r;
+      final furniture = [...r.furniture];
+      furniture[index] = snapshot.applyTo(target, r.dimensions);
+      applied = true;
+      return r.copyWith(furniture: furniture);
+    });
+    return applied;
+  }
+
+  /// Applies a copied wall TV configuration to [targetId] in the active room.
+  bool pasteWallTvConfig(String targetId, WallTvUnitConfigSnapshot snapshot) {
+    var applied = false;
+    _mutate((r) {
+      final index = r.wallTvUnits.indexWhere((u) => u.id == targetId);
+      if (index < 0) return r;
+      final target = r.wallTvUnits[index];
+      final units = [...r.wallTvUnits];
+      units[index] = snapshot.applyTo(target, r.dimensions);
+      applied = true;
+      return r.copyWith(wallTvUnits: units);
+    });
+    return applied;
   }
 
   void removeFurniture(String id) {
