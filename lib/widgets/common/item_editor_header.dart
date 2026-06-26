@@ -14,6 +14,7 @@ class ItemEditorHeader extends StatelessWidget {
     this.expanded,
     this.onToggleExpand,
     this.expandAnimationDuration = const Duration(milliseconds: 340),
+    this.configMenu,
   });
 
   final String title;
@@ -24,6 +25,7 @@ class ItemEditorHeader extends StatelessWidget {
   final bool? expanded;
   final VoidCallback? onToggleExpand;
   final Duration expandAnimationDuration;
+  final Widget? configMenu;
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +47,7 @@ class ItemEditorHeader extends StatelessWidget {
         Expanded(
           child: Text(title, style: theme.textTheme.titleSmall),
         ),
+        if (configMenu != null) configMenu!,
         if (onToggleExpand != null && expanded != null)
           IconButton(
             icon: AnimatedRotation(
