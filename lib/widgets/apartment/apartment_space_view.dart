@@ -4,12 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/room_constants.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_theme.dart';
 import '../../models/apartment_layout.dart';
 import '../../models/room_design.dart';
 import '../../providers/apartment_blueprint_selection_provider.dart';
 import '../../providers/apartment_placement_history_provider.dart';
 import '../../providers/project_provider.dart';
-import '../../screens/preview_3d_screen.dart';
 import '../common/dimension_control.dart';
 import 'apartment_canvas.dart';
 
@@ -131,28 +131,6 @@ class ApartmentSpaceView extends ConsumerWidget {
                     ),
                   ),
                 const Expanded(child: ApartmentCanvas()),
-                if (!showBlueprintOnly)
-                  Padding(
-                    padding: EdgeInsets.all(isLandscape ? AppSpacing.sm : AppSpacing.md),
-                    child: FilledButton.icon(
-                      onPressed: layout.placements.isEmpty
-                          ? null
-                          : () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const Preview3DScreen(apartmentMode: true),
-                                  fullscreenDialog: true,
-                                ),
-                              );
-                            },
-                      icon: const Icon(Icons.view_in_ar),
-                      label: const Text('Show Apartment 3D'),
-                      style: FilledButton.styleFrom(
-                        minimumSize: Size.fromHeight(isLandscape ? 40 : 48),
-                      ),
-                    ),
-                  ),
               ],
             );
           },
@@ -325,6 +303,7 @@ class _ApartmentSizeControls extends ConsumerStatefulWidget {
 
 class _ApartmentSizeControlsState extends ConsumerState<_ApartmentSizeControls> {
   late bool _expanded;
+  bool _editingEnabled = false;
 
   @override
   void initState() {
@@ -351,6 +330,24 @@ class _ApartmentSizeControlsState extends ConsumerState<_ApartmentSizeControls> 
           children: [
             Text('Apartment Size', style: theme.textTheme.titleSmall),
             const Spacer(),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              tooltip: _editingEnabled ? 'Lock apartment size' : 'Edit apartment size',
+              icon: Icon(
+                _editingEnabled ? Icons.edit_off_outlined : Icons.edit_outlined,
+                size: 18,
+              ),
+              style: IconButton.styleFrom(
+                foregroundColor:
+                    _editingEnabled ? AppTheme.warning : theme.colorScheme.primary,
+                backgroundColor: _editingEnabled
+                    ? AppTheme.warning.withValues(alpha: 0.12)
+                    : theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
+              ),
+              onPressed: () => setState(() => _editingEnabled = !_editingEnabled),
+            ),
             IconButton(
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
@@ -384,11 +381,20 @@ class _ApartmentSizeControlsState extends ConsumerState<_ApartmentSizeControls> 
               const SizedBox(height: 4),
               const _ApartmentNameField(),
               const SizedBox(height: AppSpacing.sm),
+              if (!_editingEnabled)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: Text(
+                    'Tap edit to adjust width and length.',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
               DimensionControl(
                 label: 'Width',
                 value: widget.layout.widthFt,
                 min: RoomConstants.minApartmentWidth,
                 max: RoomConstants.maxApartmentWidth,
+                enabled: _editingEnabled,
                 onChanged: (v) => ref
                     .read(projectProvider.notifier)
                     .updateApartmentDimensions(widthFt: v),
@@ -398,6 +404,7 @@ class _ApartmentSizeControlsState extends ConsumerState<_ApartmentSizeControls> 
                 value: widget.layout.lengthFt,
                 min: RoomConstants.minApartmentLength,
                 max: RoomConstants.maxApartmentLength,
+                enabled: _editingEnabled,
                 onChanged: (v) => ref
                     .read(projectProvider.notifier)
                     .updateApartmentDimensions(lengthFt: v),
