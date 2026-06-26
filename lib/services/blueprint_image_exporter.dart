@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../core/utils/blueprint_furniture_paint.dart';
+import '../core/utils/blueprint_wall_border_paint.dart';
 import '../core/utils/color_utils.dart';
 import '../models/enums.dart';
 import '../models/furniture_item.dart';
@@ -41,11 +42,11 @@ class _BlueprintExportPainter {
     final availW = size.width - padding * 2;
     final availH = size.height - padding * 2 - 40;
     _scale = math.min(
-      availW / design.dimensions.width,
-      availH / design.dimensions.length,
+      availW / design.dimensions.effectiveWidth,
+      availH / design.dimensions.effectiveLength,
     );
-    final roomW = design.dimensions.width * _scale;
-    final roomH = design.dimensions.length * _scale;
+    final roomW = design.dimensions.effectiveWidth * _scale;
+    final roomH = design.dimensions.effectiveLength * _scale;
     final offsetX = (size.width - roomW) / 2;
     final offsetY = (size.height - roomH) / 2 + 10;
     _roomRect = Rect.fromLTWH(offsetX, offsetY, roomW, roomH);
@@ -93,7 +94,13 @@ class _BlueprintExportPainter {
       ..color = Colors.blueGrey.shade800
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
-    canvas.drawRect(_roomRect, borderPaint);
+    BlueprintWallBorderPaint.drawRoomBorder(
+      canvas,
+      roomRect: _roomRect,
+      design: design,
+      scale: _scale,
+      paint: borderPaint,
+    );
   }
 
   void _drawGrid(Canvas canvas) {
