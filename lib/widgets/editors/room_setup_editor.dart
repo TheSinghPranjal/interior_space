@@ -6,6 +6,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/project_provider.dart';
 import '../../providers/room_design_provider.dart';
+import '../common/dimension_control.dart';
 import '../common/section_card.dart';
 
 class RoomSetupEditor extends ConsumerWidget {
@@ -37,6 +38,7 @@ class _RoomDimensionsSection extends ConsumerStatefulWidget {
 
 class _RoomDimensionsSectionState extends ConsumerState<_RoomDimensionsSection> {
   bool _expanded = true;
+  bool _editingEnabled = false;
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +50,7 @@ class _RoomDimensionsSectionState extends ConsumerState<_RoomDimensionsSection> 
     final compact = MediaQuery.sizeOf(context).width < 480;
 
     final dimensionSummary =
-        '${dims.width.toStringAsFixed(1)} × ${dims.length.toStringAsFixed(1)} × ${dims.height.toStringAsFixed(1)} ft';
+        '${formatDimensionFt(dims.width)} × ${formatDimensionFt(dims.length)} × ${formatDimensionFt(dims.height)} ft';
 
     final modeChipLabel = useCustom
         ? (compact ? 'Custom walls' : 'Custom wall visibility active')
@@ -100,6 +102,24 @@ class _RoomDimensionsSectionState extends ConsumerState<_RoomDimensionsSection> 
                       child: const Icon(Icons.keyboard_arrow_down, size: 20),
                     ),
                   ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                    tooltip: _editingEnabled ? 'Lock dimensions' : 'Edit dimensions',
+                    icon: Icon(
+                      _editingEnabled ? Icons.edit_off_outlined : Icons.edit_outlined,
+                      size: 18,
+                    ),
+                    style: IconButton.styleFrom(
+                      foregroundColor:
+                          _editingEnabled ? AppTheme.warning : theme.colorScheme.primary,
+                      backgroundColor: _editingEnabled
+                          ? AppTheme.warning.withValues(alpha: 0.12)
+                          : theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
+                    ),
+                    onPressed: () => setState(() => _editingEnabled = !_editingEnabled),
+                  ),
                 ],
               ),
               if (!_expanded)
@@ -118,27 +138,38 @@ class _RoomDimensionsSectionState extends ConsumerState<_RoomDimensionsSection> 
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: AppSpacing.sm),
-                    _DimensionSlider(
+                    if (!_editingEnabled)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        child: Text(
+                          'Tap edit to adjust width, length, and height.',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                    DimensionControl(
                       label: 'Width (Front & Back walls)',
                       value: dims.width,
                       min: RoomConstants.minWidth,
                       max: RoomConstants.maxWidth,
+                      enabled: _editingEnabled,
                       onChanged: (v) =>
                           notifier.updateDimensions(dims.copyWith(width: v)),
                     ),
-                    _DimensionSlider(
+                    DimensionControl(
                       label: 'Length (Left & Right walls)',
                       value: dims.length,
                       min: RoomConstants.minLength,
                       max: RoomConstants.maxLength,
+                      enabled: _editingEnabled,
                       onChanged: (v) =>
                           notifier.updateDimensions(dims.copyWith(length: v)),
                     ),
-                    _DimensionSlider(
+                    DimensionControl(
                       label: 'Height',
                       value: dims.height,
                       min: RoomConstants.minHeight,
                       max: RoomConstants.maxHeight,
+                      enabled: _editingEnabled,
                       onChanged: (v) =>
                           notifier.updateDimensions(dims.copyWith(height: v)),
                     ),
@@ -250,55 +281,6 @@ class _RoomNameFieldState extends ConsumerState<_RoomNameField> {
       controller: _controller,
       decoration: const InputDecoration(labelText: 'Room Name'),
       onChanged: ref.read(roomDesignProvider.notifier).setName,
-    );
-  }
-}
-
-class _DimensionSlider extends StatelessWidget {
-  const _DimensionSlider({
-    required this.label,
-    required this.value,
-    required this.min,
-    required this.max,
-    required this.onChanged,
-  });
-
-  final String label;
-  final double value;
-  final double min;
-  final double max;
-  final ValueChanged<double> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-            ),
-            Text(
-              '${value.toStringAsFixed(1)} ft',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.primary,
-                  ),
-            ),
-          ],
-        ),
-        Slider(
-          value: value.clamp(min, max),
-          min: min,
-          max: max,
-          divisions: ((max - min) * 2).toInt(),
-          onChanged: onChanged,
-        ),
-      ],
     );
   }
 }
