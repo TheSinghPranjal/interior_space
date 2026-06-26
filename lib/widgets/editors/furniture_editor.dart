@@ -5,8 +5,10 @@ import '../../core/theme/app_spacing.dart';
 import '../../models/enums.dart';
 import '../../models/furniture_item.dart';
 import '../../models/room_design.dart';
+import '../../providers/placed_item_clipboard_provider.dart';
 import '../../providers/room_design_provider.dart';
 import '../../services/texture_service.dart';
+import '../common/placed_item_config_menu.dart';
 import '../common/color_picker_field.dart';
 import '../common/editor_item_card.dart';
 import '../common/dimension_slider.dart';
@@ -125,6 +127,8 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard>
   Widget build(BuildContext context) {
     final notifier = ref.read(roomDesignProvider.notifier);
     final enabled = _editingEnabled;
+    final clipboard = ref.watch(placedItemClipboardProvider);
+    final canPaste = clipboard.canPasteTo(item.type);
 
     return EditorItemCard(
       child: Column(
@@ -133,6 +137,28 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard>
           ItemEditorHeader(
             title: FurnitureItem.displayLabel(design.furniture, item),
             icon: item.type.icon,
+            configMenu: PlacedItemConfigMenu(
+              showPaste: canPaste,
+              pasteLabel: canPaste ? 'Paste ${item.type.label} configuration' : null,
+              onCopy: () {
+                ref.read(placedItemClipboardProvider.notifier).copyFurniture(item);
+                showPlacedItemConfigSnackBar(
+                  context,
+                  '${item.type.label} configuration copied',
+                );
+              },
+              onPaste: () {
+                final snapshot = ref.read(placedItemClipboardProvider).furniture;
+                if (snapshot == null || snapshot.type != item.type) return;
+                final ok = notifier.pasteFurnitureConfig(item.id, snapshot);
+                if (ok && context.mounted) {
+                  showPlacedItemConfigSnackBar(
+                    context,
+                    '${item.type.label} configuration pasted',
+                  );
+                }
+              },
+            ),
             expanded: _expanded,
             onToggleExpand: _toggleExpand,
             expandAnimationDuration: _expandDuration,
