@@ -161,7 +161,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           Expanded(child: _buildBody(isApartment)),
         ],
       ),
-      floatingActionButton: isApartment ? null : DesignMenuFab(onAction: _onDesignMenuAction),
+      floatingActionButton: isApartment || _selectedTab == MainNavTab.sketch
+          ? null
+          : DesignMenuFab(onAction: _onDesignMenuAction),
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
           color: AppTheme.navBarBg,
