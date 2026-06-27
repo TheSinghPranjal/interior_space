@@ -38,37 +38,47 @@ class ExportService {
     return PublicDownloadSaver.saveBytes(bytes: bytes, fileName: fileName);
   }
 
+  /// Exports a design report as PDF.
+  ///
+  /// When [roomId] is set, only that room is included.
+  /// Otherwise all rooms in [apartmentIndex] (or the active apartment) are included.
   Future<String?> generatePdf(
     ProjectDesign project, {
-    Map<int, Room3DExportImages>? render3dImagesByRoomIndex,
+    String? roomId,
     int? apartmentIndex,
+    Map<int, Room3DExportImages>? render3dImagesByRoomIndex,
   }) async {
     if (kIsWeb) return null;
 
     final pdf = pw.Document();
     final aptIndex = apartmentIndex ?? project.safeActiveApartmentIndex;
-    final scopedToApartment = apartmentIndex != null;
-    final rooms = scopedToApartment
-        ? project.roomsForApartment(aptIndex)
-        : project.roomsOrDefault;
-    final apartmentName = project
-        .apartmentsOrDefault[aptIndex.clamp(0, project.apartmentsOrDefault.length - 1)]
-        .name;
-    final reportTitle = scopedToApartment
-        ? apartmentName
-        : (rooms.length == 1 ? rooms.first.name : project.projectName);
+    final apartmentLayout = project.apartmentsOrDefault[
+        aptIndex.clamp(0, project.apartmentsOrDefault.length - 1)];
+    final apartmentName = apartmentLayout.name;
+
+    final List<RoomDesign> rooms;
+    final bool singleRoomExport;
+    if (roomId != null) {
+      final room = project.roomById(roomId);
+      if (room == null) return null;
+      rooms = [room];
+      singleRoomExport = true;
+    } else {
+      rooms = project.roomsForApartment(aptIndex);
+      singleRoomExport = false;
+    }
+    if (rooms.isEmpty) return null;
+
+    final reportTitle = singleRoomExport ? rooms.first.name : apartmentName;
     final generatedAt = DateFormat('MMMM d, yyyy • h:mm a').format(DateTime.now());
 
     final blueprintImages = <int, Uint8List>{};
     for (var i = 0; i < rooms.length; i++) {
-      blueprintImages[i] = await _renderRoomBlueprint(project, rooms[i], aptIndex, scopedToApartment);
+      blueprintImages[i] = await _renderRoomBlueprint(rooms[i]);
     }
 
-    final apartmentLayout = project.apartmentsOrDefault[
-        aptIndex.clamp(0, project.apartmentsOrDefault.length - 1)];
-
     Uint8List? apartmentSketchImage;
-    if (scopedToApartment &&
+    if (!singleRoomExport &&
         apartmentLayout.sketch.includeInPdfExport &&
         !apartmentLayout.sketch.isEmpty) {
       apartmentSketchImage = await SketchCompositeExporter.renderApartment(
@@ -122,9 +132,7 @@ class ExportService {
       ),
     );
 
-    final fileName = scopedToApartment || rooms.length > 1
-        ? '${reportTitle.replaceAll(' ', '_')}_design.pdf'
-        : '${rooms.first.name.replaceAll(' ', '_')}_design.pdf';
+    final fileName = '${reportTitle.replaceAll(' ', '_')}_design.pdf';
     return PublicDownloadSaver.saveBytes(
       bytes: Uint8List.fromList(await pdf.save()),
       fileName: fileName,
@@ -389,12 +397,7 @@ class ExportService {
         fan.color,
       ];
 
-  Future<Uint8List> _renderRoomBlueprint(
-    ProjectDesign project,
-    RoomDesign room,
-    int aptIndex,
-    bool scopedToApartment,
-  ) async {
+  Future<Uint8List> _renderRoomBlueprint(RoomDesign room) async {
     if (room.sketch.includeInPdfExport && !room.sketch.isEmpty) {
       return SketchCompositeExporter.renderRoom(room: room, sketch: room.sketch);
     }
