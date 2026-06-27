@@ -8,7 +8,9 @@ import '../providers/apartment_placement_history_provider.dart';
 import '../providers/app_mode_provider.dart';
 import '../providers/project_provider.dart';
 import '../providers/room_design_provider.dart';
+import '../services/export_service.dart';
 import '../services/project_storage_service.dart';
+import '../services/public_download_saver.dart';
 import '../widgets/apartment/apartment_space_view.dart';
 import '../widgets/blueprint/blueprint_view.dart';
 import '../widgets/editors/ceiling_editor.dart';
@@ -23,6 +25,7 @@ import '../widgets/navigation/apartment_tabs_bar.dart';
 import '../widgets/navigation/app_space_mode_toggle.dart';
 import '../widgets/navigation/design_menu_fab.dart';
 import '../widgets/navigation/room_tabs_bar.dart';
+import '../widgets/three_d/room_3d_pdf_capture.dart';
 import '../sketch/presentation/sketch_view.dart';
 import 'ai_assist_screen.dart';
 import 'editor_screen.dart';
@@ -297,10 +300,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           icon: const Icon(Icons.more_vert),
                           tooltip: 'More actions',
                           onSelected: (value) {
-                            if (value == 'reset') {
-                              isApartment
-                                  ? _confirmResetApartment(context)
-                                  : _confirmReset(context, activeRoom.name);
+                            switch (value) {
+                              case 'reset':
+                                isApartment
+                                    ? _confirmResetApartment(context)
+                                    : _confirmReset(context, activeRoom.name);
+                              case 'export_room':
+                                _exportCurrentRoomPdf(context);
+                              case 'export_apartment_pdf':
+                                _exportApartmentPdf(context);
                             }
                           },
                           itemBuilder: (context) => [
@@ -318,6 +326,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     style: TextStyle(color: theme.colorScheme.error),
                                   ),
                                 ],
+                              ),
+                            ),
+                            const PopupMenuDivider(),
+                            PopupMenuItem(
+                              value: 'export_room',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.picture_as_pdf_outlined,
+                                      size: 16, color: theme.colorScheme.primary),
+                                  const SizedBox(width: 12),
+                                  const Text('Export current room'),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'export_apartment_pdf',
+                              child: SizedBox(
+                                width: (MediaQuery.sizeOf(context).width * 0.55)
+                                    .clamp(180, 280),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.picture_as_pdf_outlined,
+                                        size: 16, color: theme.colorScheme.primary),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'Export PDF (${project.apartmentLayout.name})',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
@@ -387,6 +428,79 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: const Text('Reset'),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _exportCurrentRoomPdf(BuildContext context) async {
+    final project = ref.read(projectProvider);
+    final room = project.activeRoom;
+    final exportService = ref.read(exportServiceProvider);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Generating PDF with 3D preview...'),
+        duration: Duration(seconds: 60),
+      ),
+    );
+
+    final render3dByRoom = await captureRoom3DImagesForPdf(
+      context,
+      apartmentMode: false,
+    );
+
+    final path = await exportService.generatePdf(
+      project,
+      roomId: room.id,
+      render3dImagesByRoomIndex:
+          render3dByRoom.isNotEmpty ? render3dByRoom : null,
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          path != null
+              ? 'PDF saved to ${PublicDownloadSaver.displayPath(path)}'
+              : 'Could not save PDF. Check storage permission.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _exportApartmentPdf(BuildContext context) async {
+    final project = ref.read(projectProvider);
+    final exportService = ref.read(exportServiceProvider);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Generating PDF with 3D previews for all rooms...'),
+        duration: Duration(seconds: 60),
+      ),
+    );
+
+    final render3dByRoom = await captureRoom3DImagesForPdf(
+      context,
+      apartmentMode: true,
+    );
+
+    final path = await exportService.generatePdf(
+      project,
+      apartmentIndex: project.safeActiveApartmentIndex,
+      render3dImagesByRoomIndex:
+          render3dByRoom.isNotEmpty ? render3dByRoom : null,
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          path != null
+              ? 'PDF saved to ${PublicDownloadSaver.displayPath(path)}'
+              : 'Could not save PDF. Check storage permission.',
+        ),
       ),
     );
   }
