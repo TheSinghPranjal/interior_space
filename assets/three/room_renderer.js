@@ -2010,22 +2010,145 @@
       return group;
     }
 
+    _createRoundedBox(width, height, depth, radius, material) {
+      const shape = new THREE.Shape();
+      const w = width;
+      const h = height;
+      const r = Math.min(radius, w * 0.25, h * 0.25);
+
+      shape.moveTo(-w / 2 + r, -h / 2);
+      shape.lineTo(w / 2 - r, -h / 2);
+      shape.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r);
+      shape.lineTo(w / 2, h / 2 - r);
+      shape.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2);
+      shape.lineTo(-w / 2 + r, h / 2);
+      shape.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r);
+      shape.lineTo(-w / 2, -h / 2 + r);
+      shape.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
+
+      const geometry = new THREE.ExtrudeGeometry(shape, {
+        depth: depth,
+        bevelEnabled: true,
+        bevelSize: r * 0.4,
+        bevelThickness: r * 0.45,
+        bevelSegments: 8,
+        curveSegments: 16,
+      });
+
+      geometry.center();
+      return new THREE.Mesh(geometry, material);
+    }
+
     _buildSofaGroup(item, textureUrl) {
       const fw = item.width * FT;
       const fh = item.height * FT;
       const fd = item.depth * FT;
       const group = new THREE.Group();
-      const mat = this._makeMaterial(item.color, 0.85, 0.02, textureUrl, 'fabric', 1, 1);
 
-      const base = new THREE.Mesh(new THREE.BoxGeometry(fw, fh * 0.45, fd), mat);
-      base.position.y = fh * 0.25;
-      group.add(base);
+      const mat = this._makeMaterial(
+        item.color,
+        0.92,
+        0.03,
+        textureUrl,
+        textureUrl ? null : 'fabric',
+        3,
+        3
+      );
+      if (mat.roughness !== undefined) {
+        mat.roughness = 0.95;
+        mat.metalness = 0.0;
+        mat.bumpScale = 0.015;
+        if (mat.normalScale) mat.normalScale.set(0.6, 0.6);
+      }
 
-      const back = new THREE.Mesh(new THREE.BoxGeometry(fw, fh * 0.55, fd * 0.2), mat);
-      back.position.set(0, fh * 0.55, -fd * 0.4);
+      const armWidth = fw * 0.15;
+      const seatHeight = fh * 0.28;
+      const cushionHeight = fh * 0.20;
+      const backHeight = fh * 0.52;
+      const radius = Math.min(fw, fd) * 0.045;
+
+      const frame = this._createRoundedBox(
+        fw - armWidth * 0.4,
+        seatHeight,
+        fd * 0.95,
+        radius,
+        mat
+      );
+      frame.position.y = seatHeight * 0.5;
+      group.add(frame);
+
+      const leftArm = this._createRoundedBox(armWidth, fh * 0.65, fd, radius, mat);
+      leftArm.position.set(-fw / 2 + armWidth / 2, fh * 0.33, 0);
+      group.add(leftArm);
+
+      const rightArm = leftArm.clone();
+      rightArm.position.x = fw / 2 - armWidth / 2;
+      group.add(rightArm);
+
+      const back = this._createRoundedBox(
+        fw - armWidth * 1.4,
+        backHeight,
+        fd * 0.12,
+        radius,
+        mat
+      );
+      back.position.set(0, fh * 0.47, -fd * 0.42);
       group.add(back);
 
-      group.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+      const seatCount = 3;
+      const innerW = fw - armWidth * 2.2;
+      const seatWidth = innerW / seatCount;
+
+      for (let i = 0; i < seatCount; i++) {
+        const cx = -innerW / 2 + seatWidth * (i + 0.5);
+        const cushion = this._createRoundedBox(
+          seatWidth * 0.96,
+          cushionHeight,
+          fd * 0.90,
+          radius * 1.2,
+          mat
+        );
+        cushion.position.set(cx, seatHeight + cushionHeight * 0.45, 0);
+        cushion.scale.y = 1.05;
+        group.add(cushion);
+      }
+
+      for (let i = 0; i < seatCount; i++) {
+        const cx = -innerW / 2 + seatWidth * (i + 0.5);
+        const cushion = this._createRoundedBox(
+          seatWidth * 0.91,
+          fh * 0.33,
+          fd * 0.14,
+          radius * 1.4,
+          mat
+        );
+        cushion.position.set(cx, fh * 0.56, -fd * 0.28);
+        cushion.rotation.x = -0.06;
+        group.add(cushion);
+      }
+
+      group.children.forEach((mesh) => {
+        if (!mesh.geometry || !mesh.geometry.attributes.position) return;
+        const pos = mesh.geometry.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          const x = pos.getX(i);
+          let y = pos.getY(i);
+          const z = pos.getZ(i);
+          y += Math.sin(x * 8) * 0.002;
+          y += Math.cos(z * 8) * 0.002;
+          pos.setXYZ(i, x, y, z);
+        }
+        pos.needsUpdate = true;
+        mesh.geometry.computeVertexNormals();
+      });
+
+      group.traverse((obj) => {
+        if (obj.isMesh) {
+          obj.castShadow = true;
+          obj.receiveShadow = true;
+        }
+      });
+
       return group;
     }
 
