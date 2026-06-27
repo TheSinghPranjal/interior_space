@@ -4,7 +4,6 @@ import 'package:screenshot/screenshot.dart';
 
 import '../core/theme/app_spacing.dart';
 import '../core/theme/app_theme.dart';
-import '../models/room_3d_export_images.dart';
 import '../providers/app_mode_provider.dart';
 import '../providers/project_provider.dart';
 import '../providers/room_design_provider.dart';
@@ -24,7 +23,6 @@ class Preview3DScreen extends ConsumerStatefulWidget {
 
 class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
   final _screenshotController = ScreenshotController();
-  Future<Map<int, Room3DExportImages>> Function()? _capture3dAllRooms;
 
   static const _immersiveBg = Color(0xFF121816);
 
@@ -76,7 +74,6 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
         child: Room3DViewer(
           showControls: true,
           apartmentMode: isApartment,
-          onCaptureReady: (capture) => _capture3dAllRooms = capture,
         ),
       ),
       bottomNavigationBar: Container(
@@ -120,14 +117,6 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
                 onTap: () {
                   Navigator.pop(context);
                   _handleExport('screenshot');
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.picture_as_pdf_outlined),
-                title: const Text('Export PDF'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _handleExport('pdf');
                 },
               ),
               ListTile(
@@ -178,34 +167,6 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
               ),
             );
           }
-        }
-        break;
-      case 'pdf':
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Generating PDF with 3D previews for all rooms...'),
-              duration: Duration(seconds: 60),
-            ),
-          );
-        }
-        final render3dByRoom = await _capture3dAllRooms?.call() ?? {};
-        final path = await exportService.generatePdf(
-          project,
-          apartmentIndex: isApartment ? project.safeActiveApartmentIndex : null,
-          render3dImagesByRoomIndex:
-              render3dByRoom.isNotEmpty ? render3dByRoom : null,
-        );
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                path != null
-                    ? 'PDF saved to ${PublicDownloadSaver.displayPath(path)}'
-                    : 'Could not save PDF to Downloads. Check storage permission.',
-              ),
-            ),
-          );
         }
         break;
       case 'project':
