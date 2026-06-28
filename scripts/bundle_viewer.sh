@@ -13,6 +13,8 @@ premium_bed = Path('premium_bed.js').read_text()
 premium_flower_pot = Path('premium_flower_pot.js').read_text()
 premium_dining_table = Path('premium_dining_table.js').read_text()
 premium_table = Path('premium_table.js').read_text()
+cabinet_helpers = Path('cabinet_helpers.js').read_text()
+premium_storage_unit = Path('premium_storage_unit.js').read_text()
 renderer = Path('room_renderer.js').read_text()
 
 bundle = (
@@ -23,6 +25,8 @@ bundle = (
     .replace('<!-- INJECT_PREMIUM_FLOWER_POT -->', f'<script>\n{premium_flower_pot}\n</script>')
     .replace('<!-- INJECT_PREMIUM_DINING_TABLE -->', f'<script>\n{premium_dining_table}\n</script>')
     .replace('<!-- INJECT_PREMIUM_TABLE -->', f'<script>\n{premium_table}\n</script>')
+    .replace('<!-- INJECT_CABINET_HELPERS -->', f'<script>\n{cabinet_helpers}\n</script>')
+    .replace('<!-- INJECT_PREMIUM_STORAGE_UNIT -->', f'<script>\n{premium_storage_unit}\n</script>')
     .replace('<!-- INJECT_RENDERER -->', f'<script>\n{renderer}\n</script>')
 )
 

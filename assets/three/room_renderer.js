@@ -2244,6 +2244,13 @@
     }
 
     _buildStorageUnitGroup(item) {
+      if (this.config && this.config.premiumFurniture) {
+        return PremiumStorageUnitBuilder.build(this, item);
+      }
+      return this._buildStandardStorageUnitGroup(item);
+    }
+
+    _buildStandardStorageUnitGroup(item) {
       const fw = item.width * FT;
       const fh = item.height * FT;
       const fd = item.depth * FT;
