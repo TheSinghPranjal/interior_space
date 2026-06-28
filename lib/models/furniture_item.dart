@@ -92,7 +92,8 @@ class FurnitureItem {
         FurnitureType.washingMachine ||
         FurnitureType.bathtub ||
         FurnitureType.flowerPot ||
-        FurnitureType.fridge =>
+        FurnitureType.fridge ||
+        FurnitureType.shoeRack =>
           true,
         _ => false,
       };
@@ -318,6 +319,14 @@ class FurnitureItem {
           height: 5.5,
           depth: 2.5,
           color: '#ECEFF1',
+        ),
+      FurnitureType.shoeRack => FurnitureItem(
+          id: id,
+          type: type,
+          width: 3.5,
+          height: 3.0,
+          depth: 1.2,
+          color: '#6D4C41',
         ),
     };
 
