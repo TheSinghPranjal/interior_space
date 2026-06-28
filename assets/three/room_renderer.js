@@ -1284,6 +1284,9 @@
           case 'fridge':
             group = this._buildFridgeGroup(item, tex);
             break;
+          case 'shoeRack':
+            group = this._buildShoeRackGroup(item, tex);
+            break;
           case 'diningTable':
             group = this._buildDiningTableGroup(item);
             break;
@@ -2011,6 +2014,92 @@
       );
       brandBar.position.set(0, footH + bodyH * 0.92, fd * 0.485);
       group.add(brandBar);
+
+      group.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+      return group;
+    }
+
+    _buildShoeRackGroup(item, textureUrl) {
+      if (this.config && this.config.premiumFurniture) {
+        return PremiumShoeRackBuilder.build(this, item, textureUrl);
+      }
+      return this._buildStandardShoeRackGroup(item, textureUrl);
+    }
+
+    _buildStandardShoeRackGroup(item, textureUrl) {
+      const fw = item.width * FT;
+      const fh = item.height * FT;
+      const fd = item.depth * FT;
+      const group = new THREE.Group();
+
+      const frameMat = this._makeMaterial(item.color, 0.62, 0.06, textureUrl, textureUrl ? null : 'wood', 1, 1);
+      const shelfMat = this._makeMaterial(item.color, 0.58, 0.05, textureUrl, textureUrl ? null : 'wood', 1, 1);
+      const shoeMat = new THREE.MeshStandardMaterial({ color: 0x5D4037, roughness: 0.82, metalness: 0.02 });
+      const shoeMat2 = new THREE.MeshStandardMaterial({ color: 0x37474F, roughness: 0.78, metalness: 0.04 });
+
+      const postW = Math.max(0.035 * FT, fw * 0.045);
+      const legH = Math.max(0.06 * FT, fh * 0.07);
+      const bodyH = fh - legH;
+      const shelfTh = 0.022 * FT;
+      const shelfCount = Math.max(3, Math.min(5, Math.round(bodyH / (0.55 * FT))));
+      const tilt = 0.14;
+      const innerW = fw - postW * 2.4;
+      const innerD = fd - postW * 1.2;
+      const frontZ = fd / 2 - postW * 0.35;
+
+      const addPost = (x, z) => {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(postW, fh, postW), frameMat);
+        post.position.set(x, fh / 2, z);
+        group.add(post);
+      };
+      addPost(-fw / 2 + postW / 2, -fd / 2 + postW / 2);
+      addPost(fw / 2 - postW / 2, -fd / 2 + postW / 2);
+      addPost(-fw / 2 + postW / 2, fd / 2 - postW / 2);
+      addPost(fw / 2 - postW / 2, fd / 2 - postW / 2);
+
+      const topRail = new THREE.Mesh(new THREE.BoxGeometry(fw * 0.94, postW * 0.75, postW * 0.75), frameMat);
+      topRail.position.y = fh - postW * 0.55;
+      group.add(topRail);
+
+      const back = new THREE.Mesh(new THREE.BoxGeometry(fw * 0.9, bodyH * 0.94, 0.018 * FT), frameMat);
+      back.position.set(0, legH + bodyH / 2, -fd / 2 + 0.02 * FT);
+      group.add(back);
+
+      const addShelf = (y, tilted) => {
+        const shelf = new THREE.Mesh(new THREE.BoxGeometry(innerW, shelfTh, innerD), shelfMat);
+        shelf.position.set(0, y, 0);
+        if (tilted) shelf.rotation.x = -tilt;
+        group.add(shelf);
+
+        const lip = new THREE.Mesh(new THREE.BoxGeometry(innerW, shelfTh * 0.85, 0.018 * FT), frameMat);
+        const lipZ = tilted ? frontZ - innerD * 0.5 * Math.sin(tilt) : frontZ;
+        const lipY = tilted ? y - innerD * 0.42 * Math.sin(tilt) : y + shelfTh * 0.5;
+        lip.position.set(0, lipY, lipZ);
+        group.add(lip);
+      };
+
+      for (let i = 0; i < shelfCount; i++) {
+        const t = (i + 1) / (shelfCount + 1);
+        const shelfY = legH + bodyH * t;
+        addShelf(shelfY, i < shelfCount - 1);
+      }
+
+      const bottomShelf = new THREE.Mesh(new THREE.BoxGeometry(innerW, shelfTh, innerD * 0.96), shelfMat);
+      bottomShelf.position.set(0, legH + shelfTh / 2, 0);
+      group.add(bottomShelf);
+
+      const shoeLayouts = [
+        { x: -innerW * 0.28, z: innerD * 0.08, w: innerW * 0.22, d: innerD * 0.55, h: 0.07 * FT, mat: shoeMat },
+        { x: innerW * 0.02, z: innerD * 0.12, w: innerW * 0.24, d: innerD * 0.5, h: 0.075 * FT, mat: shoeMat2 },
+        { x: innerW * 0.3, z: innerD * 0.06, w: innerW * 0.2, d: innerD * 0.48, h: 0.065 * FT, mat: shoeMat },
+      ];
+      const midShelfY = legH + bodyH * 0.5;
+      shoeLayouts.forEach((s) => {
+        const shoe = new THREE.Mesh(new THREE.BoxGeometry(s.w, s.h, s.d), s.mat);
+        shoe.position.set(s.x, midShelfY + shelfTh + s.h / 2, s.z - innerD * 0.08);
+        shoe.rotation.x = -tilt * 0.35;
+        group.add(shoe);
+      });
 
       group.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
       return group;
