@@ -3746,721 +3746,354 @@
 
   const FT = 0.3048;
 
-  function createBarGeometry(radius, length) {
-    if (typeof THREE.CapsuleGeometry !== 'undefined') {
-      return new THREE.CapsuleGeometry(radius, length, 5, 14);
+  /* ── rounded box ── */
+  function rBox(w, h, d, r, mat) {
+    r = Math.min(r, w / 2, h / 2, d / 2);
+    const g = new THREE.BoxGeometry(w, h, d, 3, 3, 3);
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      let x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+      const sx = Math.sign(x), sy = Math.sign(y), sz = Math.sign(z);
+      const cx = sx*(w/2-r), cy = sy*(h/2-r), cz = sz*(d/2-r);
+      const dx = x-cx, dy = y-cy, dz = z-cz;
+      const len = Math.sqrt(dx*dx+dy*dy+dz*dz)||1;
+      p.setXYZ(i, cx+dx/len*r, cy+dy/len*r, cz+dz/len*r);
     }
-    return new THREE.CylinderGeometry(radius, radius, length + radius * 2, 12);
+    p.needsUpdate = true;
+    g.computeVertexNormals();
+    return new THREE.Mesh(g, mat);
   }
 
-  function createGlassMat() {
-    if (typeof THREE.MeshPhysicalMaterial !== 'undefined') {
-      const mat = new THREE.MeshPhysicalMaterial({
-        color: 0x314b78,
-        transparent: true,
-        opacity: 0.32,
-        transmission: 0.92,
-        thickness: 0.03,
-        roughness: 0.02,
-        metalness: 0.08,
-        ior: 1.52,
-        clearcoat: 1,
-        clearcoatRoughness: 0.02,
-      });
-      mat.reflectivity = 1;
-      return mat;
-    }
+  /* ── materials with emissive (visible in dark scenes) ── */
+  function mkMat(color, emissive, rough, metal, eInt) {
     return new THREE.MeshStandardMaterial({
-      color: 0x314b78,
-      transparent: true,
-      opacity: 0.32,
-      roughness: 0.02,
-      metalness: 0.08,
+      color, emissive, emissiveIntensity: eInt ?? 0.18,
+      roughness: rough, metalness: metal,
     });
   }
 
-  function buildPremiumWashingMachine(renderer, item, textureUrl) {
-    const fw = item.width * FT;
-    const fd = item.depth * FT;
+  const OFF_WHITE = 0xf0eeea, OFF_WHITE_E = 0xa09e9a;
+  const LGRAY     = 0xd0cdc8, LGRAY_E     = 0x808078;
+  const CHROME    = 0xd4d8dc, CHROME_E    = 0x909498;
+  const DARK      = 0x1e1e1e, DARK_E      = 0x080808;
+  const DRUM_C    = 0x8a9198, DRUM_E      = 0x404548;
+  const SCREEN_E  = 0x0d5f92;
+
+  const BM  = () => mkMat(OFF_WHITE, OFF_WHITE_E, 0.30, 0.05, 0.22);
+  const CM  = () => mkMat(CHROME,    CHROME_E,    0.10, 0.95, 0.22);
+  const DM  = () => mkMat(DARK,      DARK_E,      0.55, 0.55, 0.15);
+  const DrM = () => mkMat(DRUM_C,    DRUM_E,      0.18, 0.90, 0.22);
+  const RM  = () => mkMat(0x151515,  0x050505,    0.96, 0.00, 0.10);
+  const BGM = () => mkMat(0x111111,  0x060606,    0.05, 0.70, 0.14);
+
+  function buildPremiumWashingMachine(renderer, item, _textureUrl) {
+    const fw = item.width  * FT;
+    const fd = item.depth  * FT;
     const fh = item.height * FT;
     const group = new THREE.Group();
 
-    const bodyMat = renderer._makeMaterial(item.color, 0.18, 0.82, textureUrl, null, 2, 2);
-    bodyMat.envMapIntensity = 1.25;
-
-    const darkMat = new THREE.MeshStandardMaterial({
-      color: 0x2e3135,
-      roughness: 0.32,
-      metalness: 0.75,
-      envMapIntensity: 0.85,
-    });
-
-    const chromeMat = new THREE.MeshStandardMaterial({
-      color: 0xd9dde1,
-      roughness: 0.1,
-      metalness: 1.0,
-      envMapIntensity: 1.4,
-    });
-
-    const blackGlossMat = new THREE.MeshStandardMaterial({
-      color: 0x111111,
-      roughness: 0.04,
-      metalness: 0.72,
-      envMapIntensity: 1.35,
-    });
+    const bm  = BM(), cm = CM(), dm = DM(), drm = DrM(), rm = RM(), bgm = BGM();
+    const pm  = mkMat(LGRAY, LGRAY_E, 0.28, 0.06, 0.20);
 
     const screenMat = new THREE.MeshStandardMaterial({
-      color: 0x07090b,
-      emissive: 0x0d5f92,
-      emissiveIntensity: 0.35,
-      roughness: 0.08,
-      metalness: 0.25,
+      color: 0x050e18, emissive: SCREEN_E, emissiveIntensity: 0.80,
+      roughness: 0.08, metalness: 0.10,
+    });
+    const ledMat = new THREE.MeshStandardMaterial({
+      color: 0x00cfff, emissive: 0x00cfff, emissiveIntensity: 1.6, roughness: 0.1,
     });
 
-    const glassMat = createGlassMat();
-    const drumMat = new THREE.MeshStandardMaterial({
-      color: 0x9aa7b2,
-      roughness: 0.18,
-      metalness: 0.92,
-      envMapIntensity: 1.15,
+    /* ── dims ── */
+    const R       = Math.min(fw, fd) * 0.032;
+    const footH   = 0.018 * FT;
+    const plinthH = footH + 0.014 * FT;
+    const bodyH   = fh - plinthH;
+    const topH    = bodyH * 0.195;
+    const mainH   = bodyH - topH;
+    const wall    = 0.018 * FT;
+
+    /* door circle dims */
+    const doorR   = Math.min(fw, mainH) * 0.370;
+    const doorCY  = plinthH + mainH * 0.52;
+    const doorCZ  = fd * 0.5 + 0.002 * FT;   // sit flush on front face
+    const drumR   = doorR * 0.68;
+    const drumD   = fd * 0.40;
+    const cpY     = plinthH + mainH + topH * 0.5;
+
+    /* ── feet ── */
+    [[-1,-1],[-1,1],[1,-1],[1,1]].forEach(([sx,sz]) => {
+      const f = new THREE.Mesh(new THREE.CylinderGeometry(0.014*FT,0.014*FT,footH,14), dm);
+      f.position.set(sx*fw*0.41, footH*0.5, sz*fd*0.41);
+      group.add(f);
     });
 
-    const rubberMat = new THREE.MeshStandardMaterial({
-      color: 0x1b1b1b,
-      roughness: 0.96,
-      metalness: 0,
-    });
-
-    const plasticMat = new THREE.MeshStandardMaterial({
-      color: 0x3e4348,
-      roughness: 0.58,
-      metalness: 0.05,
-    });
-
-    const buttonMat = new THREE.MeshStandardMaterial({
-      color: 0xf2f3f4,
-      roughness: 0.28,
-      metalness: 0.15,
-    });
-
-    const bodyW = fw * 0.98;
-    const bodyD = fd * 0.96;
-    const bodyH = fh - 0.05 * FT;
-    const cornerRadius = Math.min(bodyW, bodyD) * 0.035;
-    const wall = 0.018 * FT;
-    const footHeight = 0.018 * FT;
-    const footRadius = 0.014 * FT;
-    const plinthHeight = footHeight + 0.015 * FT;
-    const topPanelHeight = bodyH * 0.18;
-    const drawerWidth = bodyW * 0.24;
-    const drawerHeight = topPanelHeight * 0.42;
-    const drawerDepth = 0.022 * FT;
-    const knobRadius = bodyW * 0.065;
-    const knobDepth = 0.03 * FT;
-    const knobX = -bodyW * 0.02;
-    const doorRadius = Math.min(bodyW, bodyH) * 0.335;
-    const doorDepth = 0.048 * FT;
-    const doorCenterY = plinthHeight + (bodyH - topPanelHeight) * 0.52;
-    const doorCenterZ = bodyD / 2 - 0.012 * FT;
-    const drumRadius = doorRadius * 0.72;
-    const drumDepth = bodyD * 0.4;
-    const ringThickness = 0.038 * FT;
-    const handleWidth = doorRadius * 0.28;
-    const handleHeight = 0.032 * FT;
-    const handleDepth = 0.024 * FT;
-    const screenWidth = bodyW * 0.24;
-    const screenHeight = topPanelHeight * 0.38;
-    const buttonSize = 0.04 * FT;
-    const bodyCenterY = plinthHeight + bodyH / 2;
-    const screenX = bodyW * 0.28;
-    const drawerX = -bodyW * 0.33;
-    const controlPanelY = bodyCenterY + bodyH / 2 - topPanelHeight / 2;
-
-    [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => {
-      const foot = new THREE.Mesh(
-        new THREE.CylinderGeometry(footRadius, footRadius, footHeight, 18),
-        darkMat
-      );
-      foot.position.set(sx * bodyW * 0.43, footHeight * 0.5, sz * bodyD * 0.43);
-      group.add(foot);
-    });
-
-    const plinth = renderer._createRoundedBox(bodyW, plinthHeight, bodyD, cornerRadius * 0.6, darkMat);
-    plinth.position.y = plinthHeight * 0.5;
+    /* ── plinth ── */
+    const plinth = rBox(fw, plinthH, fd, R*0.5, dm);
+    plinth.position.y = plinthH*0.5;
     group.add(plinth);
 
-    const body = renderer._createRoundedBox(bodyW, bodyH, bodyD, cornerRadius, bodyMat);
-    body.position.y = plinthHeight + bodyH * 0.5;
+    /* ── body ── */
+    const body = rBox(fw, bodyH, fd, R, bm);
+    body.position.y = plinthH + bodyH*0.5;
     group.add(body);
 
-    const top = renderer._createRoundedBox(bodyW, wall, bodyD, cornerRadius, bodyMat);
-    top.position.y = fh - wall * 0.5;
-    group.add(top);
+    const topCap = rBox(fw, wall, fd, R, pm);
+    topCap.position.y = fh - wall*0.5;
+    group.add(topCap);
 
-    [-1, 1].forEach((side) => {
-      const panel = renderer._createRoundedBox(wall, bodyH, bodyD - wall, cornerRadius * 0.45, bodyMat);
-      panel.position.set(side * (bodyW / 2 - wall / 2), bodyCenterY, 0);
-      group.add(panel);
+    const back = rBox(fw-wall*2, bodyH-wall, wall*0.8, R*0.3, dm);
+    back.position.set(0, plinthH+bodyH*0.5, -fd/2+wall*0.4);
+    group.add(back);
+
+    /* ════════════════════════════════
+       CONTROL PANEL
+    ════════════════════════════════ */
+    const cp = rBox(fw*0.97, topH, wall*1.5, R*0.5, bgm);
+    cp.position.set(0, cpY, fd/2+wall*0.25);
+    group.add(cp);
+
+    /* chrome accent lines */
+    [cpY-topH*0.5, cpY+topH*0.5].forEach(y => {
+      const a = rBox(fw*0.97, 0.006*FT, 0.008*FT, 0.002*FT, cm);
+      a.position.set(0, y, fd/2+wall*0.55);
+      group.add(a);
     });
 
-    const rear = renderer._createRoundedBox(bodyW - wall, bodyH - wall, wall, cornerRadius * 0.35, darkMat);
-    rear.position.set(0, bodyCenterY, -bodyD / 2 + wall * 0.5);
-    group.add(rear);
+    /* detergent drawer */
+    const dw = fw*0.22, dh = topH*0.44, dd = 0.020*FT;
+    const dx = -fw*0.31;
+    const dHousing = rBox(dw*1.08, dh*1.12, wall*1.1, 0.005*FT, dm);
+    dHousing.position.set(dx, cpY, fd/2+wall*0.12);
+    group.add(dHousing);
+    const drawer = rBox(dw, dh, dd, 0.005*FT, bm);
+    drawer.position.set(dx, cpY, fd/2+wall*0.72);
+    group.add(drawer);
+    const dhandle = rBox(dw*0.52, dh*0.17, 0.014*FT, 0.003*FT, cm);
+    dhandle.position.set(dx, cpY, fd/2+wall*1.16);
+    group.add(dhandle);
 
-    const recess = renderer._createRoundedBox(
-      bodyW - wall,
-      bodyH - topPanelHeight,
-      wall * 0.7,
-      cornerRadius * 0.5,
-      darkMat
-    );
-    recess.position.set(0, plinthHeight + (bodyH - topPanelHeight) / 2, bodyD / 2 - wall * 0.3);
+    /* knob */
+    const kx = -fw*0.04, kr = fw*0.060;
+    const knob = new THREE.Mesh(new THREE.CylinderGeometry(kr, kr, 0.026*FT, 60), cm);
+    knob.rotation.x = Math.PI/2;
+    knob.position.set(kx, cpY, fd/2+wall*0.88);
+    group.add(knob);
+    const knobBezel = new THREE.Mesh(new THREE.TorusGeometry(kr*1.02, 0.005*FT, 14, 60), cm);
+    knobBezel.rotation.x = Math.PI/2;
+    knobBezel.position.set(kx, cpY, fd/2+wall*0.98);
+    group.add(knobBezel);
+    const knobCap = new THREE.Mesh(new THREE.CylinderGeometry(kr*0.63,kr*0.63,0.016*FT,44), bgm);
+    knobCap.rotation.x = Math.PI/2;
+    knobCap.position.set(kx, cpY, fd/2+wall*1.06);
+    group.add(knobCap);
+    const ind = new THREE.Mesh(new THREE.BoxGeometry(0.004*FT,kr*0.38,0.003*FT),
+      mkMat(0xffffff,0xffffff,0.2,0,0.5));
+    ind.position.set(kx, cpY+kr*0.42, fd/2+wall*1.14);
+    group.add(ind);
+    for (let i=0;i<32;i++){
+      const a=(i/32)*Math.PI*2;
+      const gr=new THREE.Mesh(new THREE.BoxGeometry(0.003*FT,0.009*FT,0.022*FT),cm);
+      gr.position.set(kx+Math.cos(a)*kr*0.97, cpY+Math.sin(a)*kr*0.97, fd/2+wall*0.88);
+      gr.rotation.z=a; group.add(gr);
+    }
+    for (let i=0;i<12;i++){
+      const a=Math.PI*0.75+(i/11)*Math.PI*1.5;
+      const t=new THREE.Mesh(new THREE.BoxGeometry(0.003*FT,0.013*FT,0.002*FT),
+        mkMat(0xcccccc,0x888888,0.3,0,0.18));
+      t.position.set(kx+Math.cos(a)*kr*1.50, cpY+Math.sin(a)*kr*1.50, fd/2+wall*0.84);
+      t.rotation.z=a; group.add(t);
+    }
+
+    /* screen */
+    const sw=fw*0.25, sh=topH*0.50, sx=fw*0.185;
+    const sHousing=rBox(sw*1.10, sh*1.16, wall*0.85, 0.006*FT, dm);
+    sHousing.position.set(sx, cpY, fd/2+wall*0.48);
+    group.add(sHousing);
+    const screen=rBox(sw, sh, 0.004*FT, 0.004*FT, screenMat);
+    screen.position.set(sx, cpY, fd/2+wall*0.96);
+    group.add(screen);
+    const tempGlow=new THREE.Mesh(new THREE.PlaneGeometry(sw*0.28,sh*0.52),
+      new THREE.MeshBasicMaterial({color:0x00cfff,transparent:true,opacity:0.50}));
+    tempGlow.position.set(sx+sw*0.20, cpY, fd/2+wall*1.00);
+    group.add(tempGlow);
+    for(let i=0;i<5;i++){
+      const led=new THREE.Mesh(new THREE.CircleGeometry(0.0036*FT,10),ledMat);
+      led.position.set(sx-sw*0.36+i*0.036*FT, cpY+sh*0.37, fd/2+wall*1.00);
+      group.add(led);
+    }
+
+    /* buttons */
+    for(let i=0;i<3;i++){
+      const btn=new THREE.Mesh(new THREE.CylinderGeometry(0.016*FT,0.016*FT,0.009*FT,18),
+        mkMat(0xe8e6e2,0x909090,0.28,0.06,0.18));
+      btn.rotation.x=Math.PI/2;
+      btn.position.set(fw*0.375, cpY+(i-1)*topH*0.27, fd/2+wall*0.88);
+      group.add(btn);
+    }
+
+    /* ════════════════════════════════
+       DOOR  — all circular geometry
+    ════════════════════════════════ */
+
+    /* dark square recess behind door */
+    const recess = rBox(doorR*2.30, doorR*2.30, wall*1.0, 0.010*FT, dm);
+    recess.position.set(0, doorCY, fd/2+wall*0.10);
     group.add(recess);
 
-    const bezel = renderer._createRoundedBox(bodyW, bodyH, wall, cornerRadius, bodyMat);
-    bezel.position.set(0, bodyCenterY, bodyD / 2);
-    group.add(bezel);
+    /* ① outer chrome bezel ring — TorusGeometry default is in XY plane = faces +Z = correct */
+    const outerRing = new THREE.Mesh(
+      new THREE.TorusGeometry(doorR, 0.034*FT, 24, 120), cm);
+    outerRing.position.set(0, doorCY, doorCZ);
+    group.add(outerRing);
 
-    const controlPanel = renderer._createRoundedBox(
-      bodyW * 0.96,
-      topPanelHeight,
-      wall * 1.8,
-      cornerRadius * 0.6,
-      blackGlossMat
-    );
-    controlPanel.position.set(0, controlPanelY, bodyD / 2 + wall * 0.25);
-    group.add(controlPanel);
+    /* ② mid dark ring */
+    const midRing = new THREE.Mesh(
+      new THREE.TorusGeometry(doorR*0.884, 0.016*FT, 16, 80), bgm);
+    midRing.position.set(0, doorCY, doorCZ - 0.006*FT);
+    group.add(midRing);
 
-    const accentStrip = renderer._createRoundedBox(
-      bodyW * 0.96,
-      0.008 * FT,
-      0.01 * FT,
-      0.002 * FT,
-      chromeMat
-    );
-    accentStrip.position.set(0, controlPanelY + topPanelHeight * 0.48, bodyD / 2 + wall * 0.85);
-    group.add(accentStrip);
-
-    const displayHousing = renderer._createRoundedBox(
-      screenWidth * 1.15,
-      screenHeight * 1.25,
-      wall,
-      0.006 * FT,
-      darkMat
-    );
-    displayHousing.position.set(screenX, controlPanelY, bodyD / 2 + wall * 0.75);
-    group.add(displayHousing);
-
-    const screen = renderer._createRoundedBox(
-      screenWidth,
-      screenHeight,
-      0.004 * FT,
-      0.004 * FT,
-      screenMat
-    );
-    screen.position.set(screenX, controlPanelY, bodyD / 2 + wall * 1.05);
-    group.add(screen);
-
-    const screenReflection = new THREE.Mesh(
-      new THREE.PlaneGeometry(screenWidth * 0.9, screenHeight * 0.9),
-      new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.05,
-        depthWrite: false,
-      })
-    );
-    screenReflection.position.set(screenX, controlPanelY, bodyD / 2 + wall * 1.12);
-    group.add(screenReflection);
-
-    const powerBtn = new THREE.Mesh(
-      new THREE.CylinderGeometry(buttonSize * 0.45, buttonSize * 0.45, 0.01 * FT, 24),
-      buttonMat
-    );
-    powerBtn.rotation.x = Math.PI / 2;
-    powerBtn.position.set(screenX - screenWidth * 0.63, controlPanelY, bodyD / 2 + wall);
-    group.add(powerBtn);
-
-    const startBtn = new THREE.Mesh(
-      new THREE.CylinderGeometry(buttonSize * 0.45, buttonSize * 0.45, 0.01 * FT, 24),
-      buttonMat
-    );
-    startBtn.rotation.x = Math.PI / 2;
-    startBtn.position.set(screenX + screenWidth * 0.63, controlPanelY, bodyD / 2 + wall);
-    group.add(startBtn);
-
-    const badge = renderer._createRoundedBox(
-      bodyW * 0.12,
-      0.012 * FT,
-      0.003 * FT,
-      0.002 * FT,
-      chromeMat
-    );
-    badge.position.set(bodyW * 0.34, controlPanelY + topPanelHeight * 0.34, bodyD / 2 + wall);
-    group.add(badge);
-
-    const panelGroove = new THREE.Mesh(
-      new THREE.BoxGeometry(bodyW * 0.94, 0.003 * FT, 0.002 * FT),
-      darkMat
-    );
-    panelGroove.position.set(0, controlPanelY - topPanelHeight * 0.5, bodyD / 2 + wall);
-    group.add(panelGroove);
-
-    const panelAO = new THREE.Mesh(
-      new THREE.PlaneGeometry(bodyW * 0.94, topPanelHeight * 0.95),
-      new THREE.MeshBasicMaterial({
-        color: 0x000000,
-        transparent: true,
-        opacity: 0.05,
-        depthWrite: false,
-      })
-    );
-    panelAO.position.set(0, controlPanelY, bodyD / 2 + wall * 0.3);
-    group.add(panelAO);
-
-    const drawerHousing = renderer._createRoundedBox(
-      drawerWidth * 1.08,
-      drawerHeight * 1.18,
-      wall * 1.4,
-      0.006 * FT,
-      darkMat
-    );
-    drawerHousing.position.set(drawerX, controlPanelY, bodyD / 2 + wall * 0.35);
-    group.add(drawerHousing);
-
-    const detergentDrawer = renderer._createRoundedBox(
-      drawerWidth,
-      drawerHeight,
-      drawerDepth,
-      0.006 * FT,
-      bodyMat
-    );
-    detergentDrawer.position.set(drawerX, controlPanelY, bodyD / 2 + wall * 0.85);
-    group.add(detergentDrawer);
-
-    const drawerShadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(drawerWidth * 0.94, drawerHeight * 0.94),
-      new THREE.MeshBasicMaterial({
-        color: 0x000000,
-        transparent: true,
-        opacity: 0.08,
-        depthWrite: false,
-      })
-    );
-    drawerShadow.position.set(drawerX, controlPanelY, bodyD / 2 + wall * 0.45);
-    group.add(drawerShadow);
-
-    const handleRecess = renderer._createRoundedBox(
-      drawerWidth * 0.42,
-      drawerHeight * 0.22,
-      0.008 * FT,
-      0.004 * FT,
-      darkMat
-    );
-    handleRecess.position.set(drawerX, controlPanelY, bodyD / 2 + wall * 1.08);
-    group.add(handleRecess);
-
-    const drawerHandle = new THREE.Mesh(createBarGeometry(0.007 * FT, drawerWidth * 0.18), chromeMat);
-    drawerHandle.rotation.z = Math.PI / 2;
-    drawerHandle.position.set(drawerX, controlPanelY, bodyD / 2 + wall * 1.18);
-    group.add(drawerHandle);
-
-    [-1, 1].forEach((side) => {
-      const mount = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.003 * FT, 0.003 * FT, 0.012 * FT, 10),
-        chromeMat
-      );
-      mount.rotation.x = Math.PI / 2;
-      mount.position.set(drawerX + side * drawerWidth * 0.1, controlPanelY, bodyD / 2 + wall * 1.05);
-      group.add(mount);
-    });
-
-    [-1, 0, 1].forEach((i) => {
-      const line = new THREE.Mesh(
-        new THREE.BoxGeometry(0.002 * FT, drawerHeight * 0.75, 0.003 * FT),
-        darkMat
-      );
-      line.position.set(drawerX + i * drawerWidth * 0.18, controlPanelY, bodyD / 2 + wall * 1.01);
-      group.add(line);
-    });
-
-    const drawerReveal = new THREE.Mesh(
-      new THREE.BoxGeometry(drawerWidth, 0.0025 * FT, 0.003 * FT),
-      darkMat
-    );
-    drawerReveal.position.set(drawerX, controlPanelY - drawerHeight * 0.52, bodyD / 2 + wall);
-    group.add(drawerReveal);
-
-    const drawerHighlight = new THREE.Mesh(
-      new THREE.PlaneGeometry(drawerWidth * 0.9, drawerHeight * 0.32),
-      new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.04,
-        depthWrite: false,
-      })
-    );
-    drawerHighlight.position.set(drawerX, controlPanelY + drawerHeight * 0.18, bodyD / 2 + wall * 1.22);
-    group.add(drawerHighlight);
-
-    const knob = new THREE.Mesh(
-      new THREE.CylinderGeometry(knobRadius, knobRadius, knobDepth, 64),
-      chromeMat
-    );
-    knob.rotation.x = Math.PI / 2;
-    knob.position.set(knobX, controlPanelY, bodyD / 2 + wall * 1.05);
-    group.add(knob);
-
-    const knobBezel = new THREE.Mesh(
-      new THREE.TorusGeometry(knobRadius * 1.02, 0.005 * FT, 20, 64),
-      chromeMat
-    );
-    knobBezel.rotation.x = Math.PI / 2;
-    knobBezel.position.copy(knob.position);
-    knobBezel.position.z += 0.004 * FT;
-    group.add(knobBezel);
-
-    const centerCap = new THREE.Mesh(
-      new THREE.CylinderGeometry(knobRadius * 0.68, knobRadius * 0.68, knobDepth * 0.65, 48),
-      blackGlossMat
-    );
-    centerCap.rotation.x = Math.PI / 2;
-    centerCap.position.copy(knob.position);
-    centerCap.position.z += 0.008 * FT;
-    group.add(centerCap);
-
-    const indicator = new THREE.Mesh(
-      new THREE.BoxGeometry(0.004 * FT, knobRadius * 0.42, 0.003 * FT),
-      buttonMat
-    );
-    indicator.position.copy(centerCap.position);
-    indicator.position.y += knobRadius * 0.46;
-    indicator.position.z += 0.008 * FT;
-    group.add(indicator);
-
-    const grooves = 36;
-    for (let i = 0; i < grooves; i++) {
-      const groove = new THREE.Mesh(
-        new THREE.BoxGeometry(0.003 * FT, 0.012 * FT, knobDepth * 0.82),
-        chromeMat
-      );
-      const angle = (i / grooves) * Math.PI * 2;
-      groove.position.set(
-        knob.position.x + Math.cos(angle) * knobRadius * 0.98,
-        knob.position.y + Math.sin(angle) * knobRadius * 0.98,
-        knob.position.z
-      );
-      groove.rotation.z = angle;
-      group.add(groove);
-    }
-
-    const knobShadow = new THREE.Mesh(
-      new THREE.RingGeometry(knobRadius * 0.75, knobRadius * 1.05, 40),
-      new THREE.MeshBasicMaterial({
-        color: 0x000000,
-        transparent: true,
-        opacity: 0.08,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-      })
-    );
-    knobShadow.position.copy(knob.position);
-    knobShadow.position.z -= 0.003 * FT;
-    group.add(knobShadow);
-
-    const knobHighlight = new THREE.Mesh(
-      new THREE.CircleGeometry(knobRadius * 0.72, 40),
-      new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.04,
-        depthWrite: false,
-      })
-    );
-    knobHighlight.position.copy(centerCap.position);
-    knobHighlight.position.x -= knobRadius * 0.15;
-    knobHighlight.position.y += knobRadius * 0.15;
-    knobHighlight.position.z += 0.002;
-    group.add(knobHighlight);
-
-    const marks = 12;
-    for (let i = 0; i < marks; i++) {
-      const tick = new THREE.Mesh(
-        new THREE.BoxGeometry(0.003 * FT, 0.018 * FT, 0.002 * FT),
-        buttonMat
-      );
-      const angle = Math.PI * 0.75 + (i * (Math.PI * 1.5)) / (marks - 1);
-      tick.position.set(
-        knob.position.x + Math.cos(angle) * knobRadius * 1.55,
-        knob.position.y + Math.sin(angle) * knobRadius * 1.55,
-        knob.position.z - 0.002
-      );
-      tick.rotation.z = angle;
-      group.add(tick);
-    }
-
-    const doorHousing = renderer._createRoundedBox(
-      doorRadius * 2.18,
-      doorRadius * 2.18,
-      wall * 1.2,
-      0.01 * FT,
-      darkMat
-    );
-    doorHousing.position.set(0, doorCenterY, bodyD / 2 + wall * 0.18);
-    group.add(doorHousing);
-
-    const chromeRing = new THREE.Mesh(
-      new THREE.TorusGeometry(doorRadius, ringThickness, 24, 96),
-      chromeMat
-    );
-    chromeRing.rotation.x = Math.PI / 2;
-    chromeRing.position.set(0, doorCenterY, doorCenterZ);
-    group.add(chromeRing);
-
-    const innerRing = new THREE.Mesh(
-      new THREE.TorusGeometry(doorRadius * 0.88, ringThickness * 0.45, 18, 72),
-      blackGlossMat
-    );
-    innerRing.rotation.x = Math.PI / 2;
-    innerRing.position.set(0, doorCenterY, doorCenterZ - 0.01 * FT);
-    group.add(innerRing);
-
+    /* ③ rubber gasket ring */
     const gasket = new THREE.Mesh(
-      new THREE.TorusGeometry(doorRadius * 0.73, ringThickness * 0.65, 18, 72),
-      rubberMat
-    );
-    gasket.rotation.x = Math.PI / 2;
-    gasket.position.set(0, doorCenterY, doorCenterZ - 0.04 * FT);
+      new THREE.TorusGeometry(doorR*0.745, 0.026*FT, 18, 80), rm);
+    gasket.position.set(0, doorCY, doorCZ - 0.028*FT);
     group.add(gasket);
 
-    const glass = new THREE.Mesh(
-      new THREE.SphereGeometry(doorRadius * 0.83, 64, 64, 0, Math.PI * 2, 0, Math.PI / 2),
-      glassMat
-    );
-    glass.rotation.x = Math.PI;
-    glass.position.set(0, doorCenterY, doorCenterZ + 0.012 * FT);
-    glass.scale.z = 0.26;
-    group.add(glass);
+    /* ④ drum back (dark circle) */
+    const drumBack = new THREE.Mesh(new THREE.CircleGeometry(drumR, 80), dm);
+    drumBack.position.set(0, doorCY, doorCZ - drumD);
+    group.add(drumBack);
 
-    const glassReflection = new THREE.Mesh(
-      new THREE.CircleGeometry(doorRadius * 0.7, 64),
-      new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.05,
-        depthWrite: false,
-      })
-    );
-    glassReflection.position.set(
-      -doorRadius * 0.12,
-      doorCenterY + doorRadius * 0.12,
-      doorCenterZ + 0.035 * FT
-    );
-    group.add(glassReflection);
-
+    /* ⑤ drum cylinder — CylinderGeometry is along Y axis, rotate to align with Z */
     const drum = new THREE.Mesh(
-      new THREE.CylinderGeometry(drumRadius, drumRadius, drumDepth, 72, 4, true),
-      drumMat
-    );
-    drum.rotation.x = Math.PI / 2;
-    drum.position.set(0, doorCenterY, doorCenterZ - drumDepth * 0.55);
+      new THREE.CylinderGeometry(drumR, drumR, drumD, 80, 2, true), drm);
+    drum.rotation.x = Math.PI/2;   // cylinder: Y→Z so it goes into the machine
+    drum.position.set(0, doorCY, doorCZ - drumD*0.5);
     group.add(drum);
 
-    const rearPlate = new THREE.Mesh(new THREE.CircleGeometry(drumRadius, 64), drumMat);
-    rearPlate.position.set(0, doorCenterY, doorCenterZ - drumDepth);
-    group.add(rearPlate);
-
-    for (let r = 0; r < 7; r++) {
-      const holeRadius = drumRadius * (0.22 + r * 0.1);
-      const holes = 24 + r * 8;
-      for (let i = 0; i < holes; i++) {
-        const hole = new THREE.Mesh(
-          new THREE.CircleGeometry(0.0038 * FT, 10),
-          darkMat
-        );
-        const angle = (i / holes) * Math.PI * 2;
-        hole.position.set(
-          Math.cos(angle) * holeRadius,
-          doorCenterY + Math.sin(angle) * holeRadius,
-          doorCenterZ - drumDepth + 0.001
-        );
+    /* drum holes */
+    for(let ring=0;ring<5;ring++){
+      const hr=drumR*(0.22+ring*0.14);
+      const count=16+ring*6;
+      for(let i=0;i<count;i++){
+        const a=(i/count)*Math.PI*2;
+        const hole=new THREE.Mesh(new THREE.CircleGeometry(0.0032*FT,8),dm);
+        hole.position.set(Math.cos(a)*hr, doorCY+Math.sin(a)*hr, doorCZ-drumD+0.001);
         group.add(hole);
       }
     }
 
-    for (let i = 0; i < 3; i++) {
-      const paddle = renderer._createRoundedBox(
-        drumRadius * 0.22,
-        0.018 * FT,
-        drumDepth * 0.82,
-        0.004 * FT,
-        plasticMat
-      );
-      paddle.rotation.z = (i * Math.PI * 2) / 3;
-      paddle.position.set(
-        Math.cos((i * Math.PI * 2) / 3) * drumRadius * 0.55,
-        doorCenterY + Math.sin((i * Math.PI * 2) / 3) * drumRadius * 0.55,
-        doorCenterZ - drumDepth * 0.45
-      );
+    /* drum paddles */
+    for(let i=0;i<3;i++){
+      const a=(i/3)*Math.PI*2;
+      const paddle=rBox(drumR*0.18, 0.015*FT, drumD*0.78, 0.004*FT,
+        mkMat(0x3a3f45,0x1a1f22,0.58,0.05,0.15));
+      paddle.rotation.z=a;
+      paddle.position.set(Math.cos(a)*drumR*0.53, doorCY+Math.sin(a)*drumR*0.53, doorCZ-drumD*0.44);
       group.add(paddle);
     }
 
-    const doorHandle = renderer._createRoundedBox(
-      handleWidth,
-      handleHeight,
-      handleDepth,
-      0.006 * FT,
-      chromeMat
-    );
-    doorHandle.position.set(doorRadius * 0.63, doorCenterY, doorCenterZ + 0.03 * FT);
-    group.add(doorHandle);
+    /* ⑥ glass disc (flat circle — NOT a sphere) */
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: 0x1a2830,
+      emissive: 0x0a1418,
+      emissiveIntensity: 0.25,
+      roughness: 0.02,
+      metalness: 0.10,
+      transparent: true,
+      opacity: 0.72,
+      side: THREE.DoubleSide,
+    });
+    const glassDisc = new THREE.Mesh(new THREE.CircleGeometry(doorR*0.700, 80), glassMat);
+    glassDisc.position.set(0, doorCY, doorCZ - 0.002*FT);
+    group.add(glassDisc);
 
-    const hinge = renderer._createRoundedBox(0.02 * FT, 0.09 * FT, 0.02 * FT, 0.004 * FT, chromeMat);
-    hinge.position.set(-doorRadius * 1.02, doorCenterY, bodyD / 2);
+    /* ⑦ glass highlight (crescent top-left) */
+    const hlMat = new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.10,depthWrite:false});
+    const hl = new THREE.Mesh(new THREE.CircleGeometry(doorR*0.20, 32), hlMat);
+    hl.position.set(-doorR*0.30, doorCY+doorR*0.30, doorCZ+0.002*FT);
+    group.add(hl);
+
+    /* reflection band across middle of glass */
+    const refMat = new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.05,depthWrite:false});
+    const ref = new THREE.Mesh(new THREE.PlaneGeometry(doorR*1.3, doorR*0.28), refMat);
+    ref.position.set(0, doorCY, doorCZ+0.003*FT);
+    group.add(ref);
+
+    /* ── door pull handle — horizontal chrome bar below door center ── */
+    const hBarLen = doorR * 1.10;
+    const hBarR   = 0.013 * FT;
+    const hBarY   = doorCY - doorR * 0.78;
+    const hBarZ   = doorCZ + 0.030 * FT;
+
+    // main bar
+    const hBar = new THREE.Mesh(
+      new THREE.CylinderGeometry(hBarR, hBarR, hBarLen, 16),
+      cm);
+    hBar.rotation.z = Math.PI / 2;   // lay it horizontally
+    hBar.position.set(0, hBarY, hBarZ);
+    group.add(hBar);
+
+    // end caps
+    [-1,1].forEach(s => {
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(hBarR, 12, 10), cm);
+      cap.position.set(s * hBarLen * 0.5, hBarY, hBarZ);
+      group.add(cap);
+
+      // mounting bracket
+      const brkt = new THREE.Mesh(
+        new THREE.CylinderGeometry(hBarR*0.55, hBarR*0.55, 0.022*FT, 10),
+        cm);
+      brkt.position.set(s * hBarLen * 0.42, hBarY, hBarZ - 0.015*FT);
+      group.add(brkt);
+    });
+
+    /* ── hinge & latch ── */
+    const hinge=rBox(0.018*FT,0.082*FT,0.018*FT,0.004*FT,cm);
+    hinge.position.set(-doorR*1.05, doorCY, fd/2);
     group.add(hinge);
-
-    const latch = renderer._createRoundedBox(0.012 * FT, 0.05 * FT, 0.01 * FT, 0.003 * FT, chromeMat);
-    latch.position.set(doorRadius * 1.02, doorCenterY, bodyD / 2);
+    const latch=rBox(0.011*FT,0.046*FT,0.009*FT,0.003*FT,cm);
+    latch.position.set(doorR*1.05, doorCY, fd/2);
     group.add(latch);
 
-    const doorAO = new THREE.Mesh(
-      new THREE.CircleGeometry(doorRadius * 1.05, 64),
-      new THREE.MeshBasicMaterial({
-        color: 0x000000,
-        transparent: true,
-        opacity: 0.06,
-        depthWrite: false,
-      })
-    );
-    doorAO.position.set(0, doorCenterY, bodyD / 2 - 0.002 * FT);
-    group.add(doorAO);
+    /* ── filter panel (bottom right) ── */
+    const fp=rBox(fw*0.17, plinthH*0.54, 0.008*FT, 0.004*FT, pm);
+    fp.position.set(fw*0.30, plinthH*0.5, fd/2+0.003*FT);
+    group.add(fp);
+    const fph=rBox(fw*0.09, 0.006*FT, 0.006*FT, 0.002*FT, cm);
+    fph.position.set(fw*0.30, plinthH*0.62, fd/2+0.008*FT);
+    group.add(fph);
 
-    const touchY = controlPanelY;
-    const startX = screenX + screenWidth * 0.68;
-    for (let i = 0; i < 3; i++) {
-      const btn = new THREE.Mesh(
-        new THREE.CircleGeometry(buttonSize * 0.35, 24),
-        buttonMat
-      );
-      btn.position.set(startX + i * 0.09 * FT, touchY, bodyD / 2 + wall * 1.02);
-      group.add(btn);
-    }
-
-    for (let i = 0; i < 6; i++) {
-      const led = new THREE.Mesh(
-        new THREE.CircleGeometry(0.004 * FT, 12),
-        new THREE.MeshStandardMaterial({
-          color: 0x00e5ff,
-          emissive: 0x00e5ff,
-          emissiveIntensity: 1.4,
-          roughness: 0.15,
-        })
-      );
-      led.position.set(
-        screenX - screenWidth * 0.32 + i * 0.04 * FT,
-        controlPanelY,
-        bodyD / 2 + wall * 1.05
-      );
-      group.add(led);
-    }
-
-    [-1, 1].forEach((side) => {
-      for (let i = 0; i < 3; i++) {
-        const groove = renderer._createRoundedBox(0.003 * FT, bodyH * 0.28, 0.002 * FT, 0.002 * FT, darkMat);
-        groove.position.set(
-          side * (bodyW / 2 - 0.002 * FT),
-          bodyCenterY + (i - 1) * bodyH * 0.22,
-          0
-        );
-        group.add(groove);
+    /* ── side grooves ── */
+    [-1,1].forEach(side=>{
+      for(let i=0;i<3;i++){
+        const g=rBox(0.003*FT, bodyH*0.25, 0.003*FT, 0.001*FT, dm);
+        g.position.set(side*(fw/2-0.002*FT), plinthH+bodyH*(0.22+i*0.26), 0);
+        group.add(g);
       }
     });
 
-    for (let i = 0; i < 8; i++) {
-      const vent = new THREE.Mesh(
-        new THREE.BoxGeometry(bodyW * 0.55, 0.003 * FT, 0.002 * FT),
-        darkMat
-      );
-      vent.position.set(0, bodyCenterY - bodyH * 0.28 + i * 0.055 * FT, -bodyD / 2 + wall * 0.4);
-      group.add(vent);
-    }
+    /* ── face sheen ── */
+    const sheen=new THREE.Mesh(new THREE.PlaneGeometry(fw*0.84,bodyH*0.82),
+      new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.055,depthWrite:false}));
+    sheen.position.set(0, plinthH+bodyH*0.5, fd/2+wall*1.6+0.001*FT);
+    group.add(sheen);
 
-    group.traverse((mesh) => {
-      if (!mesh.isMesh || mesh.material !== bodyMat) return;
-      const pos = mesh.geometry.attributes.position;
-      if (!pos) return;
-      for (let i = 0; i < pos.count; i++) {
-        const x = pos.getX(i);
-        const y = pos.getY(i);
-        const z = pos.getZ(i);
-        pos.setXYZ(i, x, y, z + Math.sin(y * 60) * 0.00018);
-      }
-      pos.needsUpdate = true;
-      mesh.geometry.computeVertexNormals();
-    });
+    /* ── floor shadow ── */
+    const ao=new THREE.Mesh(new THREE.CircleGeometry(Math.max(fw,fd)*0.60,48),
+      new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.12,depthWrite:false}));
+    ao.rotation.x=-Math.PI/2; ao.position.y=0.002;
+    group.add(ao);
 
-    group.traverse((mesh) => {
-      if (mesh.isMesh) {
-        mesh.geometry?.computeVertexNormals?.();
-      }
-    });
-
-    const globalAO = new THREE.Mesh(
-      new THREE.PlaneGeometry(bodyW * 0.96, bodyH * 0.96),
-      new THREE.MeshBasicMaterial({
-        color: 0x000000,
-        transparent: true,
-        opacity: 0.045,
-        depthWrite: false,
-      })
-    );
-    globalAO.position.set(0, bodyCenterY, bodyD / 2);
-    group.add(globalAO);
-
-    const contactShadow = new THREE.Mesh(
-      new THREE.CircleGeometry(Math.max(bodyW, bodyD) * 0.58, 60),
-      new THREE.MeshBasicMaterial({
-        color: 0x000000,
-        transparent: true,
-        opacity: 0.09,
-        depthWrite: false,
-      })
-    );
-    contactShadow.rotation.x = -Math.PI / 2;
-    contactShadow.position.y = 0.002;
-    group.add(contactShadow);
-
-    bodyMat.metalness = 0.95;
-    bodyMat.roughness = 0.16;
-    bodyMat.envMapIntensity = 1.45;
-    chromeMat.metalness = 1;
-    chromeMat.roughness = 0.06;
-    chromeMat.envMapIntensity = 1.55;
-    if (glassMat.clearcoat !== undefined) {
-      glassMat.clearcoat = 1;
-      glassMat.clearcoatRoughness = 0.01;
-      glassMat.transmission = 0.95;
-    }
-    drumMat.metalness = 1;
-    drumMat.roughness = 0.12;
-    screenMat.emissiveIntensity = 0.45;
-
-    group.traverse((mesh) => {
-      if (mesh.isMesh) {
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        if (mesh.material) {
-          mesh.material.needsUpdate = true;
-        }
-      }
+    group.traverse(m=>{
+      if(!m.isMesh) return;
+      m.castShadow=true; m.receiveShadow=true;
     });
 
     return group;
   }
 
-  global.PremiumWashingMachineBuilder = {
-    build: buildPremiumWashingMachine,
-  };
+  global.PremiumWashingMachineBuilder = { build: buildPremiumWashingMachine };
+
 })(typeof window !== 'undefined' ? window : global);
 
 </script>
