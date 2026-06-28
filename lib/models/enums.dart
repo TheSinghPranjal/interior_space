@@ -63,6 +63,7 @@ enum FurnitureType {
   bathtub,
   flowerPot,
   fridge,
+  shoeRack,
 }
 
 enum DiningTableShape { rectangular, round }
@@ -118,6 +119,7 @@ extension FurnitureTypeLabel on FurnitureType {
         FurnitureType.bathtub => 'Bathtub',
         FurnitureType.flowerPot => 'Flower Pot',
         FurnitureType.fridge => 'Fridge',
+        FurnitureType.shoeRack => 'Shoe Rack',
       };
 
   IconData get icon => switch (this) {
@@ -136,6 +138,7 @@ extension FurnitureTypeLabel on FurnitureType {
         FurnitureType.bathtub => Icons.bathtub,
         FurnitureType.flowerPot => Icons.local_florist,
         FurnitureType.fridge => Icons.inventory_2,
+        FurnitureType.shoeRack => Icons.grid_view,
       };
 }
 
