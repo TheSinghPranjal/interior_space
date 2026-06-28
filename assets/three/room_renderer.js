@@ -2441,6 +2441,13 @@
     }
 
     _buildTableGroup(item, textureUrl) {
+      if (this.config && this.config.premiumFurniture) {
+        return PremiumTableBuilder.build(this, item, textureUrl);
+      }
+      return this._buildStandardTableGroup(item, textureUrl);
+    }
+
+    _buildStandardTableGroup(item, textureUrl) {
       const fw = item.width * FT;
       const fh = item.height * FT;
       const fd = item.depth * FT;
