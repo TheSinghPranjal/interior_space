@@ -1378,6 +1378,13 @@
     }
 
     _buildSinkGroup(item, textureUrl) {
+      if (this.config && this.config.premiumFurniture) {
+        return PremiumSinkBuilder.build(this, item, textureUrl);
+      }
+      return this._buildStandardSinkGroup(item, textureUrl);
+    }
+
+    _buildStandardSinkGroup(item, textureUrl) {
       const fw = item.width * FT;
       const fd = item.depth * FT;
       const counterH = 0.9 * FT;
