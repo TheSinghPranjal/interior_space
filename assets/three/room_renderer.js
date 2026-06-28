@@ -1540,6 +1540,13 @@
     }
 
     _buildWashingMachineGroup(item, textureUrl) {
+      if (this.config && this.config.premiumFurniture) {
+        return PremiumWashingMachineBuilder.build(this, item, textureUrl);
+      }
+      return this._buildStandardWashingMachineGroup(item, textureUrl);
+    }
+
+    _buildStandardWashingMachineGroup(item, textureUrl) {
       const fw = item.width * FT;
       const fd = item.depth * FT;
       const fh = item.height * FT;
@@ -1906,6 +1913,13 @@
     }
 
     _buildFridgeGroup(item, textureUrl) {
+      if (this.config && this.config.premiumFurniture) {
+        return PremiumFridgeBuilder.build(this, item, textureUrl);
+      }
+      return this._buildStandardFridgeGroup(item, textureUrl);
+    }
+
+    _buildStandardFridgeGroup(item, textureUrl) {
       const fw = item.width * FT;
       const fh = item.height * FT;
       const fd = item.depth * FT;
