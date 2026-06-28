@@ -337,6 +337,23 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard>
                   }
                 : null,
           ),
+          DropdownButtonFormField<FurnitureMaterialPreset>(
+            value: item.material,
+            decoration: const InputDecoration(labelText: 'Material'),
+            items: <FurnitureMaterialPreset>[
+              FurnitureMaterialPreset.wood,
+              FurnitureMaterialPreset.whiteMatte,
+              FurnitureMaterialPreset.glossy,
+              FurnitureMaterialPreset.metallic,
+            ].map((m) => DropdownMenuItem(value: m, child: Text(m.label))).toList(),
+            onChanged: enabled
+                ? (m) {
+                    if (m != null) {
+                      notifier.updateFurniture(item.copyWith(materialPreset: m.name));
+                    }
+                  }
+                : null,
+          ),
         ],
       FurnitureType.storageUnit => [
           DropdownButtonFormField<StorageUnitStyle>(

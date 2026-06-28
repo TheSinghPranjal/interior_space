@@ -2194,6 +2194,13 @@
     }
 
     _buildDiningTableGroup(item) {
+      if (this.config && this.config.premiumFurniture) {
+        return PremiumDiningTableBuilder.build(this, item);
+      }
+      return this._buildStandardDiningTableGroup(item);
+    }
+
+    _buildStandardDiningTableGroup(item) {
       const fw = item.width * FT;
       const fd = item.depth * FT;
       const tableH = item.height * FT;
