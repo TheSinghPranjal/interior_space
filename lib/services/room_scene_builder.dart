@@ -16,6 +16,7 @@ class ApartmentSceneBuilder {
   Future<String> buildSceneJson(
     ProjectDesign project, {
     bool showWallDimensionLabels = true,
+    bool premiumFurniture = false,
   }) async {
     final layout = project.apartmentLayout;
 
@@ -28,6 +29,7 @@ class ApartmentSceneBuilder {
           await _roomSceneBuilder.buildSceneJson(
             room,
             showWallDimensionLabels: showWallDimensionLabels,
+            premiumFurniture: premiumFurniture,
           ),
         ) as Map<String, dynamic>;
 
@@ -47,6 +49,7 @@ class ApartmentSceneBuilder {
       'mode': 'apartment',
       'performanceMode': true,
       'showWallDimensionLabels': showWallDimensionLabels,
+      'premiumFurniture': premiumFurniture,
       'apartment': {
         'width': layout.widthFt,
         'length': layout.lengthFt,
@@ -67,10 +70,12 @@ class RoomSceneBuilder {
   Future<String> buildSceneJson(
     RoomDesign design, {
     bool showWallDimensionLabels = true,
+    bool premiumFurniture = false,
   }) async {
     final cacheKey = jsonEncode({
       'design': design.toJson(),
       'showWallDimensionLabels': showWallDimensionLabels,
+      'premiumFurniture': premiumFurniture,
     });
     final cached = _sceneCache[cacheKey];
     if (cached != null) return cached;
@@ -78,6 +83,7 @@ class RoomSceneBuilder {
     final json = await _buildSceneJson(
       design,
       showWallDimensionLabels: showWallDimensionLabels,
+      premiumFurniture: premiumFurniture,
     );
     _sceneCache[cacheKey] = json;
     return json;
@@ -86,6 +92,7 @@ class RoomSceneBuilder {
   Future<String> _buildSceneJson(
     RoomDesign design, {
     bool showWallDimensionLabels = true,
+    bool premiumFurniture = false,
   }) async {
     final walls = <Map<String, dynamic>>[];
     for (final wall in design.walls) {
@@ -133,6 +140,7 @@ class RoomSceneBuilder {
     final scene = {
       'mode': 'single',
       'showWallDimensionLabels': showWallDimensionLabels,
+      'premiumFurniture': premiumFurniture,
       'room': {
         ...dims.toJson(),
         'effectiveWidth': dims.effectiveWidth,

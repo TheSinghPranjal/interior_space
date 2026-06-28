@@ -29,6 +29,9 @@ final cameraModeProvider = StateProvider<CameraMode>((ref) => CameraMode.orbit);
 
 final showWallDimensionLabelsProvider = StateProvider<bool>((ref) => true);
 
+/// When enabled, 3D furniture uses high-detail premium meshes (bed, flower pot, etc.).
+final premiumFurnitureProvider = StateProvider<bool>((ref) => false);
+
 final blueprintModeProvider = StateProvider<bool>((ref) => true);
 
 class RoomDesignNotifier extends StateNotifier<RoomDesign> {

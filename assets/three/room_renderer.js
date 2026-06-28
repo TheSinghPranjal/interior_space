@@ -1307,7 +1307,71 @@
     }
 
     _buildBedGroup(item, textureUrl) {
-      return PremiumBedBuilder.build(this, item, textureUrl);
+      if (this.config && this.config.premiumFurniture) {
+        return PremiumBedBuilder.build(this, item, textureUrl);
+      }
+      return this._buildStandardBedGroup(item, textureUrl);
+    }
+
+    _buildStandardBedGroup(item, textureUrl) {
+      const fw = item.width * FT;
+      const fd = item.depth * FT;
+      const group = new THREE.Group();
+      const frameH = 0.35 * FT;
+      const mattressH = 0.45 * FT;
+      const frameMat = this._makeMaterial(item.color, 0.75, 0.05, textureUrl, textureUrl ? null : 'wood', 1, 1);
+      const mattressMat = new THREE.MeshStandardMaterial({ color: 0xf3efe6, roughness: 0.95 });
+      const sheetMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
+      const pillowMat = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.92 });
+
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(fw, frameH, fd), frameMat);
+      frame.position.y = frameH / 2;
+      group.add(frame);
+
+      const mattress = new THREE.Mesh(
+        new THREE.BoxGeometry(fw * 0.94, mattressH, fd * 0.94),
+        mattressMat
+      );
+      mattress.position.y = frameH + mattressH / 2;
+      group.add(mattress);
+
+      const sheet = new THREE.Mesh(
+        new THREE.BoxGeometry(fw * 0.9, 0.06 * FT, fd * 0.88),
+        sheetMat
+      );
+      sheet.position.y = frameH + mattressH + 0.03 * FT;
+      group.add(sheet);
+
+      const headboard = new THREE.Mesh(
+        new THREE.BoxGeometry(fw * 0.96, 2.2 * FT, 0.12 * FT),
+        frameMat
+      );
+      headboard.position.set(0, frameH + 1.1 * FT, -fd / 2 + 0.06 * FT);
+      group.add(headboard);
+
+      [-1, 1].forEach((side) => {
+        const pillow = new THREE.Mesh(
+          new THREE.BoxGeometry(fw * 0.26, 0.14 * FT, fd * 0.2),
+          pillowMat
+        );
+        pillow.position.set(side * fw * 0.2, frameH + mattressH + 0.1 * FT, -fd * 0.28);
+        group.add(pillow);
+      });
+
+      const blanket = new THREE.Mesh(
+        new THREE.BoxGeometry(fw * 0.88, 0.08 * FT, fd * 0.55),
+        new THREE.MeshStandardMaterial({ color: 0xd7ccc8, roughness: 0.95 })
+      );
+      blanket.position.set(0, frameH + mattressH + 0.05 * FT, fd * 0.12);
+      group.add(blanket);
+
+      group.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+      return group;
     }
 
     _buildSinkGroup(item, textureUrl) {
@@ -1716,6 +1780,13 @@
     }
 
     _buildFlowerPotGroup(item, textureUrl) {
+      if (this.config && this.config.premiumFurniture) {
+        return PremiumFlowerPotBuilder.build(this, item, textureUrl);
+      }
+      return this._buildStandardFlowerPotGroup(item, textureUrl);
+    }
+
+    _buildStandardFlowerPotGroup(item, textureUrl) {
       const fw = item.width * FT;
       const fh = item.height * FT;
       const fd = item.depth * FT;

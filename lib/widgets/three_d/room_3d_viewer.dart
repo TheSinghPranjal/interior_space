@@ -114,6 +114,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     if (_controller == null) return;
     try {
       final showLabels = ref.read(showWallDimensionLabelsProvider);
+      final premium = ref.read(premiumFurnitureProvider);
       final isApartment = widget.apartmentMode ||
           ref.read(appSpaceModeProvider) == AppSpaceMode.apartment;
       final String json;
@@ -123,6 +124,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
         json = await builder.buildSceneJson(
           project,
           showWallDimensionLabels: showLabels,
+          premiumFurniture: premium,
         );
       } else {
         final design = ref.read(roomDesignProvider);
@@ -130,6 +132,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
         json = await builder.buildSceneJson(
           design,
           showWallDimensionLabels: showLabels,
+          premiumFurniture: premium,
         );
       }
 
@@ -198,12 +201,14 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
 
     final builder = ref.read(roomSceneBuilderProvider);
     final showLabels = ref.read(showWallDimensionLabelsProvider);
+    final premium = ref.read(premiumFurnitureProvider);
     final captures = <int, Room3DExportImages>{};
 
     for (var i = 0; i < rooms.length; i++) {
       final sceneJson = await builder.buildSceneJson(
         rooms[i],
         showWallDimensionLabels: showLabels,
+        premiumFurniture: premium,
       );
       final pushed = await _pushSceneJson(sceneJson);
       if (!pushed) continue;
@@ -232,6 +237,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
   Widget build(BuildContext context) {
     final cameraMode = ref.watch(cameraModeProvider);
     final showWallLabels = ref.watch(showWallDimensionLabelsProvider);
+    final premiumFurniture = ref.watch(premiumFurnitureProvider);
 
     ref.listen(roomDesignProvider, (_, _) {
       if (_isReady && !widget.apartmentMode) _pushScene();
@@ -246,6 +252,10 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     });
 
     ref.listen(showWallDimensionLabelsProvider, (_, _) {
+      if (_isReady) _pushScene();
+    });
+
+    ref.listen(premiumFurnitureProvider, (_, _) {
       if (_isReady) _pushScene();
     });
 
@@ -383,6 +393,31 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
                     onModeSelected: (mode) {
                       ref.read(cameraModeProvider.notifier).state = mode;
                     },
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Tooltip(
+                  message: premiumFurniture
+                      ? 'Disable premium 3D furniture'
+                      : 'Enable premium 3D furniture',
+                  child: Material(
+                    color: premiumFurniture ? Colors.amber.shade200 : Colors.black54,
+                    borderRadius: BorderRadius.circular(20),
+                    child: InkWell(
+                      onTap: () {
+                        ref.read(premiumFurnitureProvider.notifier).state =
+                            !premiumFurniture;
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Icon(
+                          Icons.auto_awesome,
+                          size: 18,
+                          color: premiumFurniture ? Colors.black87 : Colors.white,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 6),
