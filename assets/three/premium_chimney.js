@@ -452,7 +452,6 @@
     );
     border.name = 'FilterBorder';
     border.position.set(0, frameHeight + 0.004, 0);
-    parts.push(border);
 
     //----------------------------------------------------------
     // HANDLE
@@ -465,7 +464,6 @@
     );
     handle.name = 'FilterHandle';
     handle.position.set(0, frameHeight + 0.006, filterDepth * 0.36);
-    parts.push(handle);
 
     //----------------------------------------------------------
     // TOUCH PANEL
@@ -482,7 +480,6 @@
       hoodHeight * 0.12,
       hoodDepthBottom * 0.48
     );
-    glassParts.push(controlPanel);
 
     //----------------------------------------------------------
     // TOUCH BUTTONS
@@ -596,10 +593,29 @@
 
     parts.forEach(applyBoxUV);
 
-    parts.forEach((mesh) => group.add(mesh));
-    glassParts.forEach((mesh) => group.add(mesh));
-    steelParts.forEach((mesh) => group.add(mesh));
-    group.add(filter);
+    //----------------------------------------------------------
+    // ALL PARTS
+    //----------------------------------------------------------
+    const allParts = [
+      ...parts,
+      ...glassParts,
+      ...steelParts,
+      filter,
+      border,
+      handle,
+      controlPanel,
+    ];
+
+    //----------------------------------------------------------
+    // COMMON SETTINGS
+    //----------------------------------------------------------
+    allParts.forEach((mesh) => {
+      if (!mesh) return;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.frustumCulled = true;
+      group.add(mesh);
+    });
 
     [-1, 1].forEach((side) => {
       const glow = new THREE.Mesh(
@@ -644,12 +660,22 @@
     reflection.position.set(0, hoodHeight * 0.45, hoodDepthBottom * 0.505);
     group.add(reflection);
 
-    group.traverse((mesh) => {
-      if (!mesh.isMesh) return;
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      mesh.frustumCulled = true;
-    });
+    //----------------------------------------------------------
+    // CENTER
+    //----------------------------------------------------------
+    const box = new THREE.Box3().setFromObject(group);
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    group.position.sub(center);
+
+    group.updateMatrixWorld(true);
+
+    //----------------------------------------------------------
+    // WALL ALIGNMENT
+    //----------------------------------------------------------
+    const bounds = new THREE.Box3().setFromObject(group);
+    group.position.y -= bounds.min.y;
+    group.position.z += hoodDepthBottom * 0.5;
 
     group.userData = {
       type: 'kitchenChimney',
@@ -657,23 +683,42 @@
       editable: true,
       resizable: true,
       rotatable: true,
-      material: 'lightGray',
-      setColor(color) {
-        parts.forEach((mesh) => {
-          if (mesh.material && mesh.material.color) {
-            mesh.material.color.set(color);
-          }
-        });
-      },
-      setTexture(texture) {
-        parts.forEach((mesh) => {
-          if (mesh.material && mesh.material.map !== undefined) {
-            mesh.material.map = texture;
-            mesh.material.needsUpdate = true;
-          }
-        });
-      },
+      wallMounted: true,
+      material: 'glassBlack',
     };
+
+    group.userData.setColor = function (color) {
+      parts.forEach((mesh) => {
+        if (mesh.material?.color) {
+          mesh.material.color.set(color);
+        }
+      });
+    };
+
+    group.userData.setTexture = function (texture) {
+      parts.forEach((mesh) => {
+        if (mesh.material?.map !== undefined) {
+          mesh.material.map = texture;
+          mesh.material.needsUpdate = true;
+        }
+      });
+    };
+
+    allParts.forEach((mesh) => {
+      mesh.updateMatrix();
+      mesh.matrixAutoUpdate = false;
+    });
+
+    group.traverse((obj) => {
+      if (!obj.isMesh) return;
+      obj.castShadow = true;
+      obj.receiveShadow = true;
+    });
+
+    //----------------------------------------------------------
+    // FINISH
+    //----------------------------------------------------------
+    group.updateMatrixWorld(true);
 
     return group;
   }
