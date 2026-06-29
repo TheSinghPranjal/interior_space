@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../core/utils/polygon_room_geometry.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/blueprint_furniture_paint.dart';
 import '../../core/utils/blueprint_wall_border_paint.dart';
@@ -53,7 +54,17 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
     final roomPaint = Paint()
       ..color = ColorUtils.fromHex(design.floor.color).withValues(alpha: 0.35)
       ..style = PaintingStyle.fill;
-    canvas.drawRect(roomRect, roomPaint);
+
+    if (design.dimensions.isPolygon) {
+      final path = PolygonRoomGeometry.polygonPath(
+        vertices: design.dimensions.normalizedPolygonVertices,
+        roomRect: roomRect,
+        scale: scale,
+      );
+      canvas.drawPath(path, roomPaint);
+    } else {
+      canvas.drawRect(roomRect, roomPaint);
+    }
   }
 
   void _drawRoomBorder(Canvas canvas) {
