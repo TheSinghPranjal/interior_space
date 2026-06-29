@@ -25,4 +25,10 @@ class RoomConstants {
   static const double defaultTileWidth = 2.5;
 
   static const double feetToMeters = 0.3048;
+
+  /// Custom polygon room drawing board (feet).
+  static const double customRoomGridSizeFt = 20;
+  static const double customRoomGridSnapFt = 0.25;
+  static const int minPolygonWalls = 3;
+  static const int maxPolygonWalls = 24;
 }
