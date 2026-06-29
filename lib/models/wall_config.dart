@@ -2,7 +2,8 @@ import 'enums.dart';
 
 class WallConfig {
   const WallConfig({
-    required this.id,
+    required this.wallIndex,
+    this.id = WallId.front,
     this.surfaceType = SurfaceType.solidColor,
     this.color = '#FFFFFF',
     this.texture = WallTexture.concrete,
@@ -12,6 +13,9 @@ class WallConfig {
     this.visibleAlign = WallVisibleAlign.start,
   });
 
+  /// 0-based wall index. Wall N = edge from vertex N to vertex N+1.
+  final int wallIndex;
+  /// Legacy rectangular wall id (kept for JSON compatibility).
   final WallId id;
   final SurfaceType surfaceType;
   final String color;
@@ -22,10 +26,14 @@ class WallConfig {
   final double visibleFraction;
   final WallVisibleAlign visibleAlign;
 
+  int get displayNumber => wallIndex + 1;
+
   bool get isFullyHidden => visibleFraction <= 0.001;
   bool get isPartial => visibleFraction > 0.001 && visibleFraction < 0.999;
 
   WallConfig copyWith({
+    int? wallIndex,
+    WallId? id,
     SurfaceType? surfaceType,
     String? color,
     WallTexture? texture,
@@ -36,7 +44,8 @@ class WallConfig {
     WallVisibleAlign? visibleAlign,
   }) {
     return WallConfig(
-      id: id,
+      wallIndex: wallIndex ?? this.wallIndex,
+      id: id ?? this.id,
       surfaceType: surfaceType ?? this.surfaceType,
       color: color ?? this.color,
       texture: texture ?? this.texture,
@@ -48,6 +57,7 @@ class WallConfig {
   }
 
   Map<String, dynamic> toJson() => {
+        'wallIndex': wallIndex,
         'id': id.name,
         'surfaceType': surfaceType.name,
         'color': color,
@@ -59,8 +69,10 @@ class WallConfig {
       };
 
   factory WallConfig.fromJson(Map<String, dynamic> json) {
+    final id = WallId.values.byName(json['id'] as String);
     return WallConfig(
-      id: WallId.values.byName(json['id'] as String),
+      wallIndex: (json['wallIndex'] as num?)?.toInt() ?? WallId.values.indexOf(id),
+      id: id,
       surfaceType: SurfaceType.values.byName(
         json['surfaceType'] as String? ?? 'solidColor',
       ),
@@ -77,17 +89,55 @@ class WallConfig {
     );
   }
 
-  static List<WallConfig> defaultWalls() {
-    return WallId.values
-        .map((id) => WallConfig(
-              id: id,
-              color: switch (id) {
-                WallId.front => '#FFFFFF',
-                WallId.back => '#9E9E9E',
-                WallId.left => '#E8DCC8',
-                WallId.right => '#4A90D9',
-              },
-            ))
-        .toList();
+  static List<WallConfig> defaultWalls({int count = 4}) {
+    return List.generate(count, (index) {
+      final id = WallId.values[index % WallId.values.length];
+      return WallConfig(
+        wallIndex: index,
+        id: id,
+        color: switch (id) {
+          WallId.front => '#FFFFFF',
+          WallId.back => '#9E9E9E',
+          WallId.left => '#E8DCC8',
+          WallId.right => '#4A90D9',
+        },
+      );
+    });
   }
+
+  static List<WallConfig> syncWallCount(List<WallConfig> existing, int count) {
+    if (count < 1) return defaultWalls();
+    final result = <WallConfig>[];
+    for (var i = 0; i < count; i++) {
+      final prev = existing.cast<WallConfig?>().elementAtOrNull(i);
+      result.add(
+        prev?.copyWith(wallIndex: i) ??
+            WallConfig(
+              wallIndex: i,
+              id: WallId.values[i % WallId.values.length],
+              color: _paletteColor(i),
+            ),
+      );
+    }
+    return result;
+  }
+
+  static String _paletteColor(int index) {
+    const palette = [
+      '#FFFFFF',
+      '#E8DCC8',
+      '#9E9E9E',
+      '#4A90D9',
+      '#B0BEC5',
+      '#A1887F',
+      '#90CAF9',
+      '#CFD8DC',
+    ];
+    return palette[index % palette.length];
+  }
+}
+
+extension _ListElementAtOrNull<E> on List<E> {
+  E? elementAtOrNull(int index) =>
+      index >= 0 && index < length ? this[index] : null;
 }
