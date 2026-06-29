@@ -6,6 +6,8 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/project_provider.dart';
 import '../../providers/room_design_provider.dart';
+import '../../screens/custom_room_shape_screen.dart';
+import '../../screens/custom_walls_editor_screen.dart';
 import '../common/dimension_control.dart';
 import '../common/section_card.dart';
 
@@ -46,13 +48,16 @@ class _RoomDimensionsSectionState extends ConsumerState<_RoomDimensionsSection> 
     final dims = design.dimensions;
     final notifier = ref.read(roomDesignProvider.notifier);
     final useCustom = dims.useCustomWallLengths;
+    final isPolygon = dims.isPolygon;
     final theme = Theme.of(context);
     final compact = MediaQuery.sizeOf(context).width < 480;
 
     final dimensionSummary =
         '${formatDimensionFt(dims.width)} × ${formatDimensionFt(dims.length)} × ${formatDimensionFt(dims.height)} ft';
 
-    final modeChipLabel = useCustom
+    final modeChipLabel = isPolygon
+        ? (compact ? 'Custom polygon' : 'Custom polygon room')
+        : useCustom
         ? (compact ? 'Custom walls' : 'Custom wall visibility active')
         : (compact ? 'Standard room' : 'Standard rectangular room dimensions');
 
@@ -151,7 +156,7 @@ class _RoomDimensionsSectionState extends ConsumerState<_RoomDimensionsSection> 
                       value: dims.width,
                       min: RoomConstants.minWidth,
                       max: RoomConstants.maxWidth,
-                      enabled: _editingEnabled,
+                      enabled: _editingEnabled && !isPolygon,
                       onChanged: (v) =>
                           notifier.updateDimensions(dims.copyWith(width: v)),
                     ),
@@ -160,7 +165,7 @@ class _RoomDimensionsSectionState extends ConsumerState<_RoomDimensionsSection> 
                       value: dims.length,
                       min: RoomConstants.minLength,
                       max: RoomConstants.maxLength,
-                      enabled: _editingEnabled,
+                      enabled: _editingEnabled && !isPolygon,
                       onChanged: (v) =>
                           notifier.updateDimensions(dims.copyWith(length: v)),
                     ),
@@ -173,6 +178,84 @@ class _RoomDimensionsSectionState extends ConsumerState<_RoomDimensionsSection> 
                       onChanged: (v) =>
                           notifier.updateDimensions(dims.copyWith(height: v)),
                     ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text('Custom room shape', style: theme.textTheme.titleSmall),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      isPolygon
+                          ? 'Polygon room with ${dims.polygonVertices.length} corners and '
+                              '${dims.polygonVertices.length} walls.'
+                          : 'Draw any shape (3+ walls) on a 20×20 ft grid. '
+                              'Corners snap every ${RoomConstants.customRoomGridSnapFt} ft.',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        FilledButton.tonalIcon(
+                          onPressed: () async {
+                            await Navigator.of(context).push<bool>(
+                              MaterialPageRoute(
+                                builder: (_) => const CustomRoomShapeScreen(),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.pentagon_outlined, size: 18),
+                          label: Text(isPolygon ? 'Edit shape' : 'Draw custom room'),
+                        ),
+                        if (isPolygon)
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const CustomWallsEditorScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.wallpaper_outlined, size: 18),
+                            label: const Text('Edit walls'),
+                          ),
+                        if (isPolygon)
+                          TextButton(
+                            onPressed: () {
+                              showDialog<void>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Switch to rectangular room?'),
+                                  content: const Text(
+                                    'This removes the custom polygon and resets to a standard 4-wall room.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    FilledButton(
+                                      onPressed: () {
+                                        notifier.setRectangularRoom();
+                                        Navigator.pop(ctx);
+                                      },
+                                      child: const Text('Reset'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            child: const Text('Use rectangular room'),
+                          ),
+                      ],
+                    ),
+                    if (isPolygon)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.xs),
+                        child: Text(
+                          'Footprint: ${formatDimensionFt(dims.effectiveWidth)} × '
+                          '${formatDimensionFt(dims.effectiveLength)} ft',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
                   ],
                 ),
                 secondChild: const SizedBox.shrink(),
