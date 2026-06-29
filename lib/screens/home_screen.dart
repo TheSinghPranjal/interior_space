@@ -30,6 +30,7 @@ import '../sketch/presentation/sketch_view.dart';
 import 'ai_assist_screen.dart';
 import 'editor_screen.dart';
 import 'preview_3d_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -202,6 +203,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               icon: Icon(Icons.auto_awesome_outlined),
               selectedIcon: Icon(Icons.auto_awesome),
               label: 'AI Assist',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.settings_outlined),
+              selectedIcon: Icon(Icons.settings),
+              label: 'Settings',
             ),
           ],
         ),
@@ -382,6 +388,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       MainNavTab.sketch => 2,
       MainNavTab.preview3d => 1,
       MainNavTab.aiAssist => 3,
+      MainNavTab.settings => 4,
     };
 
     if (isApartment) {
@@ -392,6 +399,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ApartmentSpaceView(showBlueprintOnly: true),
           SketchView(),
           AiAssistPlaceholder(),
+          SettingsScreen(),
         ],
       );
     }
@@ -403,6 +411,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         BlueprintView(),
         SketchView(),
         AiAssistPlaceholder(),
+        SettingsScreen(),
       ],
     );
   }
