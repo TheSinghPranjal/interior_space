@@ -2472,6 +2472,13 @@
     }
 
     _buildKitchenChimneyGroup(item) {
+      if (this.config && this.config.premiumFurniture) {
+        return PremiumChimneyBuilder.build(this, item);
+      }
+      return this._buildStandardKitchenChimneyGroup(item);
+    }
+
+    _buildStandardKitchenChimneyGroup(item) {
       const fw = item.width * FT;
       const fh = item.height * FT;
       const fd = item.depth * FT;

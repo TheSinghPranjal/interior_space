@@ -267,7 +267,7 @@ class FurnitureItem {
           width: 3.0,
           height: 2.5,
           depth: 1.2,
-          color: '#37474F',
+          color: '#C4C8CC',
           variant: KitchenChimneyStyle.wallMounted.name,
           materialPreset: FurnitureMaterialPreset.stainlessSteel.name,
           heightFromFloor: 5.5,
