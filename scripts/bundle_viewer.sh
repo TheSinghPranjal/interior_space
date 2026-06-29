@@ -19,6 +19,7 @@ premium_fridge = Path('premium_fridge.js').read_text()
 premium_washing_machine = Path('premium_washing_machine.js').read_text()
 premium_shoe_rack = Path('premium_shoe_rack.js').read_text()
 premium_sink = Path('premium_sink.js').read_text()
+premium_chair = Path('premium_chair.js').read_text()
 renderer = Path('room_renderer.js').read_text()
 
 bundle = (
@@ -35,6 +36,7 @@ bundle = (
     .replace('<!-- INJECT_PREMIUM_WASHING_MACHINE -->', f'<script>\n{premium_washing_machine}\n</script>')
     .replace('<!-- INJECT_PREMIUM_SHOE_RACK -->', f'<script>\n{premium_shoe_rack}\n</script>')
     .replace('<!-- INJECT_PREMIUM_SINK -->', f'<script>\n{premium_sink}\n</script>')
+    .replace('<!-- INJECT_PREMIUM_CHAIR -->', f'<script>\n{premium_chair}\n</script>')
     .replace('<!-- INJECT_RENDERER -->', f'<script>\n{renderer}\n</script>')
 )
 

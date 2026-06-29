@@ -2588,6 +2588,13 @@
     }
 
     _buildChairGroup(item, textureUrl) {
+      if (this.config && this.config.premiumFurniture) {
+        return PremiumChairBuilder.build(this, item, textureUrl);
+      }
+      return this._buildStandardChairGroup(item, textureUrl);
+    }
+
+    _buildStandardChairGroup(item, textureUrl) {
       const cw = item.width * FT;
       const ch = item.height * FT;
       const cd = item.depth * FT;
