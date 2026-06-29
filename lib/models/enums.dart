@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 enum WallId { front, back, left, right }
 
+/// Rectangular (width × length) or user-drawn polygon on the custom room grid.
+enum RoomShapeMode { rectangular, polygon }
+
 /// Which segment of a wall remains visible when [WallConfig.visibleFraction] &lt; 1.
 enum WallVisibleAlign { start, center, end }
 
