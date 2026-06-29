@@ -460,7 +460,8 @@
       const w = (room.effectiveWidth ?? room.width) * FT;
       const l = (room.effectiveLength ?? room.length) * FT;
       let polygon = null;
-      if (room.useCustomWallLengths && room.floorPolygon && room.floorPolygon.length === 4) {
+      if (room.floorPolygon && room.floorPolygon.length >= 3 &&
+          (room.shapeMode === 'polygon' || room.useCustomWallLengths)) {
         polygon = this._centerPolygon(room.floorPolygon);
       }
       return { w, l, h, wallLengths, polygon, useCustom: !!room.useCustomWallLengths };
@@ -508,17 +509,17 @@
     }
 
     _buildPolygonWalls(layout, h, cfg) {
-      const ids = ['front', 'right', 'back', 'left'];
       const poly = layout.polygon;
-      ids.forEach((id, i) => {
+      for (let i = 0; i < poly.length; i++) {
         const a = poly[i];
         const b = poly[(i + 1) % poly.length];
         const dx = b.x - a.x;
         const dz = b.z - a.z;
         const len = Math.sqrt(dx * dx + dz * dz);
-        if (len < 0.001) return;
-        const wallCfg = cfg.walls.find(wl => wl.id === id) || cfg.walls[0];
-        if (!wallCfg) return;
+        if (len < 0.001) continue;
+        const wallCfg = cfg.walls[i] || cfg.walls.find(w => w.wallIndex === i) || cfg.walls[0];
+        if (!wallCfg) continue;
+        const id = `wall_${wallCfg.wallIndex != null ? wallCfg.wallIndex : i}`;
         const procType = wallCfg.surfaceType === 'texture' ? wallCfg.texture : null;
         const texUrl = wallCfg.surfaceType === 'wallpaper' ? wallCfg.textureDataUrl : null;
         const sizeXFt = len / FT;
@@ -530,10 +531,10 @@
         const mesh = this._buildPolygonWallSegment(
           poly[i], poly[(i + 1) % poly.length], wallCfg, h, mat, id
         );
-        if (!mesh) return;
+        if (!mesh) continue;
         this.wallMeshes[id] = mesh;
         this.roomGroup.add(mesh);
-      });
+      }
     }
 
     _buildWallLabels(layout, h) {
