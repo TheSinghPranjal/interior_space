@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_spacing.dart';
+import '../../screens/custom_walls_editor_screen.dart';
 import '../../models/enums.dart';
 import '../../models/wall_config.dart';
 import '../../providers/room_design_provider.dart';
@@ -20,6 +21,7 @@ class WallsEditor extends ConsumerWidget {
     final design = ref.watch(roomDesignProvider);
     final walls = design.walls;
     final customWalls = design.dimensions.useCustomWallLengths;
+    final isPolygon = design.dimensions.isPolygon;
     final notifier = ref.read(roomDesignProvider.notifier);
     final theme = Theme.of(context);
 
@@ -63,7 +65,31 @@ class WallsEditor extends ConsumerWidget {
             ],
           ),
         ),
-        if (customWalls)
+        if (isPolygon)
+          SectionCard(
+            title: 'Custom polygon room',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const EditorHelperText(
+                  'Walls follow your drawn polygon. Use the dedicated editor for all walls.',
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                FilledButton.tonalIcon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const CustomWallsEditorScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.open_in_new, size: 18),
+                  label: const Text('Open custom walls editor'),
+                ),
+              ],
+            ),
+          ),
+        if (customWalls && !isPolygon)
           SectionCard(
             title: 'Wall Visibility',
             subtitle: 'Hide or shorten walls for open-plan layouts (custom wall mode)',
@@ -94,9 +120,16 @@ class WallsEditor extends ConsumerWidget {
               ],
             ),
           ),
-        ...WallId.values
-            .map((id) => walls.firstWhere((w) => w.id == id))
-            .map((wall) => _WallEditorCard(wall: wall, showVisibility: customWalls)),
+        ...(isPolygon
+            ? walls
+            : WallId.values.map((id) => walls.firstWhere((w) => w.id == id)))
+            .map(
+              (wall) => _WallEditorCard(
+                wall: wall,
+                showVisibility: customWalls || isPolygon,
+                isPolygon: isPolygon,
+              ),
+            ),
       ],
     );
   }
@@ -106,17 +139,19 @@ class _WallEditorCard extends ConsumerWidget {
   const _WallEditorCard({
     required this.wall,
     required this.showVisibility,
+    this.isPolygon = false,
   });
 
   final WallConfig wall;
   final bool showVisibility;
+  final bool isPolygon;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(roomDesignProvider.notifier);
 
     return SectionCard(
-      title: wall.id.label,
+      title: isPolygon ? 'Wall ${wall.displayNumber}' : wall.id.label,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
