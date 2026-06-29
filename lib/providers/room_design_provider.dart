@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../core/utils/polygon_room_geometry.dart';
+import '../core/utils/room_geometry.dart';
 import '../models/ac_unit_config.dart';
 import '../models/ceiling_config.dart';
 import '../models/curtain_config.dart';
@@ -95,12 +97,51 @@ class RoomDesignNotifier extends StateNotifier<RoomDesign> {
   void updateWall(WallConfig wall) {
     _mutate((r) {
       final walls = [...r.walls];
-      final index = walls.indexWhere((w) => w.id == wall.id);
+      final index = walls.indexWhere((w) => w.wallIndex == wall.wallIndex);
       if (index >= 0) {
         walls[index] = wall;
         return r.copyWith(walls: walls);
       }
       return r;
+    });
+  }
+
+  void setPolygonRoom(List<RoomCorner> vertices) {
+    final snapped = PolygonRoomGeometry.snapVertices(vertices);
+    final error = PolygonRoomGeometry.validate(snapped);
+    if (error != null) return;
+
+    final normalized = PolygonRoomGeometry.normalizeToOrigin(snapped);
+    final b = PolygonRoomGeometry.bounds(snapped);
+    final bboxW = b.maxX - b.minX;
+    final bboxL = b.maxY - b.minY;
+
+    _mutate((r) {
+      final walls = WallConfig.syncWallCount(r.walls, normalized.length);
+      return r.copyWith(
+        dimensions: r.dimensions.copyWith(
+          shapeMode: RoomShapeMode.polygon,
+          polygonVertices: snapped,
+          width: bboxW,
+          length: bboxL,
+          useCustomWallLengths: true,
+        ),
+        walls: walls,
+      );
+    });
+  }
+
+  void setRectangularRoom() {
+    _mutate((r) {
+      return r.copyWith(
+        dimensions: r.dimensions.copyWith(
+          shapeMode: RoomShapeMode.rectangular,
+          clearPolygon: true,
+          useCustomWallLengths: false,
+          clearCustomWalls: true,
+        ),
+        walls: WallConfig.defaultWalls(),
+      );
     });
   }
 
