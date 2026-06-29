@@ -232,6 +232,9 @@
     const firstSlatY = seatHeight + 0.14;
     const slatGap = 0.085;
     const slatZ = backPostZ + legSize * 0.45;
+    const topBarHeight = slatHeight * 1.15;
+    const topBarDepth = slatDepth * 1.25;
+    const topBarY = height - topBarHeight * 0.5 - 0.008;
 
     // 3. Legs
     const frontLeftLeg = createPart(legSize, frontLegHeight, legSize, wood);
@@ -300,28 +303,37 @@
     rightBackPost.scale.x = 0.98;
     rightBackPost.scale.z = 0.98;
 
-    // 7. Back Slats
+    // 7. Back Slats + Top Bar
+    const slat0 = roundedBox(slatWidth, slatHeight, slatDepth, 0.006, wood, 10);
+    slat0.name = 'Slat0';
+    slat0.position.set(0, firstSlatY, slatZ);
+    slat0.rotation.x = backLean;
+
     const slat1 = roundedBox(slatWidth, slatHeight, slatDepth, 0.006, wood, 10);
     slat1.name = 'Slat1';
-    slat1.position.set(0, firstSlatY, slatZ);
+    slat1.position.set(0, firstSlatY + slatGap, slatZ);
     slat1.rotation.x = backLean;
-    slat1.rotation.y = 0;
 
     const slat2 = roundedBox(slatWidth, slatHeight, slatDepth, 0.006, wood, 10);
     slat2.name = 'Slat2';
-    slat2.position.set(0, firstSlatY + slatGap, slatZ);
+    slat2.position.set(0, firstSlatY + slatGap * 2, slatZ);
     slat2.rotation.x = backLean;
-    slat2.rotation.y = 0;
 
     const slat3 = roundedBox(slatWidth, slatHeight, slatDepth, 0.006, wood, 10);
     slat3.name = 'Slat3';
-    slat3.position.set(0, firstSlatY + slatGap * 2, slatZ);
+    slat3.position.set(0, firstSlatY + slatGap * 3, slatZ);
     slat3.rotation.x = backLean;
-    slat3.rotation.y = 0;
 
+    const topBar = roundedBox(slatWidth, topBarHeight, topBarDepth, 0.008, wood, 10);
+    topBar.name = 'TopBar';
+    topBar.position.set(0, topBarY, slatZ);
+    topBar.rotation.x = backLean;
+
+    bowSlat(slat0, slatWidth);
     bowSlat(slat1, slatWidth);
     bowSlat(slat2, slatWidth);
     bowSlat(slat3, slatWidth);
+    bowSlat(topBar, slatWidth);
 
     const parts = [
       seat,
@@ -335,9 +347,11 @@
       rightApron,
       leftBackPost,
       rightBackPost,
+      slat0,
       slat1,
       slat2,
       slat3,
+      topBar,
     ];
 
     // 9. Optimize meshes (single pass)
