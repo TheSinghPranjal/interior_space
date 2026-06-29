@@ -4793,10 +4793,6 @@
     return new THREE.Mesh(geometry, material);
   }
 
-  function taperedCylinder(topR, botR, h, seg, material) {
-    return new THREE.Mesh(new THREE.CylinderGeometry(topR, botR, h, seg, 3), material);
-  }
-
   function makeRadialShadowTexture() {
     const size = 256;
     const canvas = document.createElement('canvas');
@@ -4813,10 +4809,6 @@
     return new THREE.CanvasTexture(canvas);
   }
 
-  //----------------------------------------------------------
-  // BOX UV
-  //----------------------------------------------------------
-
   function applyBoxUV(mesh, scale) {
     scale = scale || 1;
     mesh.geometry.computeBoundingBox();
@@ -4831,22 +4823,11 @@
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);
       const y = pos.getY(i);
-
-      uv.push(
-        (x / size.x) * scale,
-        (y / size.y) * scale
-      );
+      uv.push((x / size.x) * scale, (y / size.y) * scale);
     }
 
-    mesh.geometry.setAttribute(
-      'uv',
-      new THREE.Float32BufferAttribute(uv, 2)
-    );
+    mesh.geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   }
-
-  //----------------------------------------------------------
-  // MATERIALS
-  //----------------------------------------------------------
 
   function buildMaterials(renderer, item, textureUrl) {
     const wood = renderer._makeMaterial(
@@ -4859,7 +4840,6 @@
       1
     );
 
-    // WOOD MATERIAL (Step 8)
     wood.roughness = 0.48;
     wood.metalness = 0.0;
     wood.envMapIntensity = 2.0;
@@ -4877,29 +4857,16 @@
       wood.map.anisotropy = renderer.renderer.capabilities.getMaxAnisotropy();
       wood.map.wrapS = THREE.RepeatWrapping;
       wood.map.wrapT = THREE.RepeatWrapping;
+      wood.map.rotation = Math.PI * 0.5;
+      wood.map.center.set(0.5, 0.5);
+      wood.map.needsUpdate = true;
     }
 
     return { wood };
   }
 
-  //----------------------------------------------------------
-  // CREATE PART
-  //----------------------------------------------------------
-
-  function createPart(width, height, depth, material) {
-    const mesh = roundedBox(
-      width,
-      height,
-      depth,
-      0.003,
-      material,
-      4
-    );
-
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-
-    return mesh;
+  function createPart(w, h, d, material) {
+    return roundedBox(w, h, d, 0.003, material, 4);
   }
 
   function bowSlat(mesh, slatWidth) {
@@ -4920,232 +4887,9 @@
     }
 
     p.needsUpdate = true;
-    mesh.geometry.computeVertexNormals();
   }
 
-  //----------------------------------------------------------
-  // MAIN BUILDER
-  //----------------------------------------------------------
-
-  function buildPremiumChair(renderer, item, textureUrl) {
-    const group = new THREE.Group();
-
-    const { wood } = buildMaterials(renderer, item, textureUrl);
-
-    //----------------------------------------------------------
-    // CHAIR DIMENSIONS
-    //----------------------------------------------------------
-
-    const width = item.width * FT;
-    const depth = item.depth * FT;
-    const height = item.height * FT;
-
-    const legSize = 0.04;
-    const seatHeight = 0.46;
-    const seatThickness = 0.03;
-
-    const apronHeight = 0.08;
-    const apronThickness = 0.02;
-
-    const bevel = 0.003;
-
-    //----------------------------------------------------------
-    // LEG POSITIONS
-    //----------------------------------------------------------
-
-    const legOffsetX = width * 0.42;
-    const legOffsetZ = depth * 0.42;
-
-    const frontLegHeight = seatHeight;
-    const rearLegHeight = seatHeight;
-
-    //----------------------------------------------------------
-    // SEAT
-    //----------------------------------------------------------
-
-    const seatWidth = width * 0.92;
-    const seatDepth = depth * 0.92;
-
-    const seatTop = seatHeight;
-    const seatCenterY = seatTop + seatThickness * 0.5;
-
-    //----------------------------------------------------------
-    // APRONS
-    //----------------------------------------------------------
-
-    const apronInset = legSize * 0.5;
-
-    const frontBackApronWidth = seatWidth - legSize;
-
-    const sideApronDepth = seatDepth - legSize;
-
-    const apronCenterY = seatHeight - apronHeight * 0.5;
-
-    const frontApronZ = legOffsetZ - apronInset;
-
-    const backApronZ = -legOffsetZ + apronInset;
-
-    const leftApronX = -legOffsetX + apronInset;
-
-    const rightApronX = legOffsetX - apronInset;
-
-    //----------------------------------------------------------
-    // BACK POSTS
-    //----------------------------------------------------------
-
-    const backPostWidth = legSize;
-    const backPostDepth = legSize;
-
-    const backPostVisibleHeight =
-      height - seatHeight - seatThickness;
-
-    const backPostCenterY =
-      seatHeight +
-      seatThickness +
-      backPostVisibleHeight * 0.5;
-
-    const backPostZ = -legOffsetZ;
-
-    const backLean = -0.05;
-
-    //----------------------------------------------------------
-    // BACK SLATS
-    //----------------------------------------------------------
-
-    const slatCount = 3;
-
-    const slatWidth = seatWidth - (legSize * 1.6);
-
-    const slatHeight = 0.055;
-
-    const slatDepth = 0.018;
-
-    const firstSlatY = seatHeight + 0.14;
-
-    const slatGap = 0.085;
-
-    const slatZ = backPostZ + (legSize * 0.45);
-
-    //----------------------------------------------------------
-    // FRONT LEFT LEG
-    //----------------------------------------------------------
-
-    const frontLeftLeg = createPart(
-      legSize,
-      frontLegHeight,
-      legSize,
-      wood
-    );
-
-    frontLeftLeg.position.set(
-      -legOffsetX,
-      frontLegHeight * 0.5,
-      legOffsetZ
-    );
-
-    group.add(frontLeftLeg);
-
-    //----------------------------------------------------------
-    // FRONT RIGHT LEG
-    //----------------------------------------------------------
-
-    const frontRightLeg = createPart(
-      legSize,
-      frontLegHeight,
-      legSize,
-      wood
-    );
-
-    frontRightLeg.position.set(
-      legOffsetX,
-      frontLegHeight * 0.5,
-      legOffsetZ
-    );
-
-    group.add(frontRightLeg);
-
-    //----------------------------------------------------------
-    // REAR LEFT LEG
-    //----------------------------------------------------------
-
-    const rearLeftLeg = createPart(
-      legSize,
-      rearLegHeight,
-      legSize,
-      wood
-    );
-
-    rearLeftLeg.position.set(
-      -legOffsetX,
-      rearLegHeight * 0.5,
-      -legOffsetZ
-    );
-
-    group.add(rearLeftLeg);
-
-    //----------------------------------------------------------
-    // REAR RIGHT LEG
-    //----------------------------------------------------------
-
-    const rearRightLeg = createPart(
-      legSize,
-      rearLegHeight,
-      legSize,
-      wood
-    );
-
-    rearRightLeg.position.set(
-      legOffsetX,
-      rearLegHeight * 0.5,
-      -legOffsetZ
-    );
-
-    group.add(rearRightLeg);
-
-    [
-      frontLeftLeg,
-      frontRightLeg,
-      rearLeftLeg,
-      rearRightLeg,
-    ].forEach((leg) => {
-      leg.scale.x = 0.985;
-      leg.scale.z = 0.985;
-      leg.rotation.y = Math.PI * 0.5;
-    });
-
-    frontLeftLeg.rotation.z = -0.004;
-    frontRightLeg.rotation.z = 0.004;
-    rearLeftLeg.rotation.z = -0.003;
-    rearRightLeg.rotation.z = 0.003;
-
-    //----------------------------------------------------------
-    // SEAT
-    //----------------------------------------------------------
-
-    const seat = roundedBox(
-      seatWidth,
-      seatThickness,
-      seatDepth,
-      0.008,
-      wood,
-      12
-    );
-
-    seat.castShadow = true;
-    seat.receiveShadow = true;
-
-    seat.position.set(
-      0,
-      seatCenterY,
-      0.015
-    );
-
-    group.add(seat);
-
-    //----------------------------------------------------------
-    // SEAT CROWN
-    //----------------------------------------------------------
-
+  function sculptSeatCrown(seat, seatWidth, seatDepth) {
     const seatPos = seat.geometry.attributes.position;
     const halfW = seatWidth * 0.5;
     const halfD = seatDepth * 0.5;
@@ -5178,255 +4922,231 @@
     }
 
     seatPos.needsUpdate = true;
-    seat.geometry.computeVertexNormals();
+  }
 
+  //----------------------------------------------------------
+  // MAIN BUILDER
+  //----------------------------------------------------------
+
+  function buildPremiumChair(renderer, item, textureUrl) {
+    const group = new THREE.Group();
+    group.name = 'PremiumChair';
+
+    //----------------------------------------------------------
+    // BUILD ORDER
+    // 1. Materials
+    // 2. Dimensions
+    // 3. Legs
+    // 4. Seat
+    // 5. Aprons
+    // 6. Back Posts
+    // 7. Back Slats
+    // 8. Contact Shadow
+    // 9. Optimize Meshes
+    // 10. Return Group
+    //----------------------------------------------------------
+
+    // 1. Materials
+    const { wood } = buildMaterials(renderer, item, textureUrl);
+
+    // 2. Dimensions
+    const width = item.width * FT;
+    const depth = item.depth * FT;
+    const height = item.height * FT;
+
+    const legSize = 0.04;
+    const seatHeight = 0.46;
+    const seatThickness = 0.03;
+    const apronHeight = 0.08;
+    const apronThickness = 0.02;
+    const bevel = 0.008;
+
+    const legOffsetX = width * 0.42;
+    const legOffsetZ = depth * 0.42;
+    const frontLegHeight = seatHeight;
+    const rearLegHeight = seatHeight;
+
+    const seatWidth = width * 0.92;
+    const seatDepth = depth * 0.92;
+    const seatCenterY = seatHeight + seatThickness * 0.5;
+
+    const apronInset = legSize * 0.5;
+    const frontBackApronWidth = seatWidth - legSize;
+    const sideApronDepth = seatDepth - legSize;
+    const apronCenterY = seatHeight - apronHeight * 0.5;
+    const frontApronZ = legOffsetZ - apronInset;
+    const backApronZ = -legOffsetZ + apronInset;
+    const leftApronX = -legOffsetX + apronInset;
+    const rightApronX = legOffsetX - apronInset;
+
+    const backPostWidth = legSize;
+    const backPostDepth = legSize;
+    const backPostVisibleHeight = height - seatHeight - seatThickness;
+    const backPostCenterY = seatHeight + seatThickness + backPostVisibleHeight * 0.5;
+    const backPostZ = -legOffsetZ;
+    const backLean = -0.05;
+
+    const slatWidth = seatWidth - legSize * 1.6;
+    const slatHeight = 0.055;
+    const slatDepth = 0.018;
+    const firstSlatY = seatHeight + 0.14;
+    const slatGap = 0.085;
+    const slatZ = backPostZ + legSize * 0.45;
+
+    // 3. Legs
+    const frontLeftLeg = createPart(legSize, frontLegHeight, legSize, wood);
+    frontLeftLeg.name = 'FrontLeftLeg';
+    frontLeftLeg.position.set(-legOffsetX, frontLegHeight * 0.5, legOffsetZ);
+
+    const frontRightLeg = createPart(legSize, frontLegHeight, legSize, wood);
+    frontRightLeg.name = 'FrontRightLeg';
+    frontRightLeg.position.set(legOffsetX, frontLegHeight * 0.5, legOffsetZ);
+
+    const rearLeftLeg = createPart(legSize, rearLegHeight, legSize, wood);
+    rearLeftLeg.name = 'RearLeftLeg';
+    rearLeftLeg.position.set(-legOffsetX, rearLegHeight * 0.5, -legOffsetZ);
+
+    const rearRightLeg = createPart(legSize, rearLegHeight, legSize, wood);
+    rearRightLeg.name = 'RearRightLeg';
+    rearRightLeg.position.set(legOffsetX, rearLegHeight * 0.5, -legOffsetZ);
+
+    [frontLeftLeg, frontRightLeg, rearLeftLeg, rearRightLeg].forEach((leg) => {
+      leg.scale.x = 0.985;
+      leg.scale.z = 0.985;
+      leg.rotation.y = Math.PI * 0.5;
+    });
+    frontLeftLeg.rotation.z = -0.004;
+    frontRightLeg.rotation.z = 0.004;
+    rearLeftLeg.rotation.z = -0.003;
+    rearRightLeg.rotation.z = 0.003;
+
+    // 4. Seat
+    const seat = roundedBox(seatWidth, seatThickness, seatDepth, bevel, wood, 12);
+    seat.name = 'Seat';
+    seat.position.set(0, seatCenterY, 0.015);
+    sculptSeatCrown(seat, seatWidth, seatDepth);
     seat.scale.set(1, 0.98, 1);
     seat.rotation.y += Math.PI;
 
-    //----------------------------------------------------------
-    // FRONT APRON
-    //----------------------------------------------------------
+    // 5. Aprons
+    const frontApron = createPart(frontBackApronWidth, apronHeight, apronThickness, wood);
+    frontApron.name = 'FrontApron';
+    frontApron.position.set(0, apronCenterY + 0.002, frontApronZ);
 
-    const frontApron = createPart(
-      frontBackApronWidth,
-      apronHeight,
-      apronThickness,
-      wood
-    );
+    const backApron = createPart(frontBackApronWidth, apronHeight, apronThickness, wood);
+    backApron.name = 'BackApron';
+    backApron.position.set(0, apronCenterY + 0.002, backApronZ);
 
-    frontApron.position.set(
-      0,
-      apronCenterY + 0.002,
-      frontApronZ
-    );
+    const leftApron = createPart(apronThickness, apronHeight, sideApronDepth, wood);
+    leftApron.name = 'LeftApron';
+    leftApron.position.set(leftApronX, apronCenterY + 0.002, 0);
 
-    group.add(frontApron);
+    const rightApron = createPart(apronThickness, apronHeight, sideApronDepth, wood);
+    rightApron.name = 'RightApron';
+    rightApron.position.set(rightApronX, apronCenterY + 0.002, 0);
 
-    //----------------------------------------------------------
-    // BACK APRON
-    //----------------------------------------------------------
-
-    const backApron = createPart(
-      frontBackApronWidth,
-      apronHeight,
-      apronThickness,
-      wood
-    );
-
-    backApron.position.set(
-      0,
-      apronCenterY + 0.002,
-      backApronZ
-    );
-
-    group.add(backApron);
-
-    //----------------------------------------------------------
-    // LEFT APRON
-    //----------------------------------------------------------
-
-    const leftApron = createPart(
-      apronThickness,
-      apronHeight,
-      sideApronDepth,
-      wood
-    );
-
-    leftApron.position.set(
-      leftApronX,
-      apronCenterY + 0.002,
-      0
-    );
-
-    group.add(leftApron);
-
-    //----------------------------------------------------------
-    // RIGHT APRON
-    //----------------------------------------------------------
-
-    const rightApron = createPart(
-      apronThickness,
-      apronHeight,
-      sideApronDepth,
-      wood
-    );
-
-    rightApron.position.set(
-      rightApronX,
-      apronCenterY + 0.002,
-      0
-    );
-
-    group.add(rightApron);
-
-    [
-      frontApron,
-      backApron,
-      leftApron,
-      rightApron,
-    ].forEach((part) => {
-      part.geometry.computeVertexNormals();
-    });
-
-    //----------------------------------------------------------
-    // LEFT BACK POST
-    //----------------------------------------------------------
-
-    const leftBackPost = createPart(
-      backPostWidth,
-      backPostVisibleHeight,
-      backPostDepth,
-      wood
-    );
-
-    leftBackPost.position.set(
-      -legOffsetX,
-      backPostCenterY,
-      backPostZ
-    );
-
+    // 6. Back Posts
+    const leftBackPost = createPart(backPostWidth, backPostVisibleHeight, backPostDepth, wood);
+    leftBackPost.name = 'LeftBackPost';
+    leftBackPost.position.set(-legOffsetX, backPostCenterY, backPostZ);
     leftBackPost.rotation.x = backLean;
+    leftBackPost.scale.x = 0.98;
+    leftBackPost.scale.z = 0.98;
 
-    group.add(leftBackPost);
-
-    //----------------------------------------------------------
-    // RIGHT BACK POST
-    //----------------------------------------------------------
-
-    const rightBackPost = createPart(
-      backPostWidth,
-      backPostVisibleHeight,
-      backPostDepth,
-      wood
-    );
-
-    rightBackPost.position.set(
-      legOffsetX,
-      backPostCenterY,
-      backPostZ
-    );
-
+    const rightBackPost = createPart(backPostWidth, backPostVisibleHeight, backPostDepth, wood);
+    rightBackPost.name = 'RightBackPost';
+    rightBackPost.position.set(legOffsetX, backPostCenterY, backPostZ);
     rightBackPost.rotation.x = backLean;
+    rightBackPost.scale.x = 0.98;
+    rightBackPost.scale.z = 0.98;
 
-    group.add(rightBackPost);
-
-    [leftBackPost, rightBackPost].forEach((post) => {
-      post.scale.x = 0.98;
-      post.scale.z = 0.98;
-      post.geometry.computeVertexNormals();
-    });
-
-    //----------------------------------------------------------
-    // SLAT 1
-    //----------------------------------------------------------
-
-    const slat1 = roundedBox(
-      slatWidth,
-      slatHeight,
-      slatDepth,
-      0.006,
-      wood,
-      10
-    );
-    slat1.castShadow = true;
-    slat1.receiveShadow = true;
-
-    slat1.position.set(
-      0,
-      firstSlatY,
-      slatZ
-    );
-
+    // 7. Back Slats
+    const slat1 = roundedBox(slatWidth, slatHeight, slatDepth, 0.006, wood, 10);
+    slat1.name = 'Slat1';
+    slat1.position.set(0, firstSlatY, slatZ);
     slat1.rotation.x = backLean;
     slat1.rotation.y = 0;
 
-    group.add(slat1);
-
-    //----------------------------------------------------------
-    // SLAT 2
-    //----------------------------------------------------------
-
-    const slat2 = roundedBox(
-      slatWidth,
-      slatHeight,
-      slatDepth,
-      0.006,
-      wood,
-      10
-    );
-    slat2.castShadow = true;
-    slat2.receiveShadow = true;
-
-    slat2.position.set(
-      0,
-      firstSlatY + slatGap,
-      slatZ
-    );
-
+    const slat2 = roundedBox(slatWidth, slatHeight, slatDepth, 0.006, wood, 10);
+    slat2.name = 'Slat2';
+    slat2.position.set(0, firstSlatY + slatGap, slatZ);
     slat2.rotation.x = backLean;
     slat2.rotation.y = 0;
 
-    group.add(slat2);
-
-    //----------------------------------------------------------
-    // SLAT 3
-    //----------------------------------------------------------
-
-    const slat3 = roundedBox(
-      slatWidth,
-      slatHeight,
-      slatDepth,
-      0.006,
-      wood,
-      10
-    );
-    slat3.castShadow = true;
-    slat3.receiveShadow = true;
-
-    slat3.position.set(
-      0,
-      firstSlatY + slatGap * 2,
-      slatZ
-    );
-
+    const slat3 = roundedBox(slatWidth, slatHeight, slatDepth, 0.006, wood, 10);
+    slat3.name = 'Slat3';
+    slat3.position.set(0, firstSlatY + slatGap * 2, slatZ);
     slat3.rotation.x = backLean;
     slat3.rotation.y = 0;
-
-    group.add(slat3);
-
-    [slat1, slat2, slat3].forEach((slat) => {
-      slat.geometry.computeVertexNormals();
-    });
 
     bowSlat(slat1, slatWidth);
     bowSlat(slat2, slatWidth);
     bowSlat(slat3, slatWidth);
 
-    // UV mapping for wood grain
-    applyBoxUV(seat, 2);
-    applyBoxUV(frontLeftLeg, 1);
-    applyBoxUV(frontRightLeg, 1);
-    applyBoxUV(rearLeftLeg, 1);
-    applyBoxUV(rearRightLeg, 1);
-    applyBoxUV(frontApron, 1);
-    applyBoxUV(backApron, 1);
-    applyBoxUV(leftApron, 1);
-    applyBoxUV(rightApron, 1);
-    applyBoxUV(leftBackPost, 1);
-    applyBoxUV(rightBackPost, 1);
-    applyBoxUV(slat1, 1);
-    applyBoxUV(slat2, 1);
-    applyBoxUV(slat3, 1);
+    const parts = [
+      seat,
+      frontLeftLeg,
+      frontRightLeg,
+      rearLeftLeg,
+      rearRightLeg,
+      frontApron,
+      backApron,
+      leftApron,
+      rightApron,
+      leftBackPost,
+      rightBackPost,
+      slat1,
+      slat2,
+      slat3,
+    ];
 
-    if (wood.map) {
-      wood.map.rotation = Math.PI * 0.5;
-      wood.map.center.set(0.5, 0.5);
-      wood.map.needsUpdate = true;
-    }
+    // 9. Optimize meshes (single pass)
+    parts.forEach((mesh) => {
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.material = wood;
+      applyBoxUV(mesh, mesh.name === 'Seat' ? 2 : 1);
+      mesh.geometry.computeVertexNormals();
+      mesh.frustumCulled = true;
+      mesh.updateMatrix();
+      mesh.matrixAutoUpdate = false;
+      group.add(mesh);
+    });
 
-    //----------------------------------------------------------
-    // CONTACT SHADOW
-    //----------------------------------------------------------
+    // Center the chair on its bounding box
+    const centerBox = new THREE.Box3().setFromObject(group);
+    const center = new THREE.Vector3();
+    centerBox.getCenter(center);
+    group.position.sub(center);
+
+    group.updateMatrixWorld(true);
+
+    // Move onto the floor
+    const floorBox = new THREE.Box3().setFromObject(group);
+    group.position.y -= floorBox.min.y;
+
+    // Metadata for editing
+    group.userData = {
+      type: 'chair',
+      category: 'dining',
+      editable: true,
+      resizable: true,
+      rotatable: true,
+      material: 'wood',
+      setColor(color) {
+        parts.forEach((mesh) => {
+          mesh.material.color.set(color);
+        });
+      },
+      setTexture(texture) {
+        parts.forEach((mesh) => {
+          mesh.material.map = texture;
+          mesh.material.needsUpdate = true;
+        });
+      },
+    };
+
+    // 8. Contact Shadow (not in parts array)
     const shadow = new THREE.Mesh(
       new THREE.CircleGeometry(width * 0.75, 64),
       new THREE.MeshBasicMaterial({
@@ -5436,22 +5156,17 @@
         depthWrite: false,
       })
     );
+    shadow.name = 'ContactShadow';
     shadow.rotation.x = -Math.PI / 2;
     shadow.position.y = 0.001;
+    shadow.frustumCulled = true;
     group.add(shadow);
 
-    group.traverse((mesh) => {
-      if (!mesh.isMesh) return;
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-    });
+    group.updateMatrixWorld(true);
 
     return group;
   }
 
-  //----------------------------------------------------------
-  // EXPORT
-  //----------------------------------------------------------
   global.PremiumChairBuilder = { build: buildPremiumChair };
 
 })(typeof window !== 'undefined' ? window : global);
