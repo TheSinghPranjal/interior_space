@@ -4,204 +4,259 @@
 
   const FT = 0.3048;
 
-  /* ── rounded box ── */
   function rBox(w, h, d, r, mat) {
     r = Math.min(r, w / 2, h / 2, d / 2);
-    const g = new THREE.BoxGeometry(w, h, d, 4, 4, 4);
+    const g = new THREE.BoxGeometry(w, h, d, 6, 6, 6);
     const p = g.attributes.position;
     for (let i = 0; i < p.count; i++) {
       let x = p.getX(i), y = p.getY(i), z = p.getZ(i);
-      const sx = Math.sign(x), sy = Math.sign(y), sz = Math.sign(z);
-      const cx = sx*(w/2-r), cy = sy*(h/2-r), cz = sz*(d/2-r);
-      const dx = x-cx, dy = y-cy, dz = z-cz;
-      const len = Math.sqrt(dx*dx+dy*dy+dz*dz)||1;
-      p.setXYZ(i, cx+dx/len*r, cy+dy/len*r, cz+dz/len*r);
+      const sx = Math.sign(x) || 1, sy = Math.sign(y) || 1, sz = Math.sign(z) || 1;
+      const cx = sx * (w / 2 - r), cy = sy * (h / 2 - r), cz = sz * (d / 2 - r);
+      const dx = x - cx, dy = y - cy, dz = z - cz;
+      const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+      p.setXYZ(i, cx + dx / len * r, cy + dy / len * r, cz + dz / len * r);
     }
     p.needsUpdate = true;
     g.computeVertexNormals();
     return new THREE.Mesh(g, mat);
   }
 
-  /* ── material with emissive ── */
   function mkMat(color, emissive, rough, metal, eInt) {
     return new THREE.MeshStandardMaterial({
       color, emissive, emissiveIntensity: eInt ?? 0.18,
       roughness: rough, metalness: metal,
+      envMapIntensity: 1.4,
     });
   }
 
-  /* ── colours ── */
-  const WHITE     = 0xf4f4f2,  WHITE_E  = 0x9a9a98;
-  const OFFWHITE  = 0xe8e8e6,  OW_E     = 0x909090;
-  const CERAMIC   = 0xfafaf8,  CER_E    = 0xaaaaaa;
-  const CHROME    = 0xd8dcdf,  CHR_E    = 0x909498;
-  const DARK      = 0x222222,  DARK_E   = 0x080808;
-  const BASIN_INT = 0xf0f4f8,  BAS_E    = 0xb0b8c0; // basin interior (slight blue-white)
+  const WHITE   = 0xf5f5f3, WHITE_E  = 0x909090;
+  const CERAMIC = 0xfbfbf9, CER_E    = 0xb8b8b6;
+  const CHROME  = 0xe0e4e8, CHR_E    = 0x9098a0;
+  const DARK    = 0x1a1a1a, DARK_E   = 0x060606;
+  const BOWL_IN = 0xd8dce0, BOWL_E   = 0x7880888;
 
-  /* ── build a basin shape: wide rectangular tub with curved front ── */
-  function buildBasin(group, fw, fd, basinY, ceramicMat, interiorMat, chromeMat) {
-    const bw  = fw * 0.98;
-    const bd  = fd * 0.90;
-    const bh  = 0.095 * FT;   // basin total height
-    const wall= 0.018 * FT;   // basin wall thickness
+  /* ══════════════════════════════════════
+     COUNTER TOP with real CUT-OUT hole for basin
+  ══════════════════════════════════════ */
+  function buildCounterWithHole(group, fw, fd, topY, cerMat) {
+    const CT  = 0.032 * FT;   // counter thickness
+    const RIM = 0.028 * FT;   // rim border width
+    const BW  = fw - RIM * 2; // bowl opening width
+    const BD  = fd - RIM * 2; // bowl opening depth
 
-    // ── outer ceramic shell (the whole basin body) ──
-    // We build it as a rounded box sitting on top of counter
-    const outer = rBox(bw, bh, bd, 0.022*FT, ceramicMat);
-    outer.position.set(0, basinY + bh*0.5, fd*0.05);
-    group.add(outer);
+    // Build counter as 4 L-shaped strips around the hole (left, right, front, back)
+    // This creates a real opening you can see INTO
 
-    // ── front curved apron (the distinctive belly curve of the reference) ──
-    // Achieved by scaling a half-cylinder
-    const apronGeo = new THREE.CylinderGeometry(bh*0.55, bh*0.55, bw, 48, 1, true, -Math.PI*0.5, Math.PI);
-    const apron = new THREE.Mesh(apronGeo, ceramicMat);
-    apron.rotation.z = Math.PI / 2;   // axis along X
-    apron.rotation.y = Math.PI;
-    apron.scale.set(1, 0.55, 0.9);
-    apron.position.set(0, basinY + bh*0.28, fd*0.5 - 0.002*FT);
-    group.add(apron);
+    const strips = [
+      // left strip
+      { w: RIM, h: CT, d: fd, x: -(fw / 2 - RIM / 2), z: 0 },
+      // right strip
+      { w: RIM, h: CT, d: fd, x: (fw / 2 - RIM / 2),  z: 0 },
+      // front strip (between left and right)
+      { w: BW,  h: CT, d: RIM, x: 0, z: fd / 2 - RIM / 2 },
+      // back strip
+      { w: BW,  h: CT, d: RIM, x: 0, z: -(fd / 2 - RIM / 2) },
+    ];
 
-    // ── interior bowl (recessed, slightly blue-white) ──
-    const iw = bw - wall*2;
-    const id = bd - wall*2;
-    const ih = bh - wall;    // depth of bowl
+    strips.forEach(s => {
+      const m = rBox(s.w, s.h, s.d, 0.006 * FT, cerMat);
+      m.position.set(s.x, topY + CT / 2, s.z);
+      group.add(m);
+    });
 
-    // interior floor
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(iw * 0.80, id * 0.70), interiorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.set(0, basinY + wall + 0.001*FT, fd*0.05);
-    group.add(floor);
-
-    // interior walls (4 planes giving depth)
-    // front inner wall (slight slope)
-    const fwall = new THREE.Mesh(new THREE.PlaneGeometry(iw*0.80, ih*0.88), interiorMat);
-    fwall.rotation.x = Math.PI*0.08;
-    fwall.position.set(0, basinY + wall + ih*0.44, fd*0.05 + id*0.32);
-    group.add(fwall);
-
-    // back inner wall
-    const bwall = new THREE.Mesh(new THREE.PlaneGeometry(iw*0.80, ih*0.88), interiorMat);
-    bwall.rotation.x = -Math.PI*0.08;
-    bwall.position.set(0, basinY + wall + ih*0.44, fd*0.05 - id*0.32);
-    group.add(bwall);
-
-    // left inner wall
-    const lwall = new THREE.Mesh(new THREE.PlaneGeometry(id*0.70, ih*0.88), interiorMat);
-    lwall.rotation.y = Math.PI*0.08;
-    lwall.position.set(-iw*0.38, basinY + wall + ih*0.44, fd*0.05);
-    group.add(lwall);
-
-    // right inner wall
-    const rwall = new THREE.Mesh(new THREE.PlaneGeometry(id*0.70, ih*0.88), interiorMat);
-    rwall.rotation.y = -Math.PI*0.08;
-    rwall.position.set(iw*0.38, basinY + wall + ih*0.44, fd*0.05);
-    group.add(rwall);
-
-    // ── drain ──
-    const drainRim = new THREE.Mesh(
-      new THREE.TorusGeometry(0.018*FT, 0.004*FT, 10, 32), chromeMat);
-    drainRim.rotation.x = -Math.PI/2;
-    drainRim.position.set(0, basinY + wall + 0.003*FT, fd*0.05);
-    group.add(drainRim);
-
-    const drainHole = new THREE.Mesh(
-      new THREE.CircleGeometry(0.014*FT, 24),
-      mkMat(0x111111, 0x050505, 0.9, 0, 0.10));
-    drainHole.rotation.x = -Math.PI/2;
-    drainHole.position.set(0, basinY + wall + 0.002*FT, fd*0.05);
-    group.add(drainHole);
-
-    // ── overflow slot (small oval near back-top of basin) ──
-    const overflow = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.010*FT, 0.010*FT, 0.006*FT, 14),
-      mkMat(0xcccccc, 0x888888, 0.3, 0.5, 0.15));
-    overflow.rotation.x = Math.PI/2;
-    overflow.position.set(0, basinY + bh*0.78, fd*0.05 - bd*0.36);
-    group.add(overflow);
-
-    // ── sheen on basin top rim ──
-    const rimSheen = new THREE.Mesh(
-      new THREE.PlaneGeometry(bw*0.90, bd*0.85),
-      new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.07, depthWrite:false})
-    );
-    rimSheen.rotation.x = -Math.PI/2;
-    rimSheen.position.set(0, basinY + bh + 0.001*FT, fd*0.05);
+    // Rim edge highlight (subtle bevel sheen on top face of rim)
+    const sheenMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.12, depthWrite: false
+    });
+    const rimSheen = new THREE.Mesh(new THREE.PlaneGeometry(fw * 0.98, fd * 0.98), sheenMat);
+    rimSheen.rotation.x = -Math.PI / 2;
+    rimSheen.position.set(0, topY + CT + 0.0001, 0);
     group.add(rimSheen);
   }
 
-  /* ── single-lever tall faucet ── */
-  function buildFaucet(group, x, y, z, chromeMat, darkMat) {
-    // base plate
-    const base = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.022*FT, 0.024*FT, 0.012*FT, 20), chromeMat);
-    base.position.set(x, y, z);
-    group.add(base);
+  /* ══════════════════════════════════════
+     BASIN — deep visible bowl
+  ══════════════════════════════════════ */
+  function buildBasin(group, fw, fd, topY, cerMat, bowlMat, chrMat) {
+    const RIM   = 0.028 * FT;
+    const BW    = fw - RIM * 2;
+    const BD    = fd - RIM * 2;
+    const DEPTH = 0.18 * FT;
+    const WT    = 0.016 * FT;
+    const BR    = 0.008 * FT;
 
-    // main stem (tall, slight taper)
-    const stem = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.012*FT, 0.016*FT, 0.22*FT, 16), chromeMat);
-    stem.position.set(x, y + 0.12*FT, z);
-    group.add(stem);
+    const floorY = topY - DEPTH + WT;
 
-    // spout neck (horizontal, curves forward)
-    const neckGeo = new THREE.CylinderGeometry(0.010*FT, 0.012*FT, 0.055*FT, 14);
-    const neck = new THREE.Mesh(neckGeo, chromeMat);
-    neck.rotation.x = Math.PI/2;
-    neck.position.set(x, y + 0.225*FT, z + 0.022*FT);
-    group.add(neck);
+    // Bowl floor
+    const floor = rBox(BW - WT * 2, WT, BD - WT * 2, BR, bowlMat);
+    floor.position.set(0, floorY, 0);
+    group.add(floor);
 
-    // spout tip (slightly wider)
-    const tip = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.011*FT, 0.010*FT, 0.018*FT, 14), chromeMat);
-    tip.position.set(x, y + 0.212*FT, z + 0.048*FT);
-    group.add(tip);
+    // Bowl walls (4)
+    [
+      { w: BW,        h: DEPTH, d: WT,   x: 0,              z: BD / 2 - WT / 2 },  // front
+      { w: BW,        h: DEPTH, d: WT,   x: 0,              z: -(BD / 2 - WT / 2) },// back
+      { w: WT,        h: DEPTH, d: BD,   x: -(BW / 2 - WT / 2), z: 0 },             // left
+      { w: WT,        h: DEPTH, d: BD,   x: BW / 2 - WT / 2,    z: 0 },             // right
+    ].forEach(s => {
+      const m = rBox(s.w, s.h, s.d, BR, bowlMat);
+      m.position.set(s.x, topY - DEPTH / 2, s.z);
+      group.add(m);
+    });
 
-    // spout aerator (dark end)
-    const aerator = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.009*FT, 0.009*FT, 0.010*FT, 12), darkMat);
-    aerator.position.set(x, y + 0.200*FT, z + 0.048*FT);
-    group.add(aerator);
+    // Inner floor — slightly darker/wetter look
+    const innerMat = mkMat(0xc8ccce, 0x707478, 0.08, 0.06, 0.18);
+    innerMat.envMapIntensity = 0.8;
+    const inner = new THREE.Mesh(
+      new THREE.PlaneGeometry(BW - WT * 2.4, BD - WT * 2.4), innerMat);
+    inner.rotation.x = -Math.PI / 2;
+    inner.position.set(0, floorY + WT * 0.52, 0);
+    group.add(inner);
 
-    // lever handle (horizontal bar near top of stem)
-    const lever = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.007*FT, 0.007*FT, 0.065*FT, 10), chromeMat);
-    lever.rotation.z = Math.PI/2;
-    lever.position.set(x, y + 0.215*FT, z - 0.005*FT);
-    group.add(lever);
+    // Subtle inner wall gradient shading (AO panels)
+    const aoMat = new THREE.MeshBasicMaterial({
+      color: 0x000000, transparent: true, opacity: 0.18, depthWrite: false
+    });
+    [
+      { w: BW - WT * 2, h: 0.006 * FT, x: 0, z: BD / 2 - WT * 1.1 },
+      { w: BW - WT * 2, h: 0.006 * FT, x: 0, z: -(BD / 2 - WT * 1.1) },
+    ].forEach(c => {
+      const crease = new THREE.Mesh(new THREE.PlaneGeometry(c.w, c.h), aoMat);
+      crease.rotation.x = -Math.PI / 2;
+      crease.position.set(c.x, floorY + WT * 0.53, c.z);
+      group.add(crease);
+    });
 
-    // lever end cap
-    const leverCap = new THREE.Mesh(new THREE.SphereGeometry(0.009*FT, 10, 8), chromeMat);
-    leverCap.position.set(x + 0.034*FT, y + 0.215*FT, z - 0.005*FT);
-    group.add(leverCap);
+    // Drain ring
+    const drainMat = mkMat(CHROME, CHR_E, 0.08, 0.96, 0.22);
+    const drain = new THREE.Mesh(
+      new THREE.TorusGeometry(0.022 * FT, 0.005 * FT, 12, 40), drainMat);
+    drain.rotation.x = -Math.PI / 2;
+    drain.position.set(0, floorY + WT * 0.55, BD * 0.05);
+    group.add(drain);
 
-    // stem highlight
-    const stemHL = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.008*FT, 0.18*FT),
-      new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.18, depthWrite:false})
-    );
-    stemHL.position.set(x - 0.005*FT, y + 0.12*FT, z + 0.013*FT);
-    group.add(stemHL);
+    const drainHole = new THREE.Mesh(
+      new THREE.CircleGeometry(0.017 * FT, 32),
+      new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.9, metalness: 0 }));
+    drainHole.rotation.x = -Math.PI / 2;
+    drainHole.position.set(0, floorY + WT * 0.56, BD * 0.05);
+    group.add(drainHole);
+
+    // Specular water-line gloss on bowl floor
+    const glossMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.08, depthWrite: false
+    });
+    const gloss = new THREE.Mesh(
+      new THREE.PlaneGeometry(BW * 0.55, BD * 0.18), glossMat);
+    gloss.rotation.x = -Math.PI / 2;
+    gloss.position.set(-BW * 0.12, floorY + WT * 0.57, 0);
+    group.add(gloss);
   }
 
-  /* ── vertical bar handle ── */
-  function addBarHandle(group, x, y, z, chromeMat) {
-    const len = 0.080 * FT;
-    const r   = 0.007 * FT;
+  /* ══════════════════════════════════════
+     SMOOTH GOOSENECK FAUCET — TubeGeometry along CatmullRomCurve3
+  ══════════════════════════════════════ */
+  function buildFaucet(group, x, baseY, z, chrMat, dkMat) {
+    // Base plate
+    const base = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.038 * FT, 0.043 * FT, 0.022 * FT, 32), chrMat);
+    base.position.set(x, baseY + 0.011 * FT, z);
+    group.add(base);
 
-    const bar = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 12), chromeMat);
+    // Lower stem collar
+    const collar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.022 * FT, 0.028 * FT, 0.018 * FT, 24), chrMat);
+    collar.position.set(x, baseY + 0.030 * FT, z);
+    group.add(collar);
+
+    // ── Smooth gooseneck using CatmullRomCurve3 + TubeGeometry ──
+    // Points define the path: rises vertically, curves forward, droops down
+    const H  = 0.38 * FT;   // total rise height
+    const OV = 0.09 * FT;   // forward overhang
+    const DR = 0.04 * FT;   // downward droop at spout
+
+    const curvePoints = [
+      new THREE.Vector3(x, baseY + 0.038 * FT, z),
+      new THREE.Vector3(x, baseY + H * 0.25,   z),
+      new THREE.Vector3(x, baseY + H * 0.55,   z),
+      new THREE.Vector3(x, baseY + H * 0.78,   z - OV * 0.2),
+      new THREE.Vector3(x, baseY + H * 0.92,   z - OV * 0.6),
+      new THREE.Vector3(x, baseY + H,           z - OV),
+      new THREE.Vector3(x, baseY + H - DR,      z - OV * 1.3),
+      new THREE.Vector3(x, baseY + H - DR * 2,  z - OV * 1.5),
+    ];
+
+    const curve = new THREE.CatmullRomCurve3(curvePoints);
+
+    // Main tube
+    const tubeGeo = new THREE.TubeGeometry(curve, 60, 0.018 * FT, 20, false);
+    const tube = new THREE.Mesh(tubeGeo, chrMat);
+    group.add(tube);
+
+    // Spout end cap (aerator housing)
+    const spoutTip = curvePoints[curvePoints.length - 1];
+    const aeratorHousing = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.018 * FT, 0.022 * FT, 0.032 * FT, 20), chrMat);
+    aeratorHousing.position.copy(spoutTip);
+    aeratorHousing.position.y -= 0.016 * FT;
+    group.add(aeratorHousing);
+
+    const aerator = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.013 * FT, 0.014 * FT, 0.016 * FT, 16), dkMat);
+    aerator.position.copy(spoutTip);
+    aerator.position.y -= 0.034 * FT;
+    group.add(aerator);
+
+    // Lever handle (mounted at mid-curve height on side)
+    const leverY  = baseY + H * 0.40;
+    const leverMat = chrMat;
+
+    // Ball joint where lever meets tube
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.020 * FT, 20, 16), leverMat);
+    ball.position.set(x, leverY, z);
+    group.add(ball);
+
+    // Horizontal lever arm
+    const lever = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.009 * FT, 0.009 * FT, 0.110 * FT, 14), leverMat);
+    lever.rotation.z = Math.PI / 2;
+    lever.position.set(x + 0.055 * FT, leverY, z);
+    group.add(lever);
+
+    // Lever end cap
+    const lCap = new THREE.Mesh(new THREE.SphereGeometry(0.011 * FT, 14, 12), leverMat);
+    lCap.position.set(x + 0.112 * FT, leverY, z);
+    group.add(lCap);
+
+    // Subtle highlight stripe along tube
+    const hlMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.20, depthWrite: false
+    });
+
+    // specular highlight tube (slightly thinner, offset)
+    const hlCurvePoints = curvePoints.map(p =>
+      new THREE.Vector3(p.x - 0.008 * FT, p.y, p.z + 0.010 * FT));
+    const hlCurve = new THREE.CatmullRomCurve3(hlCurvePoints);
+    const hlGeo   = new THREE.TubeGeometry(hlCurve, 60, 0.004 * FT, 8, false);
+    const hl      = new THREE.Mesh(hlGeo, hlMat);
+    group.add(hl);
+  }
+
+  /* ══ VERTICAL BAR HANDLE ══ */
+  function addBarHandle(group, x, y, z, chrMat) {
+    const len = 0.095 * FT, r = 0.009 * FT;
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 16), chrMat);
     bar.position.set(x, y, z);
     group.add(bar);
-
     [-1, 1].forEach(s => {
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), chromeMat);
-      cap.position.set(x, y + s*len*0.5, z);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(r * 1.1, 12, 10), chrMat);
+      cap.position.set(x, y + s * len * 0.5, z);
       group.add(cap);
-
-      const mount = new THREE.Mesh(
-        new THREE.CylinderGeometry(r*0.55, r*0.55, 0.016*FT, 8), chromeMat);
-      mount.rotation.x = Math.PI/2;
-      mount.position.set(x, y + s*len*0.30, z - 0.010*FT);
-      group.add(mount);
+      const mnt = new THREE.Mesh(
+        new THREE.CylinderGeometry(r * 0.55, r * 0.55, 0.020 * FT, 10), chrMat);
+      mnt.rotation.x = Math.PI / 2;
+      mnt.position.set(x, y + s * len * 0.28, z - 0.013 * FT);
+      group.add(mnt);
     });
   }
 
@@ -214,145 +269,99 @@
     const fd = item.depth  * FT;
     const group = new THREE.Group();
 
-    // materials
-    const cabinetMat  = mkMat(WHITE,    WHITE_E,  0.28, 0.04, 0.22);  // glossy white cabinet
-    const doorMat     = mkMat(OFFWHITE, OW_E,     0.25, 0.04, 0.20);  // doors slightly different
-    const ceramicMat  = mkMat(CERAMIC,  CER_E,    0.10, 0.04, 0.22);  // shiny ceramic basin
-    const interiorMat = mkMat(BASIN_INT,BAS_E,    0.08, 0.03, 0.20);  // basin interior
-    const chromeMat   = mkMat(CHROME,   CHR_E,    0.12, 0.92, 0.20);  // chrome faucet/handles
-    const darkMat     = mkMat(DARK,     DARK_E,   0.55, 0.50, 0.14);
+    // ── HDR tone mapping on renderer ──
+    if (renderer) {
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.15;
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+    }
 
-    /* ── dims ── */
-    const R        = Math.min(fw, fd) * 0.025;
-    const toeH     = fh * 0.070;      // toe-kick height
-    const cabiH    = fh - toeH;       // cabinet body height (doors)
-    const basinH   = fh * 0.155;      // basin rises above cabinet top
-    const wall     = 0.016 * FT;
-    const doorGap  = 0.005 * FT;
-    const doorD    = 0.022 * FT;      // door panel protrusion
+    const cabMat = mkMat(WHITE,   WHITE_E,  0.22, 0.04, 0.20);
+    const cerMat = mkMat(CERAMIC, CER_E,    0.08, 0.05, 0.22);
+    const bowMat = mkMat(BOWL_IN, BOWL_E,   0.10, 0.04, 0.20);
+    const chrMat = mkMat(CHROME,  CHR_E,    0.06, 0.95, 0.24);
+    const dkMat  = mkMat(DARK,    DARK_E,   0.50, 0.55, 0.12);
 
-    /* ════ TOE KICK ════ */
-    const toeKick = rBox(fw - 0.020*FT, toeH, fd*0.18, 0.004*FT, darkMat);
-    toeKick.position.set(0, toeH*0.5, fd/2 - fd*0.09);
-    group.add(toeKick);
+    // Give chrome clearcoat-like feel
+    chrMat.envMapIntensity = 2.2;
 
-    /* ════ CABINET SHELL ════ */
-    // left side
-    const lSide = rBox(wall, cabiH, fd, R*0.5, cabinetMat);
-    lSide.position.set(-fw/2 + wall*0.5, toeH + cabiH*0.5, 0);
-    group.add(lSide);
+    const wall    = 0.018 * FT;
+    const toeH    = fh * 0.08;
+    const cabiH   = fh - toeH;
+    const doorD   = 0.022 * FT;
+    const doorGap = 0.005 * FT;
+    const CT      = 0.032 * FT;   // counter thickness
 
-    // right side
-    const rSide = rBox(wall, cabiH, fd, R*0.5, cabinetMat);
-    rSide.position.set(fw/2 - wall*0.5, toeH + cabiH*0.5, 0);
-    group.add(rSide);
+    /* ── TOE KICK ── */
+    const toeDepth = fd * 0.16;
+    const toe = rBox(fw - wall * 2, toeH, toeDepth, 0.005 * FT, dkMat);
+    toe.position.set(0, toeH * 0.5, fd / 2 - toeDepth * 0.5);
+    group.add(toe);
 
-    // back panel
-    const back = rBox(fw - wall*2, cabiH, wall*0.6, R*0.3, cabinetMat);
-    back.position.set(0, toeH + cabiH*0.5, -fd/2 + wall*0.3);
-    group.add(back);
+    /* ── CABINET BODY ── */
+    const cab = rBox(fw, cabiH, fd, 0.010 * FT, cabMat);
+    cab.position.set(0, toeH + cabiH * 0.5, 0);
+    group.add(cab);
 
-    // top shelf (sits under basin)
-    const topShelf = rBox(fw, wall*1.2, fd, R*0.3, cabinetMat);
-    topShelf.position.set(0, toeH + cabiH - wall*0.6, 0);
-    group.add(topShelf);
+    /* ── TWO DOORS ── */
+    const dw     = (fw - wall - doorGap) / 2;
+    const dh     = cabiH - wall * 2.0;
+    const dBaseY = toeH + wall * 1.0;
+    const dFaceZ = fd / 2 + doorD * 0.5;
 
-    // bottom shelf
-    const botShelf = rBox(fw - wall*2, wall, fd - wall, R*0.3, cabinetMat);
-    botShelf.position.set(0, toeH + wall*0.5, 0);
-    group.add(botShelf);
-
-    // center vertical divider
-    const divider = rBox(wall, cabiH - wall*2, wall*0.6, R*0.2, cabinetMat);
-    divider.position.set(0, toeH + cabiH*0.5, -fd/2 + wall*0.3 + 0.001*FT);
-    group.add(divider);
-
-    /* thin top strip (transition between cabinet top and basin) */
-    const topStrip = rBox(fw, 0.008*FT, fd, 0.002*FT,
-      mkMat(0xd8d8d6, 0x909090, 0.25, 0.06, 0.16));
-    topStrip.position.set(0, toeH + cabiH, 0);
-    group.add(topStrip);
-
-    /* ════ TWO CABINET DOORS ════ */
-    const dw   = (fw - wall*3 - doorGap) / 2;   // each door width
-    const dh   = cabiH - wall*1.5;
-    const dBaseY = toeH + wall*0.75;
-    const dFaceZ = fd/2 + doorD*0.5;
-
-    [-1, 1].forEach((side, idx) => {
-      const cx = side * (dw*0.5 + wall*0.5 + doorGap*0.5);
-
-      // door panel
-      const door = rBox(dw, dh, doorD, 0.006*FT, doorMat);
-      door.position.set(cx, dBaseY + dh*0.5, dFaceZ);
+    [-1, 1].forEach(side => {
+      const cx = side * (dw / 2 + doorGap / 2 + wall / 2);
+      const door = rBox(dw, dh, doorD, 0.008 * FT, cabMat);
+      door.position.set(cx, dBaseY + dh * 0.5, dFaceZ);
       group.add(door);
 
-      // door face sheen
-      const ds = new THREE.Mesh(
-        new THREE.PlaneGeometry(dw*0.88, dh*0.88),
-        new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.06, depthWrite:false})
-      );
-      ds.position.set(cx, dBaseY + dh*0.5, dFaceZ + doorD*0.51);
-      group.add(ds);
+      const sheen = new THREE.Mesh(
+        new THREE.PlaneGeometry(dw * 0.88, dh * 0.88),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.06, depthWrite: false }));
+      sheen.position.set(cx, dBaseY + dh * 0.5, dFaceZ + doorD * 0.51);
+      group.add(sheen);
 
-      // vertical bar handle (near inner edge)
-      const hx = cx - side * dw * 0.22;
-      addBarHandle(group, hx, dBaseY + dh*0.5, dFaceZ + doorD + 0.010*FT, chromeMat);
-
-      // door gap shadow (center seam)
-      const seam = new THREE.Mesh(
-        new THREE.PlaneGeometry(doorGap*2, dh),
-        new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:0.35, depthWrite:false})
-      );
-      seam.position.set(side * doorGap*0.5, dBaseY + dh*0.5, dFaceZ + doorD*0.4);
-      group.add(seam);
+      const hx = cx - side * dw * 0.24;
+      addBarHandle(group, hx, dBaseY + dh * 0.52, dFaceZ + doorD + 0.013 * FT, chrMat);
     });
 
-    /* center seam line */
-    const seamLine = new THREE.Mesh(
-      new THREE.BoxGeometry(doorGap, dh, doorD*0.3),
-      mkMat(0x888888, 0x444444, 0.8, 0, 0.12)
-    );
-    seamLine.position.set(0, dBaseY + dh*0.5, fd/2 + doorD*0.3);
-    group.add(seamLine);
+    // Center seam
+    const seam = rBox(doorGap, dh, doorD * 0.65, 0.001 * FT, dkMat);
+    seam.position.set(0, dBaseY + dh * 0.5, dFaceZ);
+    group.add(seam);
 
-    /* ════ BASIN ════ */
-    const basinTopY = toeH + cabiH - wall*0.3;
-    buildBasin(group, fw, fd, basinTopY, ceramicMat, interiorMat, chromeMat);
+    /* ── COUNTER TOP with real HOLE ── */
+    const cabiTopY = toeH + cabiH;
+    buildCounterWithHole(group, fw, fd, cabiTopY, cerMat);
 
-    /* ════ FAUCET (single lever, tall, centered at back) ════ */
-    const faucetY = toeH + cabiH + 0.008*FT;   // just above basin rim
-    const faucetZ = -fd * 0.28;                 // toward back of basin
-    buildFaucet(group, 0, faucetY, faucetZ, chromeMat, darkMat);
+    /* ── DEEP BASIN ── */
+    buildBasin(group, fw, fd, cabiTopY + CT, bowMat, bowMat, chrMat);
 
-    /* ════ OVERALL FACE SHEEN ════ */
+    /* ── FAUCET — placed at back, well above basin level ── */
+    const faucetBaseY = cabiTopY + CT;
+    const faucetZ     = -fd * 0.26;
+    buildFaucet(group, 0, faucetBaseY, faucetZ, chrMat, dkMat);
+
+    /* ── Face sheen ── */
     const faceSheen = new THREE.Mesh(
-      new THREE.PlaneGeometry(fw*0.86, cabiH*0.84),
-      new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.05, depthWrite:false})
-    );
-    faceSheen.position.set(0, toeH + cabiH*0.5, fd/2 + doorD + 0.001*FT);
+      new THREE.PlaneGeometry(fw * 0.86, cabiH * 0.84),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.04, depthWrite: false }));
+    faceSheen.position.set(0, toeH + cabiH * 0.5, fd / 2 + doorD + 0.001 * FT);
     group.add(faceSheen);
 
-    /* vertical highlight (glossy cabinet reflection) */
-    const stripe = new THREE.Mesh(
-      new THREE.PlaneGeometry(fw*0.06, cabiH*0.78),
-      new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.09, depthWrite:false})
-    );
-    stripe.position.set(-fw*0.18, toeH + cabiH*0.5, fd/2 + doorD + 0.002*FT);
-    group.add(stripe);
-
-    /* ════ FLOOR SHADOW ════ */
+    /* ── Floor AO shadow ── */
     const ao = new THREE.Mesh(
-      new THREE.CircleGeometry(Math.max(fw,fd)*0.58, 48),
-      new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:0.12, depthWrite:false})
-    );
-    ao.rotation.x = -Math.PI/2;
+      new THREE.CircleGeometry(Math.max(fw, fd) * 0.62, 64),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.14, depthWrite: false }));
+    ao.rotation.x = -Math.PI / 2;
     ao.position.y = 0.001;
     group.add(ao);
 
     group.traverse(m => {
       if (!m.isMesh) return;
-      m.castShadow = true;
+      m.castShadow    = true;
       m.receiveShadow = true;
     });
 
