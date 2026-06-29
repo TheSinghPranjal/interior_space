@@ -134,6 +134,10 @@
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       this.renderer.outputEncoding = THREE.sRGBEncoding;
+      if (THREE.ACESFilmicToneMapping !== undefined) {
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.1;
+      }
       document.body.appendChild(this.renderer.domElement);
 
       this.roomGroup = new THREE.Group();
@@ -383,13 +387,21 @@
     }
 
     _addSceneLights() {
-      const ambient = new THREE.AmbientLight(0xffffff, 0.35);
+      const ambient = new THREE.AmbientLight(0xffffff, 0.45);
       this.scene.add(ambient);
       this.lights.push(ambient);
 
-      const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.4);
+      const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.55);
       this.scene.add(hemi);
       this.lights.push(hemi);
+
+      const dir = new THREE.DirectionalLight(0xffffff, 2.8);
+      dir.position.set(5, 12, 8);
+      dir.castShadow = true;
+      dir.shadow.mapSize.set(2048, 2048);
+      dir.shadow.bias = -0.0002;
+      this.scene.add(dir);
+      this.lights.push(dir);
     }
 
     _buildRoomContents(cfg, targetGroup, opts = {}) {

@@ -54,6 +54,37 @@
   }
 
   //----------------------------------------------------------
+  // BOX UV
+  //----------------------------------------------------------
+
+  function applyBoxUV(mesh, scale) {
+    scale = scale || 1;
+    mesh.geometry.computeBoundingBox();
+
+    const box = mesh.geometry.boundingBox;
+    const size = new THREE.Vector3();
+    box.getSize(size);
+
+    const uv = [];
+    const pos = mesh.geometry.attributes.position;
+
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+
+      uv.push(
+        (x / size.x) * scale,
+        (y / size.y) * scale
+      );
+    }
+
+    mesh.geometry.setAttribute(
+      'uv',
+      new THREE.Float32BufferAttribute(uv, 2)
+    );
+  }
+
+  //----------------------------------------------------------
   // MATERIALS
   //----------------------------------------------------------
 
@@ -68,19 +99,24 @@
       1
     );
 
-    if (wood.roughness !== undefined) {
-      wood.roughness = 0.72;
-      wood.metalness = 0.0;
-      wood.envMapIntensity = 1.25;
-    }
+    // WOOD MATERIAL (Step 8)
+    wood.roughness = 0.48;
+    wood.metalness = 0.0;
+    wood.envMapIntensity = 2.0;
 
     if ('clearcoat' in wood) {
-      wood.clearcoat = 0.18;
-      wood.clearcoatRoughness = 0.42;
+      wood.clearcoat = 0.28;
+      wood.clearcoatRoughness = 0.18;
     }
 
     if (wood.normalScale) {
-      wood.normalScale.set(0.7, 0.7);
+      wood.normalScale.set(1.0, 1.0);
+    }
+
+    if (wood.map && renderer.renderer) {
+      wood.map.anisotropy = renderer.renderer.capabilities.getMaxAnisotropy();
+      wood.map.wrapS = THREE.RepeatWrapping;
+      wood.map.wrapT = THREE.RepeatWrapping;
     }
 
     return { wood };
@@ -306,6 +342,22 @@
 
     group.add(rearRightLeg);
 
+    [
+      frontLeftLeg,
+      frontRightLeg,
+      rearLeftLeg,
+      rearRightLeg,
+    ].forEach((leg) => {
+      leg.scale.x = 0.985;
+      leg.scale.z = 0.985;
+      leg.rotation.y = Math.PI * 0.5;
+    });
+
+    frontLeftLeg.rotation.z = -0.004;
+    frontRightLeg.rotation.z = 0.004;
+    rearLeftLeg.rotation.z = -0.003;
+    rearRightLeg.rotation.z = 0.003;
+
     //----------------------------------------------------------
     // SEAT
     //----------------------------------------------------------
@@ -314,9 +366,9 @@
       seatWidth,
       seatThickness,
       seatDepth,
-      bevel,
+      0.008,
       wood,
-      6
+      12
     );
 
     seat.castShadow = true;
@@ -328,29 +380,48 @@
       0.015
     );
 
-    const p = seat.geometry.attributes.position;
+    group.add(seat);
 
-    for (let i = 0; i < p.count; i++) {
-      let x = p.getX(i);
-      let y = p.getY(i);
-      let z = p.getZ(i);
+    //----------------------------------------------------------
+    // SEAT CROWN
+    //----------------------------------------------------------
+
+    const seatPos = seat.geometry.attributes.position;
+    const halfW = seatWidth * 0.5;
+    const halfD = seatDepth * 0.5;
+
+    for (let i = 0; i < seatPos.count; i++) {
+      let x = seatPos.getX(i);
+      let y = seatPos.getY(i);
+      let z = seatPos.getZ(i);
 
       if (y > 0) {
-        const fx = Math.abs(x) / (seatWidth * 0.5);
-        const fz = Math.abs(z) / (seatDepth * 0.5);
-
-        y += (1 - Math.max(fx, fz)) * 0.003;
+        const fx = Math.abs(x) / halfW;
+        const fz = Math.abs(z) / halfD;
+        const influence = 1 - Math.max(fx, fz);
+        y += influence * 0.004;
       }
 
-      p.setXYZ(i, x, y, z);
+      seatPos.setXYZ(i, x, y, z);
     }
 
-    p.needsUpdate = true;
+    for (let i = 0; i < seatPos.count; i++) {
+      let x = seatPos.getX(i);
+      let y = seatPos.getY(i);
+      let z = seatPos.getZ(i);
+
+      if (z > 0) {
+        z *= 1.015;
+      }
+
+      seatPos.setXYZ(i, x, y, z);
+    }
+
+    seatPos.needsUpdate = true;
     seat.geometry.computeVertexNormals();
 
     seat.scale.set(1, 0.98, 1);
-
-    group.add(seat);
+    seat.rotation.y += Math.PI;
 
     //----------------------------------------------------------
     // FRONT APRON
@@ -489,12 +560,16 @@
     // SLAT 1
     //----------------------------------------------------------
 
-    const slat1 = createPart(
+    const slat1 = roundedBox(
       slatWidth,
       slatHeight,
       slatDepth,
-      wood
+      0.006,
+      wood,
+      10
     );
+    slat1.castShadow = true;
+    slat1.receiveShadow = true;
 
     slat1.position.set(
       0,
@@ -503,6 +578,7 @@
     );
 
     slat1.rotation.x = backLean;
+    slat1.rotation.y = 0;
 
     group.add(slat1);
 
@@ -510,12 +586,16 @@
     // SLAT 2
     //----------------------------------------------------------
 
-    const slat2 = createPart(
+    const slat2 = roundedBox(
       slatWidth,
       slatHeight,
       slatDepth,
-      wood
+      0.006,
+      wood,
+      10
     );
+    slat2.castShadow = true;
+    slat2.receiveShadow = true;
 
     slat2.position.set(
       0,
@@ -524,6 +604,7 @@
     );
 
     slat2.rotation.x = backLean;
+    slat2.rotation.y = 0;
 
     group.add(slat2);
 
@@ -531,12 +612,16 @@
     // SLAT 3
     //----------------------------------------------------------
 
-    const slat3 = createPart(
+    const slat3 = roundedBox(
       slatWidth,
       slatHeight,
       slatDepth,
-      wood
+      0.006,
+      wood,
+      10
     );
+    slat3.castShadow = true;
+    slat3.receiveShadow = true;
 
     slat3.position.set(
       0,
@@ -545,6 +630,7 @@
     );
 
     slat3.rotation.x = backLean;
+    slat3.rotation.y = 0;
 
     group.add(slat3);
 
@@ -556,26 +642,48 @@
     bowSlat(slat2, slatWidth);
     bowSlat(slat3, slatWidth);
 
-    //==========================================================
-    // CONTACT SHADOW + finishing
-    //==========================================================
+    // UV mapping for wood grain
+    applyBoxUV(seat, 2);
+    applyBoxUV(frontLeftLeg, 1);
+    applyBoxUV(frontRightLeg, 1);
+    applyBoxUV(rearLeftLeg, 1);
+    applyBoxUV(rearRightLeg, 1);
+    applyBoxUV(frontApron, 1);
+    applyBoxUV(backApron, 1);
+    applyBoxUV(leftApron, 1);
+    applyBoxUV(rightApron, 1);
+    applyBoxUV(leftBackPost, 1);
+    applyBoxUV(rightBackPost, 1);
+    applyBoxUV(slat1, 1);
+    applyBoxUV(slat2, 1);
+    applyBoxUV(slat3, 1);
+
+    if (wood.map) {
+      wood.map.rotation = Math.PI * 0.5;
+      wood.map.center.set(0.5, 0.5);
+      wood.map.needsUpdate = true;
+    }
+
+    //----------------------------------------------------------
+    // CONTACT SHADOW
+    //----------------------------------------------------------
     const shadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(width * 1.15, depth * 1.15),
+      new THREE.CircleGeometry(width * 0.75, 64),
       new THREE.MeshBasicMaterial({
         map: makeRadialShadowTexture(),
         transparent: true,
-        opacity: 0.45,
+        opacity: 0.42,
         depthWrite: false,
       })
     );
     shadow.rotation.x = -Math.PI / 2;
-    shadow.position.set(0, 0.0015 * FT, 0);
+    shadow.position.y = 0.001;
     group.add(shadow);
 
-    group.traverse((node) => {
-      if (!node.isMesh) return;
-      node.castShadow = true;
-      node.receiveShadow = true;
+    group.traverse((mesh) => {
+      if (!mesh.isMesh) return;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
     });
 
     return group;
