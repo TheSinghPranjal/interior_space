@@ -1,4 +1,5 @@
 import '../core/constants/room_constants.dart';
+import '../core/utils/room_geometry.dart';
 import 'enums.dart';
 
 class RoomDimensions {
@@ -11,6 +12,8 @@ class RoomDimensions {
     this.customWallBack,
     this.customWallLeft,
     this.customWallRight,
+    this.shapeMode = RoomShapeMode.rectangular,
+    this.polygonVertices = const [],
   });
 
   final double width;
@@ -21,6 +24,21 @@ class RoomDimensions {
   final double? customWallBack;
   final double? customWallLeft;
   final double? customWallRight;
+  final RoomShapeMode shapeMode;
+  /// Corner points in feet on the custom room grid (absolute coordinates before normalize).
+  final List<RoomCorner> polygonVertices;
+
+  bool get isPolygon =>
+      shapeMode == RoomShapeMode.polygon && polygonVertices.length >= RoomConstants.minPolygonWalls;
+
+  List<RoomCorner> get normalizedPolygonVertices {
+    if (!isPolygon) return const [];
+    final xs = polygonVertices.map((v) => v.x);
+    final ys = polygonVertices.map((v) => v.y);
+    final minX = xs.reduce((a, b) => a < b ? a : b);
+    final minY = ys.reduce((a, b) => a < b ? a : b);
+    return polygonVertices.map((v) => RoomCorner(v.x - minX, v.y - minY)).toList();
+  }
 
   /// Effective length of a wall in feet.
   double lengthForWall(WallId wall) {
@@ -39,16 +57,30 @@ class RoomDimensions {
   }
 
   /// Bounding width for blueprint / placement (max of front/back in custom mode).
-  double get effectiveWidth =>
-      useCustomWallLengths
-          ? mathMax(lengthForWall(WallId.front), lengthForWall(WallId.back))
-          : width;
+  double get effectiveWidth {
+    if (isPolygon) {
+      final verts = normalizedPolygonVertices;
+      if (verts.isEmpty) return width;
+      final xs = verts.map((v) => v.x);
+      return xs.reduce((a, b) => a > b ? a : b);
+    }
+    return useCustomWallLengths
+        ? mathMax(lengthForWall(WallId.front), lengthForWall(WallId.back))
+        : width;
+  }
 
   /// Bounding length/depth for blueprint / placement.
-  double get effectiveLength =>
-      useCustomWallLengths
-          ? mathMax(lengthForWall(WallId.left), lengthForWall(WallId.right))
-          : length;
+  double get effectiveLength {
+    if (isPolygon) {
+      final verts = normalizedPolygonVertices;
+      if (verts.isEmpty) return length;
+      final ys = verts.map((v) => v.y);
+      return ys.reduce((a, b) => a > b ? a : b);
+    }
+    return useCustomWallLengths
+        ? mathMax(lengthForWall(WallId.left), lengthForWall(WallId.right))
+        : length;
+  }
 
   static double mathMax(double a, double b) => a > b ? a : b;
 
@@ -62,6 +94,9 @@ class RoomDimensions {
     double? customWallLeft,
     double? customWallRight,
     bool clearCustomWalls = false,
+    RoomShapeMode? shapeMode,
+    List<RoomCorner>? polygonVertices,
+    bool clearPolygon = false,
   }) {
     return RoomDimensions(
       width: width ?? this.width,
@@ -77,6 +112,10 @@ class RoomDimensions {
           clearCustomWalls ? null : (customWallLeft ?? this.customWallLeft),
       customWallRight:
           clearCustomWalls ? null : (customWallRight ?? this.customWallRight),
+      shapeMode: shapeMode ?? this.shapeMode,
+      polygonVertices: clearPolygon
+          ? const []
+          : (polygonVertices ?? this.polygonVertices),
     );
   }
 
@@ -100,6 +139,8 @@ class RoomDimensions {
       customWallBack: customWallBack?.clamp(RoomConstants.minWidth, RoomConstants.maxWidth),
       customWallLeft: customWallLeft?.clamp(RoomConstants.minLength, RoomConstants.maxLength),
       customWallRight: customWallRight?.clamp(RoomConstants.minLength, RoomConstants.maxLength),
+      shapeMode: shapeMode,
+      polygonVertices: polygonVertices,
     );
   }
 
@@ -112,9 +153,32 @@ class RoomDimensions {
         if (customWallBack != null) 'customWallBack': customWallBack,
         if (customWallLeft != null) 'customWallLeft': customWallLeft,
         if (customWallRight != null) 'customWallRight': customWallRight,
+        'shapeMode': shapeMode.name,
+        if (polygonVertices.isNotEmpty)
+          'polygonVertices': polygonVertices
+              .map((v) => {'x': v.x, 'y': v.y})
+              .toList(),
       };
 
   factory RoomDimensions.fromJson(Map<String, dynamic> json) {
+    final polygonRaw = json['polygonVertices'] as List<dynamic>?;
+    final vertices = polygonRaw
+            ?.map(
+              (e) => RoomCorner(
+                (e['x'] as num).toDouble(),
+                (e['y'] as num).toDouble(),
+              ),
+            )
+            .toList() ??
+        const <RoomCorner>[];
+
+    final shapeModeName = json['shapeMode'] as String?;
+    final shapeMode = shapeModeName != null
+        ? RoomShapeMode.values.byName(shapeModeName)
+        : (vertices.length >= RoomConstants.minPolygonWalls
+            ? RoomShapeMode.polygon
+            : RoomShapeMode.rectangular);
+
     return RoomDimensions(
       width: (json['width'] as num?)?.toDouble() ?? RoomConstants.defaultWidth,
       length: (json['length'] as num?)?.toDouble() ?? RoomConstants.defaultLength,
@@ -124,6 +188,8 @@ class RoomDimensions {
       customWallBack: (json['customWallBack'] as num?)?.toDouble(),
       customWallLeft: (json['customWallLeft'] as num?)?.toDouble(),
       customWallRight: (json['customWallRight'] as num?)?.toDouble(),
+      shapeMode: shapeMode,
+      polygonVertices: vertices,
     );
   }
 }
