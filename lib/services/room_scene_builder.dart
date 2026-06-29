@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/utils/polygon_room_geometry.dart';
 import '../core/utils/room_geometry.dart';
 import '../models/enums.dart';
 import '../models/project_design.dart';
@@ -123,10 +124,13 @@ class RoomSceneBuilder {
 
     final dims = design.dimensions;
     final geometry = RoomGeometry.fromDimensions(dims);
-    // Only send polygon geometry when custom wall mode is active.
-    final floorPolygon = dims.useCustomWallLengths && geometry.isValid
-        ? geometry.corners.map((c) => {'x': c.x, 'y': c.y}).toList()
-        : null;
+    final floorPolygon = dims.isPolygon
+        ? dims.normalizedPolygonVertices
+            .map((c) => {'x': c.x, 'y': c.y})
+            .toList()
+        : (dims.useCustomWallLengths && geometry.isValid
+            ? geometry.corners.map((c) => {'x': c.x, 'y': c.y}).toList()
+            : null);
 
     final wallTvUnits = <Map<String, dynamic>>[];
     for (final unit in design.wallTvUnits) {
@@ -146,8 +150,17 @@ class RoomSceneBuilder {
         'effectiveWidth': dims.effectiveWidth,
         'effectiveLength': dims.effectiveLength,
         if (floorPolygon != null) 'floorPolygon': floorPolygon,
+        'wallCount': design.walls.length,
         'wallLengths': {
-          for (final wall in WallId.values) wall.name: dims.lengthForWall(wall),
+          for (final wall in design.walls)
+            'wall_${wall.wallIndex}': dims.isPolygon
+                ? PolygonRoomGeometry.edgeLengthFt(
+                    dims.normalizedPolygonVertices,
+                    wall.wallIndex,
+                  )
+                : dims.lengthForWall(wall.id),
+          if (!dims.isPolygon)
+            for (final wall in WallId.values) wall.name: dims.lengthForWall(wall),
         },
       },
       'walls': walls,
