@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_spacing.dart';
 import '../core/theme/app_theme.dart';
 import '../providers/company_profile_provider.dart';
+import '../providers/room_design_provider.dart';
 import '../widgets/company/company_image.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -75,6 +76,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final profile = ref.watch(companyProfileProvider);
+    final premiumFurniture = ref.watch(premiumFurnitureProvider);
 
     ref.listen(companyProfileProvider, (previous, next) {
       if (previous?.logoPath != next.logoPath ||
@@ -100,6 +102,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
+        _SectionCard(
+          title: '3D Preview',
+          child: SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            secondary: Icon(
+              Icons.auto_awesome,
+              color: premiumFurniture
+                  ? Colors.amber.shade700
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.55),
+            ),
+            title: const Text('Premium furniture'),
+            subtitle: Text(
+              'Use high-detail 3D models for furniture, AC units, and appliances.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+              ),
+            ),
+            value: premiumFurniture,
+            onChanged: (value) {
+              ref.read(premiumFurnitureProvider.notifier).state = value;
+            },
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
         _SectionCard(
           title: 'Cover Image',
           child: Column(
