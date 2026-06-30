@@ -319,7 +319,7 @@ class _ApartmentSizeControlsState extends ConsumerState<_ApartmentSizeControls> 
   @override
   void initState() {
     super.initState();
-    _expanded = !widget.compact;
+    _expanded = false;
   }
 
   @override
@@ -339,7 +339,7 @@ class _ApartmentSizeControlsState extends ConsumerState<_ApartmentSizeControls> 
       children: [
         Row(
           children: [
-            Text('Apartment Size', style: theme.textTheme.titleSmall),
+            Text('Apartment Details', style: theme.textTheme.titleSmall),
             const Spacer(),
             IconButton(
               visualDensity: VisualDensity.compact,
