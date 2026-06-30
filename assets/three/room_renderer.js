@@ -1688,18 +1688,21 @@
       body.position.y = plinthH + bodyH * 0.48;
       group.add(body);
 
+      const frontFaceZ = fd * 0.48;
+      const topPanelDepth = fd * 0.025;
       const topPanel = new THREE.Mesh(
-        new THREE.BoxGeometry(fw * 0.94, bodyH * 0.14, fd * 0.96),
+        new THREE.BoxGeometry(fw * 0.94, bodyH * 0.14, topPanelDepth),
         darkMat
       );
-      topPanel.position.y = plinthH + bodyH * 0.91;
+      topPanel.position.set(0, plinthH + bodyH * 0.91, frontFaceZ + topPanelDepth * 0.5 + 0.002 * FT);
       group.add(topPanel);
 
+      const drawerDepth = fd * 0.05;
       const drawer = new THREE.Mesh(
-        new THREE.BoxGeometry(fw * 0.22, bodyH * 0.05, fd * 0.06),
+        new THREE.BoxGeometry(fw * 0.22, bodyH * 0.05, drawerDepth),
         bodyMat
       );
-      drawer.position.set(-fw * 0.28, plinthH + bodyH * 0.84, fd * 0.44);
+      drawer.position.set(-fw * 0.28, plinthH + bodyH * 0.84, frontFaceZ + drawerDepth * 0.5 + 0.002 * FT);
       group.add(drawer);
 
       const dial = new THREE.Mesh(
@@ -1707,7 +1710,7 @@
         chromeMat
       );
       dial.rotation.x = Math.PI / 2;
-      dial.position.set(fw * 0.28, plinthH + bodyH * 0.84, fd * 0.44);
+      dial.position.set(fw * 0.28, plinthH + bodyH * 0.84, frontFaceZ + 0.015 * FT);
       group.add(dial);
 
       const doorRadius = Math.min(fw, bodyH) * 0.31;
