@@ -359,7 +359,8 @@
 
       if (this.cameraMode === 'top') {
         Object.keys(this.wallMeshes).forEach((id) => {
-          this.wallMeshes[id].visible = true;
+          const mesh = this.wallMeshes[id];
+          if (mesh) mesh.visible = true;
         });
         return;
       }
@@ -369,7 +370,8 @@
 
       if (insideRoom) {
         Object.keys(this.wallMeshes).forEach((id) => {
-          this.wallMeshes[id].visible = true;
+          const mesh = this.wallMeshes[id];
+          if (mesh) mesh.visible = true;
         });
         return;
       }
@@ -384,7 +386,9 @@
       }
 
       Object.keys(this.wallMeshes).forEach((id) => {
-        this.wallMeshes[id].visible = id !== hiddenWall;
+        const mesh = this.wallMeshes[id];
+        if (!mesh) return;
+        mesh.visible = id !== hiddenWall;
       });
     }
 
@@ -498,7 +502,11 @@
       if (layout.polygon) {
         this._buildPolygonFloor(layout.polygon, cfg.floor);
         if (!lightweight) this._buildPolygonCeiling(layout.polygon, h, cfg.ceiling);
-        this._buildPolygonWalls(layout, h, cfg);
+        if (this._shouldUseRectangularWalls(layout)) {
+          this._buildWalls(w, l, h, cfg, layout);
+        } else {
+          this._buildPolygonWalls(layout, h, cfg);
+        }
       } else {
         this._buildFloor(w, l, cfg.floor);
         if (!lightweight) this._buildCeiling(w, l, h, cfg.ceiling);
@@ -554,7 +562,57 @@
           (room.shapeMode === 'polygon' || room.useCustomWallLengths)) {
         polygon = this._centerPolygon(room.floorPolygon);
       }
-      return { w, l, h, wallLengths, polygon, useCustom: !!room.useCustomWallLengths };
+      return {
+        w, l, h, wallLengths, polygon,
+        useCustom: !!room.useCustomWallLengths,
+        shapeMode: room.shapeMode || 'rectangular',
+      };
+    }
+
+    /** Quadrilateral floor edges: FL→FR front, FR→BR right, BR→BL back, BL→FL left. */
+    _quadEdgeWallId(edgeIndex) {
+      return ['front', 'right', 'back', 'left'][edgeIndex];
+    }
+
+    _usesQuadWallIdMapping(cfg, layout) {
+      const poly = layout.polygon;
+      if (!poly || poly.length !== 4) return false;
+      if (layout.shapeMode === 'polygon') return false;
+      return !!(layout.useCustom || (cfg.room && cfg.room.useCustomWallLengths));
+    }
+
+    _wallCfgForPolygonEdge(cfg, edgeIndex, layout) {
+      if (this._usesQuadWallIdMapping(cfg, layout)) {
+        const wallId = this._quadEdgeWallId(edgeIndex);
+        return cfg.walls.find(w => w.id === wallId)
+          || cfg.walls.find(w => w.wallIndex === edgeIndex)
+          || cfg.walls[edgeIndex]
+          || cfg.walls[0];
+      }
+      return cfg.walls[edgeIndex]
+        || cfg.walls.find(w => w.wallIndex === edgeIndex)
+        || cfg.walls[0];
+    }
+
+    _polygonWallMeshId(wallCfg, edgeIndex, layout, cfg) {
+      const roomCfg = cfg || this.config;
+      if (this._usesQuadWallIdMapping(roomCfg, layout) && wallCfg && wallCfg.id) {
+        return wallCfg.id;
+      }
+      const idx = wallCfg && wallCfg.wallIndex != null ? wallCfg.wallIndex : edgeIndex;
+      return `wall_${idx}`;
+    }
+
+    _shouldUseRectangularWalls(layout) {
+      if (!layout.polygon || layout.polygon.length !== 4) return false;
+      if (layout.shapeMode === 'polygon') return false;
+      if (!layout.useCustom) return false;
+      const wl = layout.wallLengths || {};
+      const front = wl.front || 0;
+      const back = wl.back || 0;
+      const left = wl.left || 0;
+      const right = wl.right || 0;
+      return Math.abs(front - back) < 0.05 && Math.abs(left - right) < 0.05;
     }
 
     _centerPolygon(floorPolygon) {
@@ -601,15 +659,16 @@
     _buildPolygonWalls(layout, h, cfg) {
       const poly = layout.polygon;
       for (let i = 0; i < poly.length; i++) {
+        try {
         const a = poly[i];
         const b = poly[(i + 1) % poly.length];
         const dx = b.x - a.x;
         const dz = b.z - a.z;
         const len = Math.sqrt(dx * dx + dz * dz);
         if (len < 0.001) continue;
-        const wallCfg = cfg.walls[i] || cfg.walls.find(w => w.wallIndex === i) || cfg.walls[0];
+        const wallCfg = this._wallCfgForPolygonEdge(cfg, i, layout);
         if (!wallCfg) continue;
-        const id = `wall_${wallCfg.wallIndex != null ? wallCfg.wallIndex : i}`;
+        const id = this._polygonWallMeshId(wallCfg, i, layout, cfg);
         const procType = wallCfg.surfaceType === 'texture' ? wallCfg.texture : null;
         const texUrl = wallCfg.surfaceType === 'wallpaper'
           ? this._resolveTextureUrl(wallCfg.textureDataUrl, wallCfg.wallpaperPath)
@@ -634,6 +693,9 @@
         if (!mesh) continue;
         this.wallMeshes[id] = mesh;
         this.roomGroup.add(mesh);
+        } catch (err) {
+          console.error('Polygon wall build failed:', i, err);
+        }
       }
     }
 
@@ -672,6 +734,7 @@
     _wallLabelPosition(wallId, layout, h) {
       if (layout.polygon) {
         const idx = { front: 0, right: 1, back: 2, left: 3 }[wallId];
+        if (idx == null) return { x: 0, y: h * 0.55, z: 0, rotY: 0 };
         const a = layout.polygon[idx];
         const b = layout.polygon[(idx + 1) % layout.polygon.length];
         const dx = b.x - a.x;
