@@ -399,6 +399,10 @@
       return !!(this._apartmentPremium || (this.config && this.config.premiumFurniture));
     }
 
+    _usesIdenticalPremiumGeometry(type) {
+      return ['sofa'].indexOf(type) >= 0;
+    }
+
     _hasDedicatedPremiumBuilder(type) {
       return [
         'bed', 'chair', 'table', 'diningTable', 'flowerPot',
@@ -407,27 +411,46 @@
       ].indexOf(type) >= 0;
     }
 
+    _cloneMaterial(mat) {
+      if (!mat || !mat.clone) return mat;
+      const c = mat.clone();
+      if (mat.map) c.map = mat.map;
+      if (mat.normalMap) c.normalMap = mat.normalMap;
+      if (mat.roughnessMap) c.roughnessMap = mat.roughnessMap;
+      if (mat.metalnessMap) c.metalnessMap = mat.metalnessMap;
+      if (mat.aoMap) c.aoMap = mat.aoMap;
+      if (mat.emissiveMap) c.emissiveMap = mat.emissiveMap;
+      return c;
+    }
+
     _applyPremiumFurnitureFinish(group) {
       group.traverse((child) => {
         if (!child.isMesh || !child.material) return;
-        const mats = Array.isArray(child.material) ? child.material : [child.material];
-        mats.forEach((mat) => {
-          if (!mat) return;
-          if (typeof mat.roughness === 'number') {
-            mat.roughness = Math.max(0.08, mat.roughness * 0.82);
+        const sourceMats = Array.isArray(child.material) ? child.material : [child.material];
+        const mats = sourceMats.map((mat) => {
+          if (!mat) return mat;
+          const c = this._cloneMaterial(mat);
+          const isFabricLike = typeof c.roughness === 'number' && c.roughness >= 0.72;
+          if (isFabricLike) {
+            c.roughness = Math.max(0.78, c.roughness * 0.97);
+            if ('envMapIntensity' in c) {
+              c.envMapIntensity = Math.max(c.envMapIntensity || 1, 1.15);
+            }
+          } else {
+            if (typeof c.roughness === 'number') {
+              c.roughness = Math.max(0.08, c.roughness * 0.88);
+            }
+            if (typeof c.metalness === 'number') {
+              c.metalness = Math.min(0.35, c.metalness + 0.08);
+            }
+            if ('envMapIntensity' in c) {
+              c.envMapIntensity = Math.max(c.envMapIntensity || 1, 1.5);
+            }
           }
-          if (typeof mat.metalness === 'number') {
-            mat.metalness = Math.min(1, mat.metalness + 0.12);
-          }
-          if ('envMapIntensity' in mat) {
-            mat.envMapIntensity = Math.max(mat.envMapIntensity || 1, 2.0);
-          }
-          if ('clearcoat' in mat && mat.clearcoat < 0.5) {
-            mat.clearcoat = 0.35;
-            mat.clearcoatRoughness = 0.12;
-          }
-          mat.needsUpdate = true;
+          c.needsUpdate = true;
+          return c;
         });
+        child.material = Array.isArray(child.material) ? mats : mats[0];
       });
     }
 
@@ -1643,7 +1666,11 @@
         const y = (item.heightFromFloor || 0) * FT;
         group.position.set(x, y, z);
         group.rotation.y = -(item.rotation || 0) * Math.PI / 180;
-        if (this._isPremiumFurniture() && !this._hasDedicatedPremiumBuilder(item.type)) {
+        if (
+          this._isPremiumFurniture()
+          && !this._hasDedicatedPremiumBuilder(item.type)
+          && !this._usesIdenticalPremiumGeometry(item.type)
+        ) {
           this._applyPremiumFurnitureFinish(group);
         }
         this.roomGroup.add(group);
@@ -2511,12 +2538,16 @@
     }
 
     _buildSofaGroup(item, textureUrl) {
+      return this._buildStandardSofaGroup(item, textureUrl);
+    }
+
+    _buildStandardSofaGroup(item, textureUrl) {
       const fw = item.width * FT;
       const fh = item.height * FT;
       const fd = item.depth * FT;
       const group = new THREE.Group();
 
-      const mat = this._makeMaterial(
+      const mat = this._cloneMaterial(this._makeMaterial(
         item.color,
         0.92,
         0.03,
@@ -2524,13 +2555,11 @@
         textureUrl ? null : 'fabric',
         3,
         3
-      );
-      if (mat.roughness !== undefined) {
-        mat.roughness = 0.95;
-        mat.metalness = 0.0;
-        mat.bumpScale = 0.015;
-        if (mat.normalScale) mat.normalScale.set(0.6, 0.6);
-      }
+      ));
+      mat.roughness = 0.95;
+      mat.metalness = 0.0;
+      if (mat.bumpScale !== undefined) mat.bumpScale = 0.015;
+      if (mat.normalScale) mat.normalScale.set(0.6, 0.6);
 
       const armWidth = fw * 0.15;
       const seatHeight = fh * 0.28;
