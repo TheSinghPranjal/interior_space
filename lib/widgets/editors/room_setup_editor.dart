@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/room_constants.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
+import '../../models/enums.dart';
 import '../../providers/project_provider.dart';
 import '../../providers/room_design_provider.dart';
 import '../../screens/custom_room_shape_screen.dart';
@@ -22,7 +23,7 @@ class RoomSetupEditor extends ConsumerWidget {
         _RoomDimensionsSection(),
         SectionCard(
           title: 'Room',
-          child: _RoomNameField(),
+          child: _RoomIdentityFields(),
         ),
         _AiAssistantSection(),
       ],
@@ -328,6 +329,22 @@ class _AiAssistantSection extends ConsumerWidget {
   }
 }
 
+class _RoomIdentityFields extends ConsumerWidget {
+  const _RoomIdentityFields();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return const Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: _RoomNameField()),
+        SizedBox(width: AppSpacing.sm),
+        Expanded(child: _RoomTypeField()),
+      ],
+    );
+  }
+}
+
 class _RoomNameField extends ConsumerStatefulWidget {
   const _RoomNameField();
 
@@ -364,6 +381,49 @@ class _RoomNameFieldState extends ConsumerState<_RoomNameField> {
       controller: _controller,
       decoration: const InputDecoration(labelText: 'Room Name'),
       onChanged: ref.read(roomDesignProvider.notifier).setName,
+    );
+  }
+}
+
+class _RoomTypeField extends ConsumerWidget {
+  const _RoomTypeField();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final design = ref.watch(roomDesignProvider);
+    final roomIndex = ref.watch(projectProvider).safeActiveIndex;
+
+    return DropdownButtonFormField<RoomType>(
+      key: ValueKey('room-type-$roomIndex-${design.roomType?.name}'),
+      initialValue: design.roomType,
+      isExpanded: true,
+      decoration: const InputDecoration(labelText: 'Room Type'),
+      hint: const Text(
+        'Select room type',
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
+      ),
+      selectedItemBuilder: (context) => RoomType.values
+          .map(
+            (type) => Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                type.label,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+          )
+          .toList(),
+      items: RoomType.values
+          .map(
+            (type) => DropdownMenuItem(
+              value: type,
+              child: Text(type.label),
+            ),
+          )
+          .toList(),
+      onChanged: ref.read(roomDesignProvider.notifier).setRoomType,
     );
   }
 }
