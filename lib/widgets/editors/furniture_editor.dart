@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../models/enums.dart';
 import '../../models/furniture_item.dart';
+import '../../models/premium_catalog_item.dart';
 import '../../models/room_design.dart';
 import '../../providers/placed_item_clipboard_provider.dart';
 import '../../providers/room_design_provider.dart';
@@ -15,63 +16,192 @@ import '../common/dimension_slider.dart';
 import '../common/item_editor_header.dart';
 import '../common/section_card.dart';
 import '../common/texture_upload_field.dart';
+import 'premium_catalog_panel.dart';
 import 'wall_tv_unit_card.dart';
 
-class FurnitureEditor extends ConsumerWidget {
+class FurnitureEditor extends ConsumerStatefulWidget {
   const FurnitureEditor({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FurnitureEditor> createState() => _FurnitureEditorState();
+}
+
+class _FurnitureEditorState extends ConsumerState<FurnitureEditor> {
+  bool _catalogOpen = false;
+
+  void _openCatalog() {
+    if (!ref.read(premiumFurnitureProvider)) return;
+    setState(() => _catalogOpen = true);
+  }
+
+  void _closeCatalog() => setState(() => _catalogOpen = false);
+
+  void _addCatalogItem(PremiumCatalogDefinition definition) {
+    ref.read(roomDesignProvider.notifier).addPremiumCatalogItem(definition.id);
+    _closeCatalog();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${definition.name} added to placement')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final design = ref.watch(roomDesignProvider);
     final furniture = design.furniture;
     final wallTvUnits = design.wallTvUnits;
+    final premiumEnabled = ref.watch(premiumFurnitureProvider);
     final notifier = ref.read(roomDesignProvider.notifier);
+    final standardFurniture =
+        furniture.where((f) => !f.isPremiumCatalogItem).toList();
+    final premiumFurniture =
+        furniture.where((f) => f.isPremiumCatalogItem).toList();
+    final catalogHeight = MediaQuery.sizeOf(context).height * 0.72;
 
-    return ListView(
-      children: [
-        SectionCard(
-          title: 'Furniture Placement',
-          subtitle: 'Add items to the blueprint • Wardrobe & Wall TV included • Drag in Blueprint',
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ...FurnitureType.values.map((type) {
-                return ActionChip(
-                  avatar: Icon(type.icon, size: 16),
-                  label: Text(type.label),
-                  onPressed: () => notifier.addFurniture(type),
-                );
-              }),
-              ActionChip(
-                avatar: const Icon(Icons.tv, size: 16),
-                label: const Text('Wall TV Unit'),
-                onPressed: notifier.addWallTvUnit,
-              ),
-            ],
-          ),
-        ),
-        if (furniture.isNotEmpty || wallTvUnits.isNotEmpty)
-          SectionCard(
-            title: 'Placed Items',
-            child: Column(
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 320),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(1, 0),
+            end: Offset.zero,
+          ).animate(animation),
+          child: child,
+        );
+      },
+      layoutBuilder: (currentChild, previousChildren) {
+        return Stack(
+          alignment: Alignment.topCenter,
+          fit: StackFit.passthrough,
+          children: [
+            ...previousChildren,
+            if (currentChild != null) currentChild,
+          ],
+        );
+      },
+      child: _catalogOpen
+          ? ListView(
+              key: const ValueKey('catalog_view'),
               children: [
-                ...furniture.map(
-                  (item) => _FurnitureCard(
-                    item: item,
-                    design: design,
+                SectionCard(
+                  title: 'Furniture Placement',
+                  subtitle:
+                      'Premium catalog • Tap Add on any item to place in your room',
+                  trailing: TextButton.icon(
+                    onPressed: _closeCatalog,
+                    icon: const Icon(Icons.arrow_back, size: 18),
+                    label: const Text('Back'),
+                  ),
+                  child: const SizedBox.shrink(),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .outline
+                              .withValues(alpha: 0.45),
+                        ),
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                      ),
+                      child: SizedBox(
+                        height: catalogHeight,
+                        child: PremiumCatalogPanel(
+                          embedded: true,
+                          onClose: _closeCatalog,
+                          onAdd: _addCatalogItem,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                ...wallTvUnits.map(
-                  (unit) => WallTvUnitCard(
-                    unit: unit,
-                    units: wallTvUnits,
+                const SizedBox(height: AppSpacing.md),
+              ],
+            )
+          : ListView(
+              key: const ValueKey('placement_view'),
+              children: [
+                SectionCard(
+                  title: 'Furniture Placement',
+                  subtitle:
+                      'Add items to the blueprint • Wardrobe & Wall TV included • Drag in Blueprint',
+                  trailing: Tooltip(
+                    message: premiumEnabled
+                        ? 'Browse premium catalog'
+                        : 'Enable Premium furniture in Settings to unlock',
+                    child: TextButton.icon(
+                      onPressed: premiumEnabled ? _openCatalog : null,
+                      icon: Icon(
+                        Icons.auto_awesome,
+                        size: 16,
+                        color: premiumEnabled ? Colors.amber.shade800 : Colors.grey,
+                      ),
+                      label: const Text('Add More'),
+                    ),
+                  ),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ...FurnitureType.values.map((type) {
+                        return ActionChip(
+                          avatar: Icon(type.icon, size: 16),
+                          label: Text(type.label),
+                          onPressed: () => notifier.addFurniture(type),
+                        );
+                      }),
+                      ActionChip(
+                        avatar: const Icon(Icons.tv, size: 16),
+                        label: const Text('Wall TV Unit'),
+                        onPressed: notifier.addWallTvUnit,
+                      ),
+                    ],
                   ),
                 ),
+                if (standardFurniture.isNotEmpty || wallTvUnits.isNotEmpty)
+                  SectionCard(
+                    title: 'Placed Items',
+                    child: Column(
+                      children: [
+                        ...standardFurniture.map(
+                          (item) => _FurnitureCard(
+                            item: item,
+                            design: design,
+                          ),
+                        ),
+                        ...wallTvUnits.map(
+                          (unit) => WallTvUnitCard(
+                            unit: unit,
+                            units: wallTvUnits,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (premiumFurniture.isNotEmpty)
+                  SectionCard(
+                    title: 'Premium Catalog Items',
+                    subtitle: 'Added from Premium Catalog • Drag in Blueprint',
+                    titleBadge:
+                        Icon(Icons.auto_awesome, size: 16, color: Colors.amber.shade700),
+                    child: Column(
+                      children: premiumFurniture
+                          .map(
+                            (item) => _FurnitureCard(
+                              item: item,
+                              design: design,
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
               ],
             ),
-          ),
-      ],
     );
   }
 }
@@ -108,6 +238,11 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard>
   FurnitureItem get item => widget.item;
   RoomDesign get design => widget.design;
 
+  IconData get _itemIcon {
+    final catalog = premiumCatalogByIdKey(item.premiumCatalogId);
+    return catalog?.icon ?? item.type.icon;
+  }
+
   @override
   void dispose() {
     _expandController.dispose();
@@ -136,15 +271,15 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard>
         children: [
           ItemEditorHeader(
             title: FurnitureItem.displayLabel(design.furniture, item),
-            icon: item.type.icon,
+            icon: _itemIcon,
             configMenu: PlacedItemConfigMenu(
-              showPaste: canPaste,
+              showPaste: canPaste && !item.isPremiumCatalogItem,
               pasteLabel: canPaste ? 'Paste ${item.type.label} configuration' : null,
               onCopy: () {
                 ref.read(placedItemClipboardProvider.notifier).copyFurniture(item);
                 showPlacedItemConfigSnackBar(
                   context,
-                  '${item.type.label} configuration copied',
+                  '${FurnitureItem.displayLabel(design.furniture, item)} configuration copied',
                 );
               },
               onPaste: () {
@@ -154,7 +289,7 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard>
                 if (ok && context.mounted) {
                   showPlacedItemConfigSnackBar(
                     context,
-                    '${item.type.label} configuration pasted',
+                    '${FurnitureItem.displayLabel(design.furniture, item)} configuration pasted',
                   );
                 }
               },
@@ -166,6 +301,22 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard>
             onToggleEdit: () => setState(() => _editingEnabled = !_editingEnabled),
             onDelete: () => notifier.removeFurniture(item.id),
           ),
+          if (item.isPremiumCatalogItem)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+              child: Row(
+                children: [
+                  Icon(Icons.auto_awesome, size: 14, color: Colors.amber.shade700),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Premium catalog',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Colors.amber.shade800,
+                        ),
+                  ),
+                ],
+              ),
+            ),
           ClipRect(
             child: SizeTransition(
               sizeFactor: _expandAnimation,
@@ -321,6 +472,7 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard>
     bool enabled,
     RoomDesignNotifier notifier,
   ) {
+    if (item.isPremiumCatalogItem) return const [];
     return switch (item.type) {
       FurnitureType.diningTable => [
           DropdownButtonFormField<DiningTableShape>(
