@@ -22,6 +22,7 @@ premium_sink = Path('premium_sink.js').read_text()
 premium_chair = Path('premium_chair.js').read_text()
 premium_chimney = Path('premium_chimney.js').read_text()
 premium_ac_unit = Path('premium_ac_unit.js').read_text()
+premium_catalog = Path('premium_catalog.js').read_text()
 renderer = Path('room_renderer.js').read_text()
 
 bundle = (
@@ -41,6 +42,7 @@ bundle = (
     .replace('<!-- INJECT_PREMIUM_CHAIR -->', f'<script>\n{premium_chair}\n</script>')
     .replace('<!-- INJECT_PREMIUM_CHIMNEY -->', f'<script>\n{premium_chimney}\n</script>')
     .replace('<!-- INJECT_PREMIUM_AC_UNIT -->', f'<script>\n{premium_ac_unit}\n</script>')
+    .replace('<!-- INJECT_PREMIUM_CATALOG -->', f'<script>\n{premium_catalog}\n</script>')
     .replace('<!-- INJECT_RENDERER -->', f'<script>\n{renderer}\n</script>')
 )
 
