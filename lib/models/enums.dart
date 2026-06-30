@@ -5,6 +5,33 @@ enum WallId { front, back, left, right }
 /// Rectangular (width × length) or user-drawn polygon on the custom room grid.
 enum RoomShapeMode { rectangular, polygon }
 
+/// Functional category for a room (e.g. Kitchen, Bedroom).
+enum RoomType {
+  masterBedroom,
+  studyRoom,
+  masterBedroomWithWalkInCloset,
+  bedroom,
+  livingRoom,
+  livingAndDiningRoom,
+  kitchen,
+  utility,
+  balcony,
+  toilet,
+  closet,
+  walkInCloset,
+  powderRoom,
+  foyer,
+  poojaRoom,
+  guestRoom,
+  lobby,
+  diningRoom,
+  kitchenAndLivingArea,
+  kitchenAndDiningRoom,
+  kidsRoom,
+  studio,
+  parking,
+}
+
 /// Which segment of a wall remains visible when [WallConfig.visibleFraction] &lt; 1.
 enum WallVisibleAlign { start, center, end }
 
@@ -90,6 +117,35 @@ enum FurnitureMaterialPreset {
 
 extension FurnitureTypePlacement on FurnitureType {
   bool get isWallMounted => false;
+}
+
+extension RoomTypeLabel on RoomType {
+  String get label => switch (this) {
+        RoomType.masterBedroom => 'Master Bedroom',
+        RoomType.studyRoom => 'Study Room',
+        RoomType.masterBedroomWithWalkInCloset =>
+          'Master Bedroom with walk in closet',
+        RoomType.bedroom => 'Bedroom',
+        RoomType.livingRoom => 'Living Room',
+        RoomType.livingAndDiningRoom => 'Living & Dining Room',
+        RoomType.kitchen => 'Kitchen',
+        RoomType.utility => 'Utility',
+        RoomType.balcony => 'Balcony',
+        RoomType.toilet => 'Toilet',
+        RoomType.closet => 'Closet',
+        RoomType.walkInCloset => 'Walk in closet',
+        RoomType.powderRoom => 'Powder room',
+        RoomType.foyer => 'Foyer',
+        RoomType.poojaRoom => 'Pooja Room',
+        RoomType.guestRoom => 'Guest room',
+        RoomType.lobby => 'Lobby',
+        RoomType.diningRoom => 'Dining Room',
+        RoomType.kitchenAndLivingArea => 'Kitchen & Living Area',
+        RoomType.kitchenAndDiningRoom => 'Kitchen & Dining Room',
+        RoomType.kidsRoom => "Kid's Room",
+        RoomType.studio => 'Studio',
+        RoomType.parking => 'Parking',
+      };
 }
 
 extension WallIdLabel on WallId {
