@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../providers/project_provider.dart';
 import '../../providers/room_design_provider.dart';
+import '../../screens/fullscreen_blueprint_screen.dart';
 import '../../services/room_share_service.dart';
 import '../../screens/preview_3d_screen.dart';
 import 'add_furniture_sheet.dart';
@@ -43,6 +44,14 @@ class BlueprintView extends ConsumerWidget {
                   '${design.furniture.length} furniture • '
                   '${design.wallTvUnits.length} wall TV',
                   style: theme.textTheme.bodySmall,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.fullscreen, size: 18),
+                tooltip: 'Full screen blueprint',
+                onPressed: () => FullscreenBlueprintScreen.open(
+                  context,
+                  mode: FullscreenBlueprintMode.room,
                 ),
               ),
               IconButton(
