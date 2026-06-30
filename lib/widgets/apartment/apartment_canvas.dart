@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/utils/blueprint_viewport_fit.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/blueprint_placement.dart';
 import '../../models/apartment_layout.dart';
@@ -17,7 +18,10 @@ import '../../providers/project_provider.dart';
 import '../blueprint/room_blueprint_layout_painter.dart';
 
 class ApartmentCanvas extends ConsumerStatefulWidget {
-  const ApartmentCanvas({super.key});
+  const ApartmentCanvas({super.key, this.immersive = false});
+
+  /// When true, fills the viewport (e.g. full screen) and auto-fits the layout.
+  final bool immersive;
 
   @override
   ConsumerState<ApartmentCanvas> createState() => _ApartmentCanvasState();
@@ -25,6 +29,9 @@ class ApartmentCanvas extends ConsumerStatefulWidget {
 
 class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
   static const _holdDuration = Duration(milliseconds: 420);
+
+  TransformationController? _transformController;
+  Size? _lastFitViewport;
 
   String? _dragAnchorId;
   bool _isDragging = false;
@@ -37,9 +44,47 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
   final Map<String, ({double x, double y})> _tempGroupPositions = {};
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.immersive) {
+      _transformController = TransformationController();
+    }
+  }
+
+  @override
   void dispose() {
     _holdTimer?.cancel();
+    _transformController?.dispose();
     super.dispose();
+  }
+
+  void _scheduleViewportFit(Size viewport, Rect contentRect) {
+    if (!widget.immersive || _transformController == null) return;
+    if (_lastFitViewport == viewport) return;
+    _lastFitViewport = viewport;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      BlueprintViewportFit.apply(
+        _transformController!,
+        viewport,
+        contentRect,
+        margin: 12,
+      );
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant ApartmentCanvas oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.immersive != widget.immersive) {
+      _lastFitViewport = null;
+      if (widget.immersive && _transformController == null) {
+        _transformController = TransformationController();
+      } else if (!widget.immersive) {
+        _transformController?.dispose();
+        _transformController = null;
+      }
+    }
   }
 
   void _cancelHold() {
@@ -72,7 +117,8 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        const padding = 32.0;
+        const edgePadding = 32.0;
+        final padding = widget.immersive ? 12.0 : edgePadding;
         final availW = constraints.maxWidth - padding * 2;
         final availH = constraints.maxHeight - padding * 2;
         final scale = math.min(
@@ -84,11 +130,18 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
         final offsetX = (constraints.maxWidth - aptW) / 2;
         final offsetY = (constraints.maxHeight - aptH) / 2;
         final aptRect = Rect.fromLTWH(offsetX, offsetY, aptW, aptH);
+        final viewport = Size(constraints.maxWidth, constraints.maxHeight);
+        if (widget.immersive) {
+          _scheduleViewportFit(viewport, aptRect);
+        }
 
         return InteractiveViewer(
-          minScale: 0.5,
-          maxScale: 4.0,
-          boundaryMargin: const EdgeInsets.all(120),
+          transformationController: _transformController,
+          minScale: 0.35,
+          maxScale: 6.0,
+          boundaryMargin: widget.immersive
+              ? EdgeInsets.zero
+              : const EdgeInsets.all(120),
           panEnabled: !_isDragging,
           scaleEnabled: !_isDragging,
           child: SizedBox(
