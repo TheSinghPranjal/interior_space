@@ -18,6 +18,7 @@ class RoomDesign {
   const RoomDesign({
     required this.id,
     this.name = 'My Room',
+    this.roomType,
     this.apartmentIndex = 0,
     this.dimensions = const RoomDimensions(),
     this.walls = const [],
@@ -38,6 +39,7 @@ class RoomDesign {
 
   final String id;
   final String name;
+  final RoomType? roomType;
   final int apartmentIndex;
   final RoomDimensions dimensions;
   final List<WallConfig> walls;
@@ -58,6 +60,8 @@ class RoomDesign {
   RoomDesign copyWith({
     String? id,
     String? name,
+    RoomType? roomType,
+    bool clearRoomType = false,
     int? apartmentIndex,
     RoomDimensions? dimensions,
     List<WallConfig>? walls,
@@ -78,6 +82,7 @@ class RoomDesign {
     return RoomDesign(
       id: id ?? this.id,
       name: name ?? this.name,
+      roomType: clearRoomType ? null : (roomType ?? this.roomType),
       apartmentIndex: apartmentIndex ?? this.apartmentIndex,
       dimensions: dimensions ?? this.dimensions,
       walls: walls ?? this.walls,
@@ -100,6 +105,7 @@ class RoomDesign {
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
+        if (roomType != null) 'roomType': roomType!.name,
         'apartmentIndex': apartmentIndex,
         'room': dimensions.toJson(),
         'walls': walls.map((w) => w.toJson()).toList(),
@@ -153,6 +159,7 @@ class RoomDesign {
     return RoomDesign(
       id: json['id'] as String? ?? fallbackId ?? 'room-default',
       name: json['name'] as String? ?? 'My Room',
+      roomType: _roomTypeFromJson(json['roomType']),
       apartmentIndex: (json['apartmentIndex'] as num?)?.toInt() ?? 0,
       dimensions: RoomDimensions.fromJson(
         (json['room'] as Map<String, dynamic>?) ?? {},
@@ -203,6 +210,15 @@ class RoomDesign {
           [],
       sketch: SketchDocument.fromJson(json['sketch'] as Map<String, dynamic>?),
     );
+  }
+
+  static RoomType? _roomTypeFromJson(dynamic value) {
+    if (value == null) return null;
+    final name = value as String;
+    for (final type in RoomType.values) {
+      if (type.name == name) return type;
+    }
+    return null;
   }
 
   static RoomDesign initial({String? id, int apartmentIndex = 0}) {
