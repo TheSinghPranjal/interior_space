@@ -11,6 +11,7 @@ class WallConfig {
     this.tileWallpaper = false,
     this.visibleFraction = 1.0,
     this.visibleAlign = WallVisibleAlign.start,
+    this.barrierType = WallBarrierType.solid,
   });
 
   /// 0-based wall index. Wall N = edge from vertex N to vertex N+1.
@@ -25,11 +26,14 @@ class WallConfig {
   /// 0 = fully hidden, 0.5 = half length, 1 = full wall (custom wall mode only).
   final double visibleFraction;
   final WallVisibleAlign visibleAlign;
+  /// Custom wall mode: replace solid wall with fence or balcony railing.
+  final WallBarrierType barrierType;
 
   int get displayNumber => wallIndex + 1;
 
   bool get isFullyHidden => visibleFraction <= 0.001;
   bool get isPartial => visibleFraction > 0.001 && visibleFraction < 0.999;
+  bool get isBarrier => barrierType != WallBarrierType.solid;
 
   WallConfig copyWith({
     int? wallIndex,
@@ -42,6 +46,7 @@ class WallConfig {
     bool clearWallpaper = false,
     double? visibleFraction,
     WallVisibleAlign? visibleAlign,
+    WallBarrierType? barrierType,
   }) {
     return WallConfig(
       wallIndex: wallIndex ?? this.wallIndex,
@@ -53,6 +58,7 @@ class WallConfig {
       tileWallpaper: tileWallpaper ?? this.tileWallpaper,
       visibleFraction: visibleFraction ?? this.visibleFraction,
       visibleAlign: visibleAlign ?? this.visibleAlign,
+      barrierType: barrierType ?? this.barrierType,
     );
   }
 
@@ -66,6 +72,7 @@ class WallConfig {
         'tileWallpaper': tileWallpaper,
         'visibleFraction': visibleFraction,
         'visibleAlign': visibleAlign.name,
+        'barrierType': barrierType.name,
       };
 
   factory WallConfig.fromJson(Map<String, dynamic> json) {
@@ -85,6 +92,9 @@ class WallConfig {
       visibleFraction: (json['visibleFraction'] as num?)?.toDouble() ?? 1.0,
       visibleAlign: WallVisibleAlign.values.byName(
         json['visibleAlign'] as String? ?? 'start',
+      ),
+      barrierType: WallBarrierType.values.byName(
+        json['barrierType'] as String? ?? 'solid',
       ),
     );
   }
