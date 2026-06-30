@@ -12,6 +12,7 @@ import '../widgets/common/dimension_slider.dart';
 import '../widgets/common/section_card.dart';
 import '../widgets/common/texture_upload_field.dart';
 import '../widgets/common/editor_item_card.dart' show EditorHelperText;
+import '../widgets/editors/wall_barrier_type_field.dart';
 
 /// Per-wall editor for polygon/custom rooms — one card per wall edge.
 class CustomWallsEditorScreen extends ConsumerWidget {
@@ -158,6 +159,14 @@ class _PolygonWallFields extends ConsumerWidget {
           ),
         ],
         const Divider(height: 24),
+        WallBarrierTypeField(
+          barrierType: wall.barrierType,
+          colorHex: wall.color,
+          onBarrierTypeChanged: (type) =>
+              notifier.updateWall(wall.copyWith(barrierType: type)),
+          onColorChanged: (c) => notifier.updateWall(wall.copyWith(color: c)),
+        ),
+        if (!wall.isBarrier) ...[
         SegmentedButton<SurfaceType>(
           segments: const [
             ButtonSegment(value: SurfaceType.solidColor, label: Text('Color')),
@@ -221,6 +230,7 @@ class _PolygonWallFields extends ConsumerWidget {
             value: wall.tileWallpaper,
             onChanged: (v) => notifier.updateWall(wall.copyWith(tileWallpaper: v)),
           ),
+        ],
         ],
       ],
     );
