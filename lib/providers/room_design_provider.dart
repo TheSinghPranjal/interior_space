@@ -60,6 +60,12 @@ class RoomDesignNotifier extends StateNotifier<RoomDesign> {
 
   void setName(String name) => _mutate((r) => r.copyWith(name: name));
 
+  void setRoomType(RoomType? roomType) => _mutate(
+        (r) => roomType == null
+            ? r.copyWith(clearRoomType: true)
+            : r.copyWith(roomType: roomType),
+      );
+
   void updateDimensions(RoomDimensions dimensions) {
     _mutate((r) {
       var dims = dimensions.clamped();
