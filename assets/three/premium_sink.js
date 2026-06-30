@@ -33,7 +33,7 @@
   const CERAMIC = 0xfbfbf9, CER_E    = 0xb8b8b6;
   const CHROME  = 0xe0e4e8, CHR_E    = 0x9098a0;
   const DARK    = 0x1a1a1a, DARK_E   = 0x060606;
-  const BOWL_IN = 0xd8dce0, BOWL_E   = 0x7880888;
+  const BOWL_IN = 0xd8dce0, BOWL_E   = 0x788088;
 
   /* ══════════════════════════════════════
      COUNTER TOP with real CUT-OUT hole for basin
@@ -263,20 +263,11 @@
   /* ════════════════════════════════════════
      MAIN BUILDER
   ════════════════════════════════════════ */
-  function buildSink(renderer, item, _textureUrl) {
+  function buildSink(_roomRenderer, item, _textureUrl) {
     const fw = item.width  * FT;
     const fh = item.height * FT;
     const fd = item.depth  * FT;
     const group = new THREE.Group();
-
-    // ── HDR tone mapping on renderer ──
-    if (renderer) {
-      renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.15;
-      renderer.outputColorSpace = THREE.SRGBColorSpace;
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
-    }
 
     const cabMat = mkMat(WHITE,   WHITE_E,  0.22, 0.04, 0.20);
     const cerMat = mkMat(CERAMIC, CER_E,    0.08, 0.05, 0.22);

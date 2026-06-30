@@ -41,6 +41,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
   String? _loadError;
   String? _htmlContent;
   Timer? _apartmentSceneDebounce;
+  Map<String, dynamic>? _pendingScenePayload;
 
   @override
   void dispose() {
@@ -76,26 +77,57 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
 
   Future<bool> _pushSceneJson(String json) async {
     if (_controller == null) return false;
+    final sceneObject = jsonDecode(json) as Map<String, dynamic>;
+    _pendingScenePayload = sceneObject;
+
     try {
-      final escaped = jsonEncode(json);
+      final result = await _controller!.callAsyncJavaScript(
+        functionBody: '''
+          try {
+            if (typeof updateRoomScene !== 'function') return 'no_handler';
+            var scene = await window.flutter_inappwebview.callHandler('fetchScenePayload');
+            if (!scene) return 'error:no_scene';
+            updateRoomScene(scene);
+            return 'ok';
+          } catch (e) {
+            return 'error:' + (e.message || e);
+          }
+        ''',
+        arguments: const {},
+      );
+
+      final value = result?.value?.toString();
+      if (value == 'ok') return true;
+      if (value != null && value.startsWith('error:')) {
+        if (kDebugMode) debugPrint('Scene handler push failed: $value');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Scene handler push failed, falling back: $e');
+      }
+    } finally {
+      _pendingScenePayload = null;
+    }
+
+    try {
+      final embedded = jsonEncode(sceneObject);
       final result = await _controller!.evaluateJavascript(
         source: '''
           (function() {
             try {
-              if (typeof updateRoomScene === 'function') {
-                updateRoomScene($escaped);
-                return 'ok';
-              }
-              return 'no_handler';
+              if (typeof updateRoomScene !== 'function') return 'no_handler';
+              updateRoomScene($embedded);
+              return 'ok';
             } catch(e) {
-              return 'error:' + e.message;
+              return 'error:' + (e.message || e);
             }
           })();
         ''',
       );
 
-      if (result != null && result.toString().startsWith('error:')) {
-        if (mounted) setState(() => _loadError = result.toString());
+      final value = result?.toString();
+      if (value != null && value.startsWith('error:')) {
+        if (mounted) setState(() => _loadError = value);
         return false;
       }
       return true;
@@ -112,6 +144,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
 
   Future<void> _pushScene() async {
     if (_controller == null) return;
+    if (mounted) setState(() => _isLoading = true);
     try {
       final showLabels = ref.read(showWallDimensionLabelsProvider);
       final premium = ref.read(premiumFurnitureProvider);
@@ -137,8 +170,11 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
       }
 
       final ok = await _pushSceneJson(json);
-      if (ok && mounted) {
-        setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          if (ok) _loadError = null;
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -240,11 +276,15 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     final premiumFurniture = ref.watch(premiumFurnitureProvider);
 
     ref.listen(roomDesignProvider, (_, _) {
-      if (_isReady && !widget.apartmentMode) _pushScene();
+      final isApartment = widget.apartmentMode ||
+          ref.read(appSpaceModeProvider) == AppSpaceMode.apartment;
+      if (_isReady && !isApartment) _pushScene();
     });
 
     ref.listen(projectProvider, (_, _) {
-      if (_isReady && widget.apartmentMode) _scheduleApartmentScenePush();
+      final isApartment = widget.apartmentMode ||
+          ref.read(appSpaceModeProvider) == AppSpaceMode.apartment;
+      if (_isReady && isApartment) _scheduleApartmentScenePush();
     });
 
     ref.listen(cameraModeProvider, (_, next) {
@@ -327,6 +367,10 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
           ),
           onWebViewCreated: (controller) {
             _controller = controller;
+            controller.addJavaScriptHandler(
+              handlerName: 'fetchScenePayload',
+              callback: (args) => _pendingScenePayload,
+            );
             controller.addJavaScriptHandler(
               handlerName: 'onSceneReady',
               callback: (args) {

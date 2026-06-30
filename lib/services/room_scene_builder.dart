@@ -20,26 +20,31 @@ class ApartmentSceneBuilder {
     bool premiumFurniture = false,
   }) async {
     final layout = project.apartmentLayout;
+    final rooms = layout.placements
+        .map((p) => project.roomById(p.roomId))
+        .whereType<RoomDesign>()
+        .toList();
+
+    final sharedTextures = await _roomSceneBuilder.buildSharedTextureMap(rooms);
 
     final placementResults = await Future.wait(
       layout.placements.map((placement) async {
         final room = project.roomById(placement.roomId);
         if (room == null) return null;
 
-        final roomJson = jsonDecode(
-          await _roomSceneBuilder.buildSceneJson(
-            room,
-            showWallDimensionLabels: showWallDimensionLabels,
-            premiumFurniture: premiumFurniture,
-          ),
-        ) as Map<String, dynamic>;
+        final roomPayload = await _roomSceneBuilder.buildRoomPayload(
+          room,
+          showWallDimensionLabels: showWallDimensionLabels,
+          premiumFurniture: premiumFurniture,
+          embedTextures: false,
+        );
 
         return {
           'blueprintX': placement.blueprintX,
           'blueprintY': placement.blueprintY,
           'rotation': placement.rotation,
           'name': room.name,
-          'room': roomJson,
+          'room': roomPayload,
         };
       }),
     );
@@ -51,6 +56,7 @@ class ApartmentSceneBuilder {
       'performanceMode': true,
       'showWallDimensionLabels': showWallDimensionLabels,
       'premiumFurniture': premiumFurniture,
+      if (sharedTextures.isNotEmpty) 'sharedTextures': sharedTextures,
       'apartment': {
         'width': layout.widthFt,
         'length': layout.lengthFt,
@@ -77,30 +83,77 @@ class RoomSceneBuilder {
       'design': design.toJson(),
       'showWallDimensionLabels': showWallDimensionLabels,
       'premiumFurniture': premiumFurniture,
+      'embedTextures': true,
     });
     final cached = _sceneCache[cacheKey];
     if (cached != null) return cached;
 
-    final json = await _buildSceneJson(
+    final payload = await buildRoomPayload(
       design,
       showWallDimensionLabels: showWallDimensionLabels,
       premiumFurniture: premiumFurniture,
+      embedTextures: true,
     );
+    final json = jsonEncode(payload);
     _sceneCache[cacheKey] = json;
     return json;
   }
 
-  Future<String> _buildSceneJson(
+  Future<Map<String, String>> buildSharedTextureMap(
+    Iterable<RoomDesign> rooms,
+  ) async {
+    final paths = <String>{};
+
+    void collect(String? path) {
+      if (path != null && path.isNotEmpty) paths.add(path);
+    }
+
+    for (final room in rooms) {
+      collect(room.floor.texturePath);
+      collect(room.ceiling.texturePath);
+      for (final wall in room.walls) {
+        collect(wall.wallpaperPath);
+      }
+      for (final door in room.doors) {
+        collect(door.texturePath);
+      }
+      for (final unit in room.acUnits) {
+        collect(unit.texturePath);
+      }
+      for (final unit in room.wallTvUnits) {
+        collect(unit.texturePath);
+      }
+      for (final item in room.furniture) {
+        collect(item.texturePath);
+      }
+    }
+
+    final shared = <String, String>{};
+    for (final path in paths) {
+      final dataUrl = await _textureService.resolveTextureDataUrl(path);
+      if (dataUrl != null) {
+        shared[path] = dataUrl;
+      }
+    }
+    return shared;
+  }
+
+  Future<Map<String, dynamic>> buildRoomPayload(
     RoomDesign design, {
     bool showWallDimensionLabels = true,
     bool premiumFurniture = false,
+    bool embedTextures = true,
   }) async {
+    Future<String?> textureUrl(String? path) async {
+      if (!embedTextures) return null;
+      return _textureService.resolveTextureDataUrl(path);
+    }
+
     final walls = <Map<String, dynamic>>[];
     for (final wall in design.walls) {
       walls.add({
         ...wall.toJson(),
-        'textureDataUrl':
-            await _textureService.resolveTextureDataUrl(wall.wallpaperPath),
+        'textureDataUrl': await textureUrl(wall.wallpaperPath),
       });
     }
 
@@ -108,8 +161,7 @@ class RoomSceneBuilder {
     for (final door in design.doors) {
       doors.add({
         ...door.toJson(),
-        'textureDataUrl':
-            await _textureService.resolveTextureDataUrl(door.texturePath),
+        'textureDataUrl': await textureUrl(door.texturePath),
       });
     }
 
@@ -117,8 +169,7 @@ class RoomSceneBuilder {
     for (final unit in design.acUnits) {
       acUnits.add({
         ...unit.toJson(),
-        'textureDataUrl':
-            await _textureService.resolveTextureDataUrl(unit.texturePath),
+        'textureDataUrl': await textureUrl(unit.texturePath),
       });
     }
 
@@ -136,12 +187,11 @@ class RoomSceneBuilder {
     for (final unit in design.wallTvUnits) {
       wallTvUnits.add({
         ...unit.toJson(),
-        'textureDataUrl':
-            await _textureService.resolveTextureDataUrl(unit.texturePath),
+        'textureDataUrl': await textureUrl(unit.texturePath),
       });
     }
 
-    final scene = {
+    return {
       'mode': 'single',
       'showWallDimensionLabels': showWallDimensionLabels,
       'premiumFurniture': premiumFurniture,
@@ -166,14 +216,11 @@ class RoomSceneBuilder {
       'walls': walls,
       'floor': {
         ...design.floor.toJson(),
-        'textureDataUrl':
-            await _textureService.resolveTextureDataUrl(design.floor.texturePath),
+        'textureDataUrl': await textureUrl(design.floor.texturePath),
       },
       'ceiling': {
         ...design.ceiling.toJson(),
-        'textureDataUrl': await _textureService.resolveTextureDataUrl(
-          design.ceiling.texturePath,
-        ),
+        'textureDataUrl': await textureUrl(design.ceiling.texturePath),
       },
       'doors': doors,
       'windows': design.windows.map((w) => w.toJson()).toList(),
@@ -187,14 +234,11 @@ class RoomSceneBuilder {
         design.furniture.map((f) async {
           return {
             ...f.toJson(),
-            'textureDataUrl':
-                await _textureService.resolveTextureDataUrl(f.texturePath),
+            'textureDataUrl': await textureUrl(f.texturePath),
           };
         }),
       ),
     };
-
-    return jsonEncode(scene);
   }
 }
 

@@ -162,6 +162,7 @@
       this.clock = new THREE.Clock();
       this.config = null;
       this.roomSize = { w: 0, l: 0, h: 0 };
+      this._apartmentPremium = false;
 
       this._bindEvents();
       this._animate();
@@ -223,6 +224,7 @@
         this._materialCache.clear();
         textureCache.clear();
         this._clearRoom();
+        this._apartmentPremium = false;
         this._applyPerformanceSettings();
         if (this.config.mode === 'apartment') {
           this._buildApartment();
@@ -386,6 +388,49 @@
       });
     }
 
+    _resolveTextureUrl(inlineUrl, texturePath) {
+      if (inlineUrl) return inlineUrl;
+      const shared = this.config && this.config.sharedTextures;
+      if (shared && texturePath && shared[texturePath]) return shared[texturePath];
+      return null;
+    }
+
+    _isPremiumFurniture() {
+      return !!(this._apartmentPremium || (this.config && this.config.premiumFurniture));
+    }
+
+    _hasDedicatedPremiumBuilder(type) {
+      return [
+        'bed', 'chair', 'table', 'diningTable', 'flowerPot',
+        'storageUnit', 'fridge', 'washingMachine', 'shoeRack',
+        'sink', 'kitchenChimney',
+      ].indexOf(type) >= 0;
+    }
+
+    _applyPremiumFurnitureFinish(group) {
+      group.traverse((child) => {
+        if (!child.isMesh || !child.material) return;
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        mats.forEach((mat) => {
+          if (!mat) return;
+          if (typeof mat.roughness === 'number') {
+            mat.roughness = Math.max(0.08, mat.roughness * 0.82);
+          }
+          if (typeof mat.metalness === 'number') {
+            mat.metalness = Math.min(1, mat.metalness + 0.12);
+          }
+          if ('envMapIntensity' in mat) {
+            mat.envMapIntensity = Math.max(mat.envMapIntensity || 1, 2.0);
+          }
+          if ('clearcoat' in mat && mat.clearcoat < 0.5) {
+            mat.clearcoat = 0.35;
+            mat.clearcoatRoughness = 0.12;
+          }
+          mat.needsUpdate = true;
+        });
+      });
+    }
+
     _addSceneLights() {
       const ambient = new THREE.AmbientLight(0xffffff, 0.45);
       this.scene.add(ambient);
@@ -409,10 +454,20 @@
       const savedWallMeshes = this.wallMeshes;
       const savedConfig = this.config;
       const lightweight = opts.lightweight || false;
+      const premiumFurniture = opts.premiumFurniture === true ||
+        cfg.premiumFurniture === true ||
+        this._apartmentPremium;
+
+      const sharedTextures = (savedConfig && savedConfig.sharedTextures) ||
+        cfg.sharedTextures ||
+        null;
 
       this.roomGroup = targetGroup;
       this.wallMeshes = {};
-      this.config = cfg;
+      this.config = Object.assign({}, cfg, {
+        premiumFurniture: premiumFurniture,
+        sharedTextures: sharedTextures,
+      });
 
       const layout = this._resolveRoomLayout(cfg);
       const { w, l, h } = layout;
@@ -496,7 +551,7 @@
       const matProps = this._materialProps(floor.material);
       const mat = this._makeMaterial(
         floor.color, matProps.roughness, matProps.metalness,
-        floor.textureDataUrl, null, 2, 2
+        this._resolveTextureUrl(floor.textureDataUrl, floor.texturePath), null, 2, 2
       );
       const mesh = new THREE.Mesh(geo, mat);
       mesh.receiveShadow = true;
@@ -513,7 +568,7 @@
       const matProps = this._ceilingMaterialProps(ceiling.material);
       const mat = this._makeMaterial(
         ceiling.color, matProps.roughness, matProps.metalness,
-        ceiling.textureDataUrl, null, 2, 2
+        this._resolveTextureUrl(ceiling.textureDataUrl, ceiling.texturePath), null, 2, 2
       );
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.y = h;
@@ -533,7 +588,9 @@
         if (!wallCfg) continue;
         const id = `wall_${wallCfg.wallIndex != null ? wallCfg.wallIndex : i}`;
         const procType = wallCfg.surfaceType === 'texture' ? wallCfg.texture : null;
-        const texUrl = wallCfg.surfaceType === 'wallpaper' ? wallCfg.textureDataUrl : null;
+        const texUrl = wallCfg.surfaceType === 'wallpaper'
+          ? this._resolveTextureUrl(wallCfg.textureDataUrl, wallCfg.wallpaperPath)
+          : null;
         const sizeXFt = len / FT;
         const sizeYFt = h / FT;
         const { repeatX, repeatY, clamp } = this._wallTextureRepeat(wallCfg, sizeXFt * (this._wallVisibility(wallCfg).fraction), sizeYFt);
@@ -624,6 +681,7 @@
       const aptL = apt.length * FT;
       let maxH = 3 * FT;
 
+      this._apartmentPremium = !!this.config.premiumFurniture;
       this._addSceneLights();
 
       const baseMat = new THREE.MeshStandardMaterial({
@@ -642,20 +700,29 @@
       this.roomGroup.add(gridHelper);
 
       const lightweight = this.config.performanceMode !== false;
+      const placements = this.config.placements || [];
 
-      (this.config.placements || []).forEach((placement) => {
-        const cfg = placement.room;
-        if (!cfg || !cfg.room) return;
+      placements.forEach((placement, index) => {
+        try {
+          const cfg = placement.room;
+          if (!cfg || !cfg.room) return;
 
-        const subGroup = new THREE.Group();
-        const dims = this._buildRoomContents(cfg, subGroup, { lightweight });
-        maxH = Math.max(maxH, dims.h);
+          const subGroup = new THREE.Group();
+          subGroup.name = placement.name || ('Room_' + (index + 1));
+          const dims = this._buildRoomContents(cfg, subGroup, {
+            lightweight: lightweight,
+            premiumFurniture: this._apartmentPremium,
+          });
+          maxH = Math.max(maxH, dims.h);
 
-        const wx = (placement.blueprintX - 0.5) * aptW;
-        const wz = (placement.blueprintY - 0.5) * aptL;
-        subGroup.position.set(wx, 0, wz);
-        subGroup.rotation.y = (placement.rotation || 0) * Math.PI / 180;
-        this.roomGroup.add(subGroup);
+          const wx = (placement.blueprintX - 0.5) * aptW;
+          const wz = (placement.blueprintY - 0.5) * aptL;
+          subGroup.position.set(wx, 0, wz);
+          subGroup.rotation.y = (placement.rotation || 0) * Math.PI / 180;
+          this.roomGroup.add(subGroup);
+        } catch (err) {
+          console.error('Apartment room build failed for placement', index, placement && placement.name, err);
+        }
       });
 
       this.roomSize = { w: aptW, l: aptL, h: maxH };
@@ -663,7 +730,9 @@
     }
 
     _wallTextureRepeat(wallCfg, sizeXFt, sizeYFt) {
-      if (wallCfg.surfaceType === 'wallpaper' && wallCfg.textureDataUrl && !wallCfg.tileWallpaper) {
+      if (wallCfg.surfaceType === 'wallpaper' &&
+          (wallCfg.textureDataUrl || wallCfg.wallpaperPath) &&
+          !wallCfg.tileWallpaper) {
         return { repeatX: 1, repeatY: 1, clamp: true };
       }
       return { repeatX: sizeXFt, repeatY: sizeYFt, clamp: false };
@@ -788,7 +857,7 @@
       const matProps = this._materialProps(floor.material);
       const mat = this._makeMaterial(
         floor.color, matProps.roughness, matProps.metalness,
-        floor.textureDataUrl, null, w / (floor.tileWidth * FT), l / (floor.tileLength * FT)
+        this._resolveTextureUrl(floor.textureDataUrl, floor.texturePath), null, w / (floor.tileWidth * FT), l / (floor.tileLength * FT)
       );
       const mesh = new THREE.Mesh(geo, mat);
       mesh.rotation.x = -Math.PI / 2;
@@ -801,7 +870,7 @@
       const matProps = this._ceilingMaterialProps(ceiling.material);
       const mat = this._makeMaterial(
         ceiling.color, matProps.roughness, matProps.metalness,
-        ceiling.textureDataUrl, null, 2, 2
+        this._resolveTextureUrl(ceiling.textureDataUrl, ceiling.texturePath), null, 2, 2
       );
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.y = h;
@@ -846,7 +915,9 @@
         if (!wallCfg) return;
 
         const procType = wallCfg.surfaceType === 'texture' ? wallCfg.texture : null;
-        const texUrl = wallCfg.surfaceType === 'wallpaper' ? wallCfg.textureDataUrl : null;
+        const texUrl = wallCfg.surfaceType === 'wallpaper'
+          ? this._resolveTextureUrl(wallCfg.textureDataUrl, wallCfg.wallpaperPath)
+          : null;
         const sizeXFt = def.size[0] / FT;
         const sizeYFt = def.size[1] / FT;
         const { repeatX, repeatY, clamp } = this._wallTextureRepeat(wallCfg, sizeXFt, sizeYFt);
@@ -901,6 +972,7 @@
     }
 
     _buildDoorMaterial(door, repeatX, repeatY) {
+      const doorTex = this._resolveTextureUrl(door.textureDataUrl, door.texturePath);
       const props = this._doorMaterialProps(door.material);
       const color = hexColor(door.color);
 
@@ -914,8 +986,8 @@
           side: THREE.DoubleSide,
           depthWrite: false,
         });
-        if (door.textureDataUrl) {
-          loadTexture(door.textureDataUrl, repeatX, repeatY, (tex) => {
+        if (doorTex) {
+          loadTexture(doorTex, repeatX, repeatY, (tex) => {
             if (tex) {
               mat.map = tex;
               mat.needsUpdate = true;
@@ -925,12 +997,12 @@
         return mat;
       }
 
-      const proc = door.textureDataUrl ? null : props.proc;
+      const proc = doorTex ? null : props.proc;
       return this._makeMaterial(
         door.color,
         props.roughness,
         props.metalness,
-        door.textureDataUrl,
+        doorTex,
         proc,
         repeatX,
         repeatY
@@ -1041,7 +1113,7 @@
         const depth = 0.22;
         const group = new THREE.Group();
 
-        const bodyMat = this._makeMaterial(unit.color, 0.35, 0.12, unit.textureDataUrl, 'wood', 1, 1);
+        const bodyMat = this._makeMaterial(unit.color, 0.35, 0.12, this._resolveTextureUrl(unit.textureDataUrl, unit.texturePath), 'wood', 1, 1);
         const trimMat = new THREE.MeshStandardMaterial({
           color: new THREE.Color(hexColor(unit.color)).multiplyScalar(0.88),
           roughness: 0.4,
@@ -1149,7 +1221,7 @@
         const uw = unit.width * FT;
         const uh = unit.height * FT;
         const group = new THREE.Group();
-        const bodyMat = this._makeMaterial(unit.color, 0.5, 0.1, unit.textureDataUrl, unit.textureDataUrl ? null : 'wood', 1, 1);
+        const bodyMat = this._makeMaterial(unit.color, 0.5, 0.1, this._resolveTextureUrl(unit.textureDataUrl, unit.texturePath), this._resolveTextureUrl(unit.textureDataUrl, unit.texturePath) ? null : 'wood', 1, 1);
 
         const body = new THREE.Mesh(new THREE.BoxGeometry(uw, uh, 0.08), bodyMat);
         body.position.z = 0.04;
@@ -1250,7 +1322,8 @@
 
     _buildFurniture(furniture, w, l) {
       furniture.forEach((item) => {
-        const tex = item.textureDataUrl || null;
+        try {
+        const tex = this._resolveTextureUrl(item.textureDataUrl, item.texturePath);
         let group;
 
         switch (item.type) {
@@ -1318,12 +1391,18 @@
         const y = (item.heightFromFloor || 0) * FT;
         group.position.set(x, y, z);
         group.rotation.y = -(item.rotation || 0) * Math.PI / 180;
+        if (this._isPremiumFurniture() && !this._hasDedicatedPremiumBuilder(item.type)) {
+          this._applyPremiumFurnitureFinish(group);
+        }
         this.roomGroup.add(group);
+        } catch (err) {
+          console.error('Furniture build failed:', item.type, item.id, err);
+        }
       });
     }
 
     _buildBedGroup(item, textureUrl) {
-      if (this.config && this.config.premiumFurniture) {
+      if (this._isPremiumFurniture()) {
         return PremiumBedBuilder.build(this, item, textureUrl);
       }
       return this._buildStandardBedGroup(item, textureUrl);
@@ -1391,7 +1470,7 @@
     }
 
     _buildSinkGroup(item, textureUrl) {
-      if (this.config && this.config.premiumFurniture) {
+      if (this._isPremiumFurniture()) {
         return PremiumSinkBuilder.build(this, item, textureUrl);
       }
       return this._buildStandardSinkGroup(item, textureUrl);
@@ -1563,7 +1642,7 @@
     }
 
     _buildWashingMachineGroup(item, textureUrl) {
-      if (this.config && this.config.premiumFurniture) {
+      if (this._isPremiumFurniture()) {
         return PremiumWashingMachineBuilder.build(this, item, textureUrl);
       }
       return this._buildStandardWashingMachineGroup(item, textureUrl);
@@ -1810,7 +1889,7 @@
     }
 
     _buildFlowerPotGroup(item, textureUrl) {
-      if (this.config && this.config.premiumFurniture) {
+      if (this._isPremiumFurniture()) {
         return PremiumFlowerPotBuilder.build(this, item, textureUrl);
       }
       return this._buildStandardFlowerPotGroup(item, textureUrl);
@@ -1936,7 +2015,7 @@
     }
 
     _buildFridgeGroup(item, textureUrl) {
-      if (this.config && this.config.premiumFurniture) {
+      if (this._isPremiumFurniture()) {
         return PremiumFridgeBuilder.build(this, item, textureUrl);
       }
       return this._buildStandardFridgeGroup(item, textureUrl);
@@ -2040,7 +2119,7 @@
     }
 
     _buildShoeRackGroup(item, textureUrl) {
-      if (this.config && this.config.premiumFurniture) {
+      if (this._isPremiumFurniture()) {
         return PremiumShoeRackBuilder.build(this, item, textureUrl);
       }
       return this._buildStandardShoeRackGroup(item, textureUrl);
@@ -2291,7 +2370,7 @@
 
     _furniturePresetMaterial(item) {
       const preset = item.materialPreset || 'wood';
-      const tex = item.textureDataUrl || null;
+      const tex = this._resolveTextureUrl(item.textureDataUrl, item.texturePath);
       const color = item.color;
       switch (preset) {
         case 'whiteMatte':
@@ -2317,7 +2396,7 @@
     }
 
     _buildDiningTableGroup(item) {
-      if (this.config && this.config.premiumFurniture) {
+      if (this._isPremiumFurniture()) {
         return PremiumDiningTableBuilder.build(this, item);
       }
       return this._buildStandardDiningTableGroup(item);
@@ -2328,7 +2407,7 @@
       const fd = item.depth * FT;
       const tableH = item.height * FT;
       const isRound = item.variant === 'round';
-      const tex = item.textureDataUrl || null;
+      const tex = this._resolveTextureUrl(item.textureDataUrl, item.texturePath);
       const group = new THREE.Group();
       const topMat = this._makeMaterial(item.color, 0.52, 0.08, tex, 'wood', 1, 1);
       const legMat = this._makeMaterial(item.color, 0.58, 0.1, null, 'wood', 1, 1);
@@ -2367,7 +2446,7 @@
     }
 
     _buildStorageUnitGroup(item) {
-      if (this.config && this.config.premiumFurniture) {
+      if (this._isPremiumFurniture()) {
         return PremiumStorageUnitBuilder.build(this, item);
       }
       return this._buildStandardStorageUnitGroup(item);
@@ -2472,7 +2551,7 @@
     }
 
     _buildKitchenChimneyGroup(item) {
-      if (this.config && this.config.premiumFurniture) {
+      if (this._isPremiumFurniture()) {
         return PremiumChimneyBuilder.build(this, item);
       }
       return this._buildStandardKitchenChimneyGroup(item);
@@ -2578,7 +2657,7 @@
     }
 
     _buildTableGroup(item, textureUrl) {
-      if (this.config && this.config.premiumFurniture) {
+      if (this._isPremiumFurniture()) {
         return PremiumTableBuilder.build(this, item, textureUrl);
       }
       return this._buildStandardTableGroup(item, textureUrl);
@@ -2607,7 +2686,7 @@
     }
 
     _buildChairGroup(item, textureUrl) {
-      if (this.config && this.config.premiumFurniture) {
+      if (this._isPremiumFurniture()) {
         return PremiumChairBuilder.build(this, item, textureUrl);
       }
       return this._buildStandardChairGroup(item, textureUrl);
