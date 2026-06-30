@@ -62,12 +62,7 @@ class ApartmentSpaceView extends ConsumerWidget {
                             : constraints.maxHeight * 0.55,
                       ),
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.lg,
-                          AppSpacing.md,
-                          AppSpacing.lg,
-                          AppSpacing.sm,
-                        ),
+                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                         child: _ApartmentHeaderPanel(
                           layout: layout,
                           rooms: rooms,
@@ -165,116 +160,127 @@ class _ApartmentHeaderPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
-        border: Border(
-          bottom: BorderSide(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
-          ),
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!compact)
-            Row(
-              children: [
-                Icon(Icons.apartment, size: 18, color: theme.colorScheme.primary),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.55)),
+          boxShadow: AppSpacing.cardShadow(context),
+        ),
+        child: Padding(
+          padding: AppSpacing.cardPadding,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!compact)
+                Row(
+                  children: [
+                    Icon(Icons.apartment, size: 18, color: theme.colorScheme.primary),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        'Arrange rooms on the floor plan. Switch to Interior Space to edit a room.',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              if (!compact) const SizedBox(height: AppSpacing.sm),
+              Text('Your Rooms — ${layout.name}', style: theme.textTheme.titleMedium),
+              const SizedBox(height: AppSpacing.sm),
+              SizedBox(
+                height: compact ? 40 : 48,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: rooms.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+                  itemBuilder: (context, index) {
+                    final room = rooms[index];
+                    final onBlueprint =
+                        layout.placements.where((p) => p.roomId == room.id).length;
+                    return Container(
+                      padding: const EdgeInsets.only(right: 4),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: onBlueprint > 0
+                              ? theme.colorScheme.primary.withValues(alpha: 0.5)
+                              : theme.colorScheme.outline.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: compact ? 6 : 8,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.meeting_room,
+                                  size: 14,
+                                  color: theme.colorScheme.primary,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(room.name, style: theme.textTheme.labelMedium),
+                                if (onBlueprint > 0) ...[
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '($onBlueprint)',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.add_circle_outline, size: 20),
+                            tooltip: 'Add to blueprint',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => onAddRoom(room.id),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              if (layout.placements.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.xs),
                   child: Text(
-                    'Arrange rooms on the floor plan. Switch to Interior Space to edit a room.',
+                    '${layout.placements.length} room(s) on blueprint • Long-press to move • Select all to move together',
                     style: theme.textTheme.bodySmall,
                   ),
                 ),
-              ],
-            ),
-          if (!compact) const SizedBox(height: 10),
-          Text('Your Rooms — ${layout.name}', style: theme.textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.sm),
-          SizedBox(
-            height: compact ? 40 : 48,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: rooms.length,
-              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
-              itemBuilder: (context, index) {
-                final room = rooms[index];
-                final onBlueprint =
-                    layout.placements.where((p) => p.roomId == room.id).length;
-                return Container(
-                  padding: const EdgeInsets.only(right: 4),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: onBlueprint > 0
-                          ? theme.colorScheme.primary.withValues(alpha: 0.5)
-                          : theme.colorScheme.outline.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: compact ? 6 : 8,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.meeting_room,
-                              size: 14,
-                              color: theme.colorScheme.primary,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(room.name, style: theme.textTheme.labelMedium),
-                            if (onBlueprint > 0) ...[
-                              const SizedBox(width: 4),
-                              Text(
-                                '($onBlueprint)',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: theme.colorScheme.primary,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle_outline, size: 20),
-                        tooltip: 'Add to blueprint',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () => onAddRoom(room.id),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-          if (layout.placements.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.xs),
-              child: Text(
-                '${layout.placements.length} room(s) on blueprint • Long-press to move • Select all to move together',
-                style: theme.textTheme.bodySmall,
+              Padding(
+                padding: EdgeInsets.only(top: compact ? AppSpacing.sm : AppSpacing.md),
+                child: const Divider(height: 1),
               ),
-            ),
-          SizedBox(height: compact ? AppSpacing.sm : 12),
-          _ApartmentSizeControls(
-            layout: layout,
-            compact: compact,
-            canUndo: canUndo,
-            canRedo: canRedo,
-            onUndo: onUndo,
-            onRedo: onRedo,
+              SizedBox(height: compact ? AppSpacing.sm : AppSpacing.md - 4),
+              _ApartmentSizeControls(
+                layout: layout,
+                compact: compact,
+                canUndo: canUndo,
+                canRedo: canRedo,
+                onUndo: onUndo,
+                onRedo: onRedo,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
