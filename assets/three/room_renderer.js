@@ -1571,7 +1571,14 @@
         const tex = this._resolveTextureUrl(item.textureDataUrl, item.texturePath);
         let group;
 
-        switch (item.type) {
+        if (item.premiumCatalogId && typeof PremiumCatalogBuilder !== 'undefined') {
+          group = PremiumCatalogBuilder.build(this, item, tex);
+          if (!group) {
+            console.warn('Premium catalog build returned null:', item.premiumCatalogId);
+          }
+        }
+
+        if (!group) switch (item.type) {
           case 'bed':
             group = this._buildBedGroup(item, tex);
             break;
