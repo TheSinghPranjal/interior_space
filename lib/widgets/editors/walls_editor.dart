@@ -12,6 +12,7 @@ import '../common/editor_item_card.dart';
 import '../common/dimension_slider.dart';
 import '../common/section_card.dart';
 import '../common/texture_upload_field.dart';
+import 'wall_barrier_type_field.dart';
 
 class WallsEditor extends ConsumerWidget {
   const WallsEditor({super.key});
@@ -209,7 +210,15 @@ class _WallEditorCard extends ConsumerWidget {
               ),
             ],
             const Divider(height: 24),
+            WallBarrierTypeField(
+              barrierType: wall.barrierType,
+              colorHex: wall.color,
+              onBarrierTypeChanged: (type) =>
+                  notifier.updateWall(wall.copyWith(barrierType: type)),
+              onColorChanged: (c) => notifier.updateWall(wall.copyWith(color: c)),
+            ),
           ],
+          if (!wall.isBarrier) ...[
           SegmentedButton<SurfaceType>(
             segments: const [
               ButtonSegment(value: SurfaceType.solidColor, label: Text('Color')),
@@ -281,6 +290,7 @@ class _WallEditorCard extends ConsumerWidget {
               value: wall.tileWallpaper,
               onChanged: (v) => notifier.updateWall(wall.copyWith(tileWallpaper: v)),
             ),
+          ],
           ],
         ],
       ),
