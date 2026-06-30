@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/utils/blueprint_viewport_fit.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/blueprint_placement.dart';
 import '../../core/utils/blueprint_wall_border_paint.dart';
@@ -20,7 +21,10 @@ import '../../models/window_config.dart';
 import '../../providers/room_design_provider.dart';
 
 class BlueprintCanvas extends ConsumerStatefulWidget {
-  const BlueprintCanvas({super.key});
+  const BlueprintCanvas({super.key, this.immersive = false});
+
+  /// When true, fills the viewport (e.g. full screen) and auto-fits the room.
+  final bool immersive;
 
   @override
   ConsumerState<BlueprintCanvas> createState() => _BlueprintCanvasState();
@@ -28,6 +32,9 @@ class BlueprintCanvas extends ConsumerStatefulWidget {
 
 class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
   static const _holdDuration = Duration(milliseconds: 420);
+
+  TransformationController? _transformController;
+  Size? _lastFitViewport;
 
   String? _selectedId;
   String? _selectedType;
@@ -42,9 +49,47 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
   double? _tempPositionFromEdge;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.immersive) {
+      _transformController = TransformationController();
+    }
+  }
+
+  @override
   void dispose() {
     _holdTimer?.cancel();
+    _transformController?.dispose();
     super.dispose();
+  }
+
+  void _scheduleViewportFit(Size viewport, Rect contentRect) {
+    if (!widget.immersive || _transformController == null) return;
+    if (_lastFitViewport == viewport) return;
+    _lastFitViewport = viewport;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      BlueprintViewportFit.apply(
+        _transformController!,
+        viewport,
+        contentRect,
+        margin: 12,
+      );
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant BlueprintCanvas oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.immersive != widget.immersive) {
+      _lastFitViewport = null;
+      if (widget.immersive && _transformController == null) {
+        _transformController = TransformationController();
+      } else if (!widget.immersive) {
+        _transformController?.dispose();
+        _transformController = null;
+      }
+    }
   }
 
   bool _selectionValid(RoomDesign design) {
@@ -89,7 +134,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final padding = 32.0;
+        final padding = widget.immersive ? 12.0 : 32.0;
         final availW = constraints.maxWidth - padding * 2;
         final availH = constraints.maxHeight - padding * 2;
         final scale = math.min(
@@ -101,11 +146,18 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
         final offsetX = (constraints.maxWidth - roomW) / 2;
         final offsetY = (constraints.maxHeight - roomH) / 2;
         final roomRect = Rect.fromLTWH(offsetX, offsetY, roomW, roomH);
+        final viewport = Size(constraints.maxWidth, constraints.maxHeight);
+        if (widget.immersive) {
+          _scheduleViewportFit(viewport, roomRect);
+        }
 
         return InteractiveViewer(
-          minScale: 0.5,
-          maxScale: 4.0,
-          boundaryMargin: const EdgeInsets.all(120),
+          transformationController: _transformController,
+          minScale: 0.35,
+          maxScale: 6.0,
+          boundaryMargin: widget.immersive
+              ? EdgeInsets.zero
+              : const EdgeInsets.all(120),
           panEnabled: !_isDragging,
           scaleEnabled: !_isDragging,
           child: SizedBox(
