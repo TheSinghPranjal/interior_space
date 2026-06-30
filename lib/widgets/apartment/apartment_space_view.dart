@@ -7,6 +7,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/apartment_layout.dart';
 import '../../models/room_design.dart';
+import '../../screens/fullscreen_blueprint_screen.dart';
 import '../../providers/apartment_blueprint_selection_provider.dart';
 import '../../providers/apartment_placement_history_provider.dart';
 import '../../providers/project_provider.dart';
@@ -111,6 +112,10 @@ class ApartmentSpaceView extends ConsumerWidget {
                           canRedo: history.canRedo,
                           onUndo: undoMove,
                           onRedo: redoMove,
+                          onFullscreen: () => FullscreenBlueprintScreen.open(
+                            context,
+                            mode: FullscreenBlueprintMode.apartment,
+                          ),
                           selectedCount: selectedPlacementIds.length,
                           allSelected: layout.placements.isNotEmpty &&
                               selectedPlacementIds.length == layout.placements.length,
@@ -470,6 +475,7 @@ class _ApartmentBlueprintToolbar extends StatelessWidget {
     required this.canRedo,
     required this.onUndo,
     required this.onRedo,
+    required this.onFullscreen,
     required this.selectedCount,
     required this.allSelected,
     required this.onSelectAll,
@@ -479,6 +485,7 @@ class _ApartmentBlueprintToolbar extends StatelessWidget {
   final bool canRedo;
   final VoidCallback onUndo;
   final VoidCallback onRedo;
+  final VoidCallback onFullscreen;
   final int selectedCount;
   final bool allSelected;
   final VoidCallback? onSelectAll;
@@ -492,6 +499,12 @@ class _ApartmentBlueprintToolbar extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.fullscreen),
+          tooltip: 'Full screen blueprint',
+          onPressed: onFullscreen,
+        ),
         IconButton(
           visualDensity: VisualDensity.compact,
           icon: Icon(
