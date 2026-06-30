@@ -54,22 +54,22 @@ enum CameraMode {
 }
 
 enum FurnitureType {
-  bed,
-  sofa,
-  table,
-  diningTable,
-  tvUnit,
-  chair,
-  wardrobe,
-  storageUnit,
-  kitchenChimney,
-  sink,
-  toilet,
-  washingMachine,
   bathtub,
+  bed,
+  chair,
+  diningTable,
   flowerPot,
   fridge,
+  kitchenChimney,
   shoeRack,
+  sink,
+  sofa,
+  storageUnit,
+  table,
+  tvUnit,
+  wardrobe,
+  washingMachine,
+  toilet,
 }
 
 enum DiningTableShape { rectangular, round }
