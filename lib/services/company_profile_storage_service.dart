@@ -53,6 +53,9 @@ class CompanyProfileStorageService {
       );
       if (picked == null) return null;
 
+      final bytes = await picked.readAsBytes();
+      if (bytes.isEmpty) return null;
+
       final dir = await getApplicationDocumentsDirectory();
       final imageDir = Directory('${dir.path}/$_imageDirName');
       if (!await imageDir.exists()) {
@@ -63,7 +66,7 @@ class CompanyProfileStorageService {
       final safeExt = ['jpg', 'jpeg', 'png', 'webp'].contains(ext) ? ext : 'jpg';
       final fileName = '${prefix}_${DateTime.now().millisecondsSinceEpoch}.$safeExt';
       final saved = File('${imageDir.path}/$fileName');
-      await File(picked.path).copy(saved.path);
+      await saved.writeAsBytes(bytes, flush: true);
       return saved.path;
     } catch (e) {
       debugPrint('Company image pick error: $e');
