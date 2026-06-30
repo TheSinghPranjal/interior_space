@@ -1,5 +1,6 @@
 import '../core/utils/blueprint_placement.dart';
 import 'enums.dart';
+import 'premium_catalog_item.dart';
 import 'room_dimensions.dart';
 
 class FurnitureItem {
@@ -19,6 +20,7 @@ class FurnitureItem {
     this.variant,
     this.materialPreset,
     this.heightFromFloor = 0,
+    this.premiumCatalogId,
   });
 
   final String id;
@@ -39,6 +41,11 @@ class FurnitureItem {
   final String? materialPreset;
   /// Bottom edge height above floor (ft). Used by storage units and chimneys.
   final double heightFromFloor;
+  /// Premium catalog entry id — separate from standard furniture chips.
+  final String? premiumCatalogId;
+
+  bool get isPremiumCatalogItem =>
+      premiumCatalogId != null && premiumCatalogId!.isNotEmpty;
 
   bool get supportsHeightFromFloor =>
       type == FurnitureType.storageUnit || type == FurnitureType.kitchenChimney;
@@ -102,7 +109,17 @@ class FurnitureItem {
 
   /// Blueprint/editor label — "Bed" alone, or "Bed 1", "Bed 2" when multiples exist.
   static String displayLabel(List<FurnitureItem> furniture, FurnitureItem item) {
-    final sameType = furniture.where((f) => f.type == item.type).toList();
+    final catalog = premiumCatalogByIdKey(item.premiumCatalogId);
+    if (catalog != null) {
+      final sameCatalog = furniture
+          .where((f) => f.premiumCatalogId == item.premiumCatalogId)
+          .toList();
+      if (sameCatalog.length <= 1) return catalog.name;
+      final index = sameCatalog.indexWhere((f) => f.id == item.id);
+      if (index < 0) return catalog.name;
+      return '${catalog.name} ${index + 1}';
+    }
+    final sameType = furniture.where((f) => f.type == item.type && !f.isPremiumCatalogItem).toList();
     if (sameType.length <= 1) return item.type.label;
     final index = sameType.indexWhere((f) => f.id == item.id);
     if (index < 0) return item.type.label;
@@ -165,6 +182,8 @@ class FurnitureItem {
     bool clearVariant = false,
     bool clearMaterialPreset = false,
     double? heightFromFloor,
+    String? premiumCatalogId,
+    bool clearPremiumCatalogId = false,
   }) {
     return FurnitureItem(
       id: id,
@@ -182,6 +201,35 @@ class FurnitureItem {
       variant: clearVariant ? null : (variant ?? this.variant),
       materialPreset: clearMaterialPreset ? null : (materialPreset ?? this.materialPreset),
       heightFromFloor: heightFromFloor ?? this.heightFromFloor,
+      premiumCatalogId:
+          clearPremiumCatalogId ? null : (premiumCatalogId ?? this.premiumCatalogId),
+    );
+  }
+
+  static FurnitureItem fromPremiumCatalog(
+    PremiumCatalogDefinition catalog,
+    String id, {
+    int index = 0,
+    RoomDimensions? dimensions,
+  }) {
+    final base = FurnitureItem(
+      id: id,
+      type: catalog.baseType,
+      width: catalog.width,
+      height: catalog.height,
+      depth: catalog.depth,
+      color: catalog.color,
+      premiumCatalogId: catalog.idKey,
+    );
+    if (dimensions == null) return base;
+    final cols = 3;
+    final row = index ~/ cols;
+    final col = index % cols;
+    final bx = 0.22 + col * 0.28;
+    final by = 0.28 + row * 0.22;
+    return base.copyWith(
+      blueprintX: bx.clamp(0.12, 0.88),
+      blueprintY: by.clamp(0.12, 0.88),
     );
   }
 
@@ -364,6 +412,7 @@ class FurnitureItem {
         'variant': variant,
         'materialPreset': materialPreset,
         'heightFromFloor': heightFromFloor,
+        'premiumCatalogId': premiumCatalogId,
       };
 
   factory FurnitureItem.fromJson(Map<String, dynamic> json) {
@@ -391,6 +440,7 @@ class FurnitureItem {
       materialPreset: json['materialPreset'] as String?,
       heightFromFloor: (json['heightFromFloor'] as num?)?.toDouble() ??
           (type == FurnitureType.kitchenChimney ? 5.5 : 0),
+      premiumCatalogId: json['premiumCatalogId'] as String?,
     );
   }
 }
