@@ -597,9 +597,17 @@
         const mat = this._makeMaterial(
           wallCfg.color, 0.85, 0.02, texUrl, procType, repeatX, repeatY, clamp
         );
-        const mesh = this._buildPolygonWallSegment(
-          poly[i], poly[(i + 1) % poly.length], wallCfg, h, mat, id
-        );
+        const barrierType = wallCfg.barrierType || 'solid';
+        let mesh;
+        if (barrierType !== 'solid') {
+          mesh = this._buildPolygonWallBarrierGroup(
+            poly[i], poly[(i + 1) % poly.length], wallCfg, h, id
+          );
+        } else {
+          mesh = this._buildPolygonWallSegment(
+            poly[i], poly[(i + 1) % poly.length], wallCfg, h, mat, id
+          );
+        }
         if (!mesh) continue;
         this.wallMeshes[id] = mesh;
         this.roomGroup.add(mesh);
@@ -783,6 +791,189 @@
       return mesh;
     }
 
+    _wallSegmentAlongOffset(fullWidth, fraction, align) {
+      const visW = fullWidth * fraction;
+      let alongOffset = 0;
+      if (align === 'center') alongOffset = (fullWidth - visW) / 2;
+      else if (align === 'end') alongOffset = fullWidth - visW;
+      return { visW, alongOffset };
+    }
+
+    _populateFenceGroup(group, width, height, color) {
+      const woodMat = this._makeMaterial(color, 0.78, 0.08, null, 'wood', 1, 1);
+      const postH = height * 0.86;
+      const postR = 0.035;
+      const spacing = Math.max(0.65, width / Math.max(2, Math.floor(width / 0.75)));
+      const count = Math.max(2, Math.round(width / spacing) + 1);
+      const step = width / (count - 1);
+
+      for (let i = 0; i < count; i++) {
+        const x = -width / 2 + i * step;
+        const post = new THREE.Mesh(
+          new THREE.CylinderGeometry(postR, postR * 1.08, postH, 8),
+          woodMat
+        );
+        post.position.set(x, postH / 2, 0);
+        group.add(post);
+      }
+
+      [postH * 0.18, postH * 0.52, postH * 0.86].forEach((y) => {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(width, 0.045, 0.045), woodMat);
+        rail.position.set(0, y, 0);
+        group.add(rail);
+      });
+
+      for (let i = 0; i < count - 1; i++) {
+        const segStart = -width / 2 + i * step;
+        const pickets = 3;
+        for (let j = 1; j < pickets; j++) {
+          const x = segStart + (j / pickets) * step;
+          const picket = new THREE.Mesh(
+            new THREE.BoxGeometry(0.028, postH * 0.72, 0.022),
+            woodMat
+          );
+          picket.position.set(x, postH * 0.36, 0);
+          group.add(picket);
+        }
+      }
+    }
+
+    _populateBalconyRailingGroup(group, width, height, color) {
+      const railMat = this._makeMaterial(color, 0.32, 0.55, null, 'metal', 1, 1);
+      const railH = Math.min(height * 0.38, 3.5 * FT);
+      const baseY = 0.06;
+      const spacing = Math.max(0.16, width / Math.max(2, Math.floor(width / 0.18)));
+      const count = Math.max(2, Math.round(width / spacing) + 1);
+      const step = width / (count - 1);
+
+      const bottomRail = new THREE.Mesh(new THREE.BoxGeometry(width, 0.04, 0.05), railMat);
+      bottomRail.position.set(0, baseY, 0);
+      group.add(bottomRail);
+
+      const topRail = new THREE.Mesh(new THREE.BoxGeometry(width, 0.06, 0.09), railMat);
+      topRail.position.set(0, baseY + railH, 0);
+      group.add(topRail);
+
+      for (let i = 0; i < count; i++) {
+        const x = -width / 2 + i * step;
+        const bal = new THREE.Mesh(
+          new THREE.BoxGeometry(0.022, railH - 0.12, 0.022),
+          railMat
+        );
+        bal.position.set(x, baseY + railH * 0.48, 0);
+        group.add(bal);
+      }
+
+      [-1, 1].forEach((side) => {
+        const post = new THREE.Mesh(
+          new THREE.BoxGeometry(0.05, railH + 0.1, 0.05),
+          railMat
+        );
+        post.position.set(side * width / 2, baseY + railH * 0.48, 0);
+        group.add(post);
+      });
+    }
+
+    _buildWallBarrierGroup(wallCfg, fullWidth, fullHeight, id, basePos, baseRot) {
+      const barrierType = wallCfg.barrierType || 'solid';
+      if (barrierType === 'solid') return null;
+
+      const { fraction, align } = this._wallVisibility(wallCfg);
+      if (fraction <= 0.001) return null;
+
+      const { visW, alongOffset } = this._wallSegmentAlongOffset(fullWidth, fraction, align);
+      const group = new THREE.Group();
+
+      if (barrierType === 'fence') {
+        this._populateFenceGroup(group, visW, fullHeight, wallCfg.color);
+      } else if (barrierType === 'balconyRailing') {
+        this._populateBalconyRailingGroup(group, visW, fullHeight, wallCfg.color);
+      } else {
+        return null;
+      }
+
+      const pos = [basePos[0], basePos[1], basePos[2]];
+      switch (id) {
+        case 'front':
+          pos[0] = basePos[0] - fullWidth / 2 + alongOffset + visW / 2;
+          break;
+        case 'back':
+          pos[0] = basePos[0] + fullWidth / 2 - alongOffset - visW / 2;
+          break;
+        case 'left':
+          pos[2] = basePos[2] - fullWidth / 2 + alongOffset + visW / 2;
+          break;
+        case 'right':
+          pos[2] = basePos[2] + fullWidth / 2 - alongOffset - visW / 2;
+          break;
+      }
+
+      group.position.set(pos[0], 0, pos[2]);
+      group.rotation.set(baseRot[0], baseRot[1], baseRot[2]);
+      group.userData.wallId = id;
+      group.traverse((c) => {
+        if (c.isMesh) {
+          c.castShadow = true;
+          c.receiveShadow = true;
+        }
+      });
+      return group;
+    }
+
+    _buildPolygonWallBarrierGroup(a, b, wallCfg, h, id) {
+      const barrierType = wallCfg.barrierType || 'solid';
+      if (barrierType === 'solid') return null;
+
+      const { fraction, align } = this._wallVisibility(wallCfg);
+      if (fraction <= 0.001) return null;
+
+      const dx = b.x - a.x;
+      const dz = b.z - a.z;
+      const len = Math.sqrt(dx * dx + dz * dz);
+      if (len < 0.001) return null;
+
+      const visLen = len * fraction;
+      const skip = len - visLen;
+
+      let startX = a.x;
+      let startZ = a.z;
+      if (align === 'center') {
+        startX = a.x + (dx * skip / 2) / len;
+        startZ = a.z + (dz * skip / 2) / len;
+      } else if (align === 'end') {
+        startX = a.x + (dx * skip) / len;
+        startZ = a.z + (dz * skip) / len;
+      }
+
+      const midX = startX + (dx / len) * visLen / 2;
+      const midZ = startZ + (dz / len) * visLen / 2;
+      const inset = 0.04;
+      const group = new THREE.Group();
+
+      if (barrierType === 'fence') {
+        this._populateFenceGroup(group, visLen, h, wallCfg.color);
+      } else if (barrierType === 'balconyRailing') {
+        this._populateBalconyRailingGroup(group, visLen, h, wallCfg.color);
+      } else {
+        return null;
+      }
+
+      group.position.set(
+        midX + (-dz / len) * inset,
+        0,
+        midZ + (dx / len) * inset
+      );
+      group.rotation.y = Math.atan2(-dz, dx);
+      group.userData.wallId = id;
+      group.traverse((c) => {
+        if (c.isMesh) {
+          c.castShadow = true;
+          c.receiveShadow = true;
+        }
+      });
+      return group;
+    }
+
     _buildPolygonWallSegment(a, b, wallCfg, h, mat, id) {
       const { fraction, align } = this._wallVisibility(wallCfg);
       if (fraction <= 0.001) return null;
@@ -925,6 +1116,18 @@
         const mat = this._makeMaterial(
           wallCfg.color, 0.85, 0.02, texUrl, procType, repeatX, repeatY, clamp
         );
+
+        const barrierType = wallCfg.barrierType || 'solid';
+        if (barrierType !== 'solid') {
+          const barrier = this._buildWallBarrierGroup(
+            wallCfg, def.size[0], def.size[1], def.id, def.pos, def.rot
+          );
+          if (barrier) {
+            this.wallMeshes[def.id] = barrier;
+            this.roomGroup.add(barrier);
+          }
+          return;
+        }
 
         const mesh = this._buildVisibleWallMesh(
           wallCfg, def.size[0], def.size[1], def.id, def.pos, def.rot, mat
@@ -1106,70 +1309,112 @@
       });
     }
 
+    _wallItemRotation(wall) {
+      switch (wall) {
+        case 'front': return Math.PI;
+        case 'back': return 0;
+        case 'left': return -Math.PI / 2;
+        case 'right': return Math.PI / 2;
+        default: return 0;
+      }
+    }
+
+    _buildStandardAcUnitGroup(unit) {
+      const uw = unit.width * FT;
+      const uh = unit.height * FT;
+      const depth = 0.22;
+      const group = new THREE.Group();
+
+      const bodyMat = this._makeMaterial(
+        unit.color, 0.35, 0.12,
+        this._resolveTextureUrl(unit.textureDataUrl, unit.texturePath),
+        null, 1, 1
+      );
+      const trimMat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(hexColor(unit.color)).multiplyScalar(0.88),
+        roughness: 0.4,
+        metalness: 0.08,
+      });
+      const louverMat = new THREE.MeshStandardMaterial({
+        color: 0xB0BEC5,
+        roughness: 0.55,
+        metalness: 0.2,
+      });
+
+      // Wall plane at z=0; unit extends into the room (-Z).
+      const frontZ = -depth;
+      const topH = uh * 0.12;
+      const louverH = uh * 0.28;
+      const bodyH = uh - topH - louverH - uh * 0.04;
+      const bodyCenterY = -uh * 0.5 + louverH + uh * 0.02 + bodyH * 0.5;
+      const bodyTopY = bodyCenterY + bodyH * 0.5;
+      const topCapDepth = depth * 0.05;
+
+      const body = new THREE.Mesh(new THREE.BoxGeometry(uw, bodyH, depth), bodyMat);
+      body.position.set(0, bodyCenterY, -depth / 2);
+      body.castShadow = true;
+      body.receiveShadow = true;
+      group.add(body);
+
+      const topCap = new THREE.Mesh(
+        new THREE.BoxGeometry(uw * 0.98, topH, topCapDepth),
+        trimMat
+      );
+      topCap.position.set(0, bodyTopY + topH / 2 + 0.001 * FT, frontZ + topCapDepth / 2 + 0.002);
+      topCap.castShadow = true;
+      group.add(topCap);
+
+      const display = new THREE.Mesh(
+        new THREE.BoxGeometry(uw * 0.18, uh * 0.06, 0.012),
+        new THREE.MeshStandardMaterial({ color: 0x263238, roughness: 0.3, metalness: 0.4 })
+      );
+      display.position.set(uw * 0.32, bodyTopY + topH * 0.35, frontZ + 0.008);
+      group.add(display);
+
+      const brandBar = new THREE.Mesh(
+        new THREE.BoxGeometry(uw * 0.12, uh * 0.04, 0.012),
+        new THREE.MeshStandardMaterial({ color: 0x78909C, roughness: 0.5, metalness: 0.15 })
+      );
+      brandBar.position.set(-uw * 0.38, bodyTopY + topH * 0.35, frontZ + 0.008);
+      group.add(brandBar);
+
+      const louver = new THREE.Mesh(
+        new THREE.BoxGeometry(uw * 0.96, louverH, depth * 0.75),
+        louverMat
+      );
+      louver.position.set(0, -uh * 0.5 + louverH * 0.5 + uh * 0.02, -depth * 0.42);
+      louver.castShadow = true;
+      group.add(louver);
+
+      for (let i = 0; i < 5; i++) {
+        const slat = new THREE.Mesh(
+          new THREE.BoxGeometry(uw * 0.9, 0.012, depth * 0.55),
+          louverMat
+        );
+        slat.position.set(
+          0,
+          -uh * 0.5 + uh * 0.06 + i * (louverH * 0.82 / 4),
+          frontZ + 0.008
+        );
+        slat.rotation.x = -0.35;
+        group.add(slat);
+      }
+
+      group.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+      return group;
+    }
+
     _buildAcUnits(units, layout) {
       units.forEach((unit) => {
         const uw = unit.width * FT;
         const uh = unit.height * FT;
-        const depth = 0.22;
-        const group = new THREE.Group();
-
-        const bodyMat = this._makeMaterial(unit.color, 0.35, 0.12, this._resolveTextureUrl(unit.textureDataUrl, unit.texturePath), 'wood', 1, 1);
-        const trimMat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(hexColor(unit.color)).multiplyScalar(0.88),
-          roughness: 0.4,
-          metalness: 0.08,
-        });
-        const louverMat = new THREE.MeshStandardMaterial({
-          color: 0xB0BEC5,
-          roughness: 0.55,
-          metalness: 0.2,
-        });
-
-        const body = new THREE.Mesh(new THREE.BoxGeometry(uw, uh * 0.72, depth), bodyMat);
-        body.position.set(0, uh * 0.14, depth * 0.45);
-        body.castShadow = true;
-        body.receiveShadow = true;
-        group.add(body);
-
-        const topCap = new THREE.Mesh(new THREE.BoxGeometry(uw, uh * 0.1, depth * 0.95), trimMat);
-        topCap.position.set(0, uh * 0.45, depth * 0.42);
-        topCap.castShadow = true;
-        group.add(topCap);
-
-        const display = new THREE.Mesh(
-          new THREE.BoxGeometry(uw * 0.18, uh * 0.08, 0.02),
-          new THREE.MeshStandardMaterial({ color: 0x263238, roughness: 0.3, metalness: 0.4 })
-        );
-        display.position.set(uw * 0.32, uh * 0.38, depth * 0.88);
-        group.add(display);
-
-        const louverH = uh * 0.28;
-        const louver = new THREE.Mesh(new THREE.BoxGeometry(uw * 0.96, louverH, depth * 0.85), louverMat);
-        louver.position.set(0, -uh * 0.36, depth * 0.4);
-        louver.castShadow = true;
-        group.add(louver);
-
-        for (let i = 0; i < 5; i++) {
-          const slat = new THREE.Mesh(
-            new THREE.BoxGeometry(uw * 0.9, 0.012, depth * 0.7),
-            louverMat
-          );
-          slat.position.set(0, -uh * 0.26 + i * (louverH / 5), depth * 0.78);
-          slat.rotation.x = -0.35;
-          group.add(slat);
-        }
-
-        const brandBar = new THREE.Mesh(
-          new THREE.BoxGeometry(uw * 0.12, uh * 0.04, 0.015),
-          new THREE.MeshStandardMaterial({ color: 0x78909C, roughness: 0.5, metalness: 0.15 })
-        );
-        brandBar.position.set(-uw * 0.38, uh * 0.38, depth * 0.88);
-        group.add(brandBar);
+        const group = this._isPremiumFurniture()
+          ? PremiumAcUnitBuilder.build(this, unit)
+          : this._buildStandardAcUnitGroup(unit);
 
         const pos = this._wallItemPositionFromLayout(unit.wall, unit.positionFromEdge, uw, layout);
         group.position.set(pos.x, (unit.positionFromFloor * FT) + uh / 2, pos.z);
-        if (unit.wall === 'left' || unit.wall === 'right') group.rotation.y = Math.PI / 2;
-        group.rotation.y += (unit.rotation || 0) * Math.PI / 180;
+        group.rotation.y = this._wallItemRotation(unit.wall) + (unit.rotation || 0) * Math.PI / 180;
         this.roomGroup.add(group);
       });
     }
