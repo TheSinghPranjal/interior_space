@@ -6085,6 +6085,7 @@
 })(typeof window !== 'undefined' ? window : global);
 
 </script>
+  <!-- INJECT_PREMIUM_CATALOG -->
   <script>
 /* global THREE, RoomRenderer */
 (function () {
@@ -7205,6 +7206,18 @@
           wallCfg.color, 0.85, 0.02, texUrl, procType, repeatX, repeatY, clamp
         );
 
+        const barrierType = wallCfg.barrierType || 'solid';
+        if (barrierType !== 'solid') {
+          const barrier = this._buildWallBarrierGroup(
+            wallCfg, def.size[0], def.size[1], def.id, def.pos, def.rot
+          );
+          if (barrier) {
+            this.wallMeshes[def.id] = barrier;
+            this.roomGroup.add(barrier);
+          }
+          return;
+        }
+
         const mesh = this._buildVisibleWallMesh(
           wallCfg, def.size[0], def.size[1], def.id, def.pos, def.rot, mat
         );
@@ -7647,7 +7660,14 @@
         const tex = this._resolveTextureUrl(item.textureDataUrl, item.texturePath);
         let group;
 
-        switch (item.type) {
+        if (item.premiumCatalogId && typeof PremiumCatalogBuilder !== 'undefined') {
+          group = PremiumCatalogBuilder.build(this, item, tex);
+          if (!group) {
+            console.warn('Premium catalog build returned null:', item.premiumCatalogId);
+          }
+        }
+
+        if (!group) switch (item.type) {
           case 'bed':
             group = this._buildBedGroup(item, tex);
             break;
