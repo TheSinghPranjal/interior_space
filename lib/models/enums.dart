@@ -8,6 +8,9 @@ enum RoomShapeMode { rectangular, polygon }
 /// Which segment of a wall remains visible when [WallConfig.visibleFraction] &lt; 1.
 enum WallVisibleAlign { start, center, end }
 
+/// Barrier style for a wall edge in custom wall mode.
+enum WallBarrierType { solid, fence, balconyRailing }
+
 enum SurfaceType { solidColor, texture, wallpaper }
 
 enum WallTexture {
@@ -102,6 +105,14 @@ extension WallIdLabel on WallId {
         WallId.back => 'Back',
         WallId.left => 'Left',
         WallId.right => 'Right',
+      };
+}
+
+extension WallBarrierTypeLabel on WallBarrierType {
+  String get label => switch (this) {
+        WallBarrierType.solid => 'Solid wall',
+        WallBarrierType.fence => 'Fence',
+        WallBarrierType.balconyRailing => 'Balcony railing',
       };
 }
 
