@@ -403,6 +403,7 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard>
                   }
                 : null,
           ),
+        SizedBox(height: 10),
           DropdownButtonFormField<FurnitureMaterialPreset>(
             value: item.material,
             decoration: const InputDecoration(labelText: 'Finish'),

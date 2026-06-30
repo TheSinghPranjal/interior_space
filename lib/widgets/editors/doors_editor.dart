@@ -106,6 +106,7 @@ class _DoorCardState extends ConsumerState<_DoorCard> {
                     }
                   : null,
             ),
+          SizedBox(height: 10),
             DimensionSlider(
               label: 'Width',
               value: door.width,
@@ -172,6 +173,7 @@ class _DoorCardState extends ConsumerState<_DoorCard> {
                     }
                   : null,
             ),
+          SizedBox(height: 10),
             if (enabled)
               TextureUploadField(
                 texturePath: door.texturePath,

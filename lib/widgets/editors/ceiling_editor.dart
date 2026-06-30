@@ -42,6 +42,7 @@ class CeilingEditor extends ConsumerWidget {
                   }
                 },
               ),
+              SizedBox(height: 10),
               TextureUploadField(
                 texturePath: ceiling.texturePath,
                 onPick: () async {

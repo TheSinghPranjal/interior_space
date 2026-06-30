@@ -61,6 +61,7 @@ class FlooringEditor extends ConsumerWidget {
                   }
                 },
               ),
+              SizedBox(height: 10),
               DropdownButtonFormField<FloorPattern>(
                 value: floor.pattern,
                 decoration: const InputDecoration(labelText: 'Tile Pattern'),
@@ -75,6 +76,7 @@ class FlooringEditor extends ConsumerWidget {
                   }
                 },
               ),
+              SizedBox(height: 10),
               _SliderRow(
                 label: 'Tile Length',
                 value: floor.tileLength,
@@ -85,6 +87,7 @@ class FlooringEditor extends ConsumerWidget {
                       floor.copyWith(tileLength: v),
                     ),
               ),
+              SizedBox(height: 10),
               _SliderRow(
                 label: 'Tile Width',
                 value: floor.tileWidth,
