@@ -12,6 +12,7 @@ import '../models/fan_config.dart';
 import '../models/floor_config.dart';
 import '../models/furniture_item.dart';
 import '../models/light_config.dart';
+import '../models/premium_catalog_item.dart';
 import '../models/placed_item_config_snapshot.dart';
 import '../models/project_design.dart';
 import '../models/room_design.dart';
@@ -297,11 +298,27 @@ class RoomDesignNotifier extends StateNotifier<RoomDesign> {
 
   void addFurniture(FurnitureType type) {
     _mutate((r) {
-      final sameTypeCount = r.furniture.where((f) => f.type == type).length;
+      final sameTypeCount = r.furniture.where((f) => f.type == type && !f.isPremiumCatalogItem).length;
       final item = FurnitureItem.defaultForType(
         type,
         _uuid.v4(),
         index: sameTypeCount,
+        dimensions: r.dimensions,
+      );
+      return r.copyWith(furniture: [...r.furniture, item]);
+    });
+  }
+
+  void addPremiumCatalogItem(PremiumCatalogId catalogId) {
+    _mutate((r) {
+      final def = catalogId.definition;
+      final sameCatalogCount = r.furniture
+          .where((f) => f.premiumCatalogId == def.idKey)
+          .length;
+      final item = FurnitureItem.fromPremiumCatalog(
+        def,
+        _uuid.v4(),
+        index: sameCatalogCount,
         dimensions: r.dimensions,
       );
       return r.copyWith(furniture: [...r.furniture, item]);
