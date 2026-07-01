@@ -1,4 +1,4 @@
-/* global THREE, PremiumBedBuilder, PremiumFlowerPotBuilder */
+/* global THREE, PremiumBedBuilder, PremiumPottedFlowerPotBuilder */
 (function (global) {
   'use strict';
 
@@ -128,10 +128,8 @@
   }
 
   function buildPottedPlant(renderer, item, textureUrl) {
-    if (typeof PremiumFlowerPotBuilder !== 'undefined') {
-      const g = PremiumFlowerPotBuilder.build(renderer, item, textureUrl);
-      g.scale.set(1.05, 1.05, 1.05);
-      return g;
+    if (typeof PremiumPottedFlowerPotBuilder !== 'undefined') {
+      return PremiumPottedFlowerPotBuilder.build(renderer, item, textureUrl);
     }
     return _simplePlant(item, 0x43a047, 0xbf360c);
   }
