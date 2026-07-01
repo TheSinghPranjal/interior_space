@@ -6,6 +6,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
+import '../models/pdf_export_settings.dart';
 import '../models/apartment_details.dart';
 import '../models/ac_unit_config.dart';
 import '../models/door_config.dart';
@@ -49,6 +50,8 @@ class ExportService {
     int? apartmentIndex,
     Map<int, Room3DExportImages>? render3dImagesByRoomIndex,
     Uint8List? apartmentTopView3d,
+    Uint8List? apartmentFrontView3d,
+    PdfExportSettings pdfSettings = const PdfExportSettings(),
   }) async {
     if (kIsWeb) return null;
 
@@ -138,7 +141,9 @@ class ExportService {
             ),
             pw.SizedBox(height: 12),
           ],
-          if (!singleRoomExport && apartmentTopView3d != null) ...[
+          if (!singleRoomExport &&
+              pdfSettings.shouldCapture3d &&
+              apartmentTopView3d != null) ...[
             _sectionTitle('Apartment 3D Top View'),
             pw.Center(
               child: pw.Image(
@@ -150,7 +155,22 @@ class ExportService {
             pw.SizedBox(height: 12),
           ],
           if (!singleRoomExport &&
-              (apartmentBlueprintImage != null || apartmentTopView3d != null))
+              pdfSettings.shouldCapture3d &&
+              apartmentFrontView3d != null) ...[
+            _sectionTitle('Apartment 3D Front View'),
+            pw.Center(
+              child: pw.Image(
+                pw.MemoryImage(apartmentFrontView3d),
+                fit: pw.BoxFit.contain,
+                height: 320,
+              ),
+            ),
+            pw.SizedBox(height: 12),
+          ],
+          if (!singleRoomExport &&
+              (apartmentBlueprintImage != null ||
+                  apartmentTopView3d != null ||
+                  apartmentFrontView3d != null))
             pw.Divider(),
           if (apartmentSketchImage != null) ...[
             _sectionTitle('Apartment Sketch'),
@@ -167,11 +187,16 @@ class ExportService {
           ...rooms.asMap().entries.expand((entry) {
             final index = entry.key;
             final room = entry.value;
+            final room3dImages = pdfSettings.shouldCapture3d &&
+                    render3dImagesByRoomIndex != null
+                ? render3dImagesByRoomIndex[index]
+                : null;
             return _buildRoomSection(
               room: room,
               roomIndex: index,
               blueprintImage: blueprintImages[index]!,
-              render3dImages: render3dImagesByRoomIndex?[index],
+              render3dImages: room3dImages,
+              pdfSettings: pdfSettings,
             );
           }),
         ],
@@ -220,6 +245,7 @@ class ExportService {
     required int roomIndex,
     required Uint8List blueprintImage,
     Room3DExportImages? render3dImages,
+    PdfExportSettings pdfSettings = const PdfExportSettings(),
   }) {
     final d = room.dimensions;
     final floorArea = (d.width * d.length).toStringAsFixed(1);
@@ -246,10 +272,10 @@ class ExportService {
           height: 260,
         ),
       ),
-      if (render3dImages != null && render3dImages.hasAny) ...[
+      if (render3dImages != null && pdfSettings.shouldCapture3d) ...[
         pw.SizedBox(height: 12),
         _sectionTitle('3D Preview'),
-        if (render3dImages.front != null) ...[
+        if (pdfSettings.includeFrontView && render3dImages.front != null) ...[
           pw.Text('Front view', style: const pw.TextStyle(fontSize: 10)),
           pw.SizedBox(height: 4),
           pw.Center(
@@ -260,7 +286,7 @@ class ExportService {
             ),
           ),
         ],
-        if (render3dImages.top != null) ...[
+        if (pdfSettings.includeTopView && render3dImages.top != null) ...[
           pw.SizedBox(height: 8),
           pw.Text('Top view', style: const pw.TextStyle(fontSize: 10)),
           pw.SizedBox(height: 4),
