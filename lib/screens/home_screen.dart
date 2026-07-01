@@ -454,7 +454,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
 
-    final render3dByRoom = await captureRoom3DImagesForPdf(
+    final render3dCapture = await captureRoom3DImagesForPdf(
       context,
       apartmentMode: false,
     );
@@ -462,8 +462,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final path = await exportService.generatePdf(
       project,
       roomId: room.id,
-      render3dImagesByRoomIndex:
-          render3dByRoom.isNotEmpty ? render3dByRoom : null,
+      render3dImagesByRoomIndex: render3dCapture.roomImages.isNotEmpty
+          ? render3dCapture.roomImages
+          : null,
     );
 
     if (!mounted) return;
@@ -485,12 +486,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Generating PDF with 3D previews for all rooms...'),
-        duration: Duration(seconds: 60),
+        content: Text(
+          'Generating PDF with apartment floor plan and 3D top view...',
+        ),
+        duration: Duration(seconds: 90),
       ),
     );
 
-    final render3dByRoom = await captureRoom3DImagesForPdf(
+    final render3dCapture = await captureRoom3DImagesForPdf(
       context,
       apartmentMode: true,
     );
@@ -498,8 +501,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final path = await exportService.generatePdf(
       project,
       apartmentIndex: project.safeActiveApartmentIndex,
-      render3dImagesByRoomIndex:
-          render3dByRoom.isNotEmpty ? render3dByRoom : null,
+      render3dImagesByRoomIndex: render3dCapture.roomImages.isNotEmpty
+          ? render3dCapture.roomImages
+          : null,
+      apartmentTopView3d: render3dCapture.apartmentTopView,
     );
 
     if (!mounted) return;
