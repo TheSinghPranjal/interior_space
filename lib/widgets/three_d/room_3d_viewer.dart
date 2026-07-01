@@ -16,8 +16,10 @@ import '../../services/room_scene_builder.dart';
 import '../../services/room_viewer_html_loader.dart';
 
 typedef Room3DControllerCallback = void Function(
-  Future<ApartmentPdf3DCaptureResult> Function(PdfExportSettings settings)
-      captureAllRoomsForExport,
+  Future<ApartmentPdf3DCaptureResult> Function(
+    PdfExportSettings settings,
+    PdfExportCaptureScope scope,
+  ) captureForPdfExport,
 );
 
 class Room3DViewer extends ConsumerStatefulWidget {
@@ -242,19 +244,20 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     return Room3DExportImages(front: front, top: top);
   }
 
-  Future<ApartmentPdf3DCaptureResult> _captureAllRoomsForExport(
+  Future<ApartmentPdf3DCaptureResult> _captureForPdfExport(
     PdfExportSettings settings,
+    PdfExportCaptureScope scope,
   ) async {
     if (_controller == null || !_isReady || !settings.shouldCapture3d) {
       return const ApartmentPdf3DCaptureResult();
     }
 
     final project = ref.read(projectProvider);
-    final isApartment = widget.apartmentMode ||
-        ref.read(appSpaceModeProvider) == AppSpaceMode.apartment;
-    final rooms = isApartment
-        ? project.roomsForActiveApartment
-        : [project.activeRoom];
+    final rooms = switch (scope) {
+      PdfExportCaptureScope.singleRoom => [project.activeRoom],
+      PdfExportCaptureScope.allRooms => project.roomsForActiveApartment,
+      PdfExportCaptureScope.apartment => project.roomsForActiveApartment,
+    };
     if (rooms.isEmpty) return const ApartmentPdf3DCaptureResult();
 
     final builder = ref.read(roomSceneBuilderProvider);
@@ -265,7 +268,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     Uint8List? apartmentTopView;
     Uint8List? apartmentFrontView;
 
-    if (isApartment) {
+    if (scope == PdfExportCaptureScope.apartment) {
       final apartmentJson = await apartmentBuilder.buildSceneJson(
         project,
         showWallDimensionLabels: showLabels,
@@ -313,7 +316,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
   }
 
   void _notifyCaptureReady() {
-    widget.onCaptureReady?.call(_captureAllRoomsForExport);
+    widget.onCaptureReady?.call(_captureForPdfExport);
   }
 
   @override
