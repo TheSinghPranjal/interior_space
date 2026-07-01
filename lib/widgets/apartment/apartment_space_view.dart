@@ -11,6 +11,7 @@ import '../../screens/fullscreen_blueprint_screen.dart';
 import '../../providers/apartment_blueprint_selection_provider.dart';
 import '../../providers/apartment_placement_history_provider.dart';
 import '../../providers/project_provider.dart';
+import '../../services/apartment_share_service.dart';
 import '../common/dimension_control.dart';
 import 'apartment_details_dialog.dart';
 import 'apartment_canvas.dart';
@@ -117,6 +118,7 @@ class ApartmentSpaceView extends ConsumerWidget {
                             context,
                             mode: FullscreenBlueprintMode.apartment,
                           ),
+                          onShare: () => _shareApartment(context, ref),
                           selectedCount: selectedPlacementIds.length,
                           allSelected: layout.placements.isNotEmpty &&
                               selectedPlacementIds.length == layout.placements.length,
@@ -132,12 +134,129 @@ class ApartmentSpaceView extends ConsumerWidget {
                     ),
                   ),
                 const Expanded(child: ApartmentCanvas()),
+                if (showBlueprintOnly)
+                  Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _importApartment(context, ref),
+                        icon: const Icon(Icons.upload_file, size: 18),
+                        label: const Text('Import Apartment'),
+                      ),
+                    ),
+                  ),
               ],
             );
           },
         ),
       ),
     );
+  }
+
+  Future<void> _shareApartment(BuildContext context, WidgetRef ref) async {
+    final project = ref.read(projectProvider);
+    final layout = project.apartmentLayout;
+    final rooms = project.roomsForActiveApartment;
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      await ref.read(apartmentShareServiceProvider).shareApartment(
+            apartment: layout,
+            rooms: rooms,
+          );
+    } on ApartmentShareException catch (e) {
+      if (!context.mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not export apartment: $e')),
+      );
+    }
+  }
+
+  Future<void> _importApartment(BuildContext context, WidgetRef ref) async {
+    final shareService = ref.read(apartmentShareServiceProvider);
+    final project = ref.read(projectProvider);
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      final imported = await shareService.pickAndImportApartment();
+      if (!context.mounted) return;
+
+      final roomCount = imported.rooms.length;
+      final furnitureCount =
+          imported.rooms.fold<int>(0, (sum, room) => sum + room.furniture.length);
+      final asNewApartment = await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          final canAdd = project.canAddApartment;
+          return AlertDialog(
+            title: const Text('Import Apartment'),
+            content: Text(
+              'Import "${imported.apartment.name}" with $roomCount room(s), '
+              '$furnitureCount furniture items, and '
+              '${imported.apartment.placements.length} blueprint placement(s)?\n\n'
+              'Replace the current apartment, or add it as a separate apartment tab.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Replace current'),
+              ),
+              FilledButton(
+                onPressed: canAdd ? () => Navigator.pop(context, true) : null,
+                child: const Text('Add as new apartment'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (asNewApartment == null || !context.mounted) return;
+
+      if (asNewApartment && !project.canAddApartment) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Maximum apartments reached. Replacing the current apartment instead.',
+            ),
+          ),
+        );
+        ref.read(projectProvider.notifier).importSharedApartment(
+              apartment: imported.apartment,
+              rooms: imported.rooms,
+              asNewApartment: false,
+            );
+      } else {
+        ref.read(projectProvider.notifier).importSharedApartment(
+              apartment: imported.apartment,
+              rooms: imported.rooms,
+              asNewApartment: asNewApartment,
+            );
+      }
+
+      ref.read(apartmentPlacementHistoryProvider.notifier).clear();
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            asNewApartment && project.canAddApartment
+                ? 'Apartment "${imported.apartment.name}" added'
+                : 'Apartment "${imported.apartment.name}" loaded',
+          ),
+        ),
+      );
+    } on ApartmentShareException catch (e) {
+      if (!context.mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not import apartment: $e')),
+      );
+    }
   }
 }
 
@@ -491,6 +610,7 @@ class _ApartmentBlueprintToolbar extends StatelessWidget {
     required this.onUndo,
     required this.onRedo,
     required this.onFullscreen,
+    required this.onShare,
     required this.selectedCount,
     required this.allSelected,
     required this.onSelectAll,
@@ -501,6 +621,7 @@ class _ApartmentBlueprintToolbar extends StatelessWidget {
   final VoidCallback onUndo;
   final VoidCallback onRedo;
   final VoidCallback onFullscreen;
+  final VoidCallback onShare;
   final int selectedCount;
   final bool allSelected;
   final VoidCallback? onSelectAll;
@@ -519,6 +640,12 @@ class _ApartmentBlueprintToolbar extends StatelessWidget {
           icon: const Icon(Icons.fullscreen),
           tooltip: 'Full screen blueprint',
           onPressed: onFullscreen,
+        ),
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.share, size: 18),
+          tooltip: 'Export apartment',
+          onPressed: onShare,
         ),
         IconButton(
           visualDensity: VisualDensity.compact,
