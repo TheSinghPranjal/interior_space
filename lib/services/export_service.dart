@@ -6,6 +6,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
+import '../models/apartment_details.dart';
 import '../models/ac_unit_config.dart';
 import '../models/door_config.dart';
 import '../models/enums.dart';
@@ -104,6 +105,17 @@ class ExportService {
           pw.SizedBox(height: 6),
           pw.Text('Generated: $generatedAt'),
           pw.Text('Total rooms: ${rooms.length}'),
+          if (!singleRoomExport) ...[
+            pw.SizedBox(height: 4),
+            pw.Text(
+              'Apartment size: ${apartmentLayout.widthFt.toStringAsFixed(1)} × '
+              '${apartmentLayout.lengthFt.toStringAsFixed(1)} ft',
+            ),
+          ],
+          if (!singleRoomExport && apartmentLayout.details.hasAny) ...[
+            pw.SizedBox(height: 12),
+            ..._buildApartmentDetailsSection(apartmentLayout.details),
+          ],
           pw.SizedBox(height: 8),
           pw.Divider(),
           if (apartmentSketchImage != null) ...[
@@ -137,6 +149,36 @@ class ExportService {
       bytes: Uint8List.fromList(await pdf.save()),
       fileName: fileName,
     );
+  }
+
+  List<pw.Widget> _buildApartmentDetailsSection(ApartmentDetails details) {
+    final rows = <List<String>>[];
+
+    void addRow(String label, String value) {
+      if (value.trim().isEmpty) return;
+      rows.add([label, value.trim()]);
+    }
+
+    addRow('Unit Type', details.unitType);
+    addRow('Tower', details.tower);
+    addRow('Super Built-Up Area', details.superBuiltUpArea);
+    addRow('Carpet Area', details.carpetArea);
+    addRow('Block Name', details.blockName);
+    addRow('Block', details.block);
+    if (details.facing != null) {
+      addRow('Facing', details.facing!.label);
+    }
+    addRow('Description', details.description);
+
+    if (rows.isEmpty) return const [];
+
+    return [
+      _sectionTitle('Apartment Information'),
+      _detailTable(
+        headers: const ['Field', 'Value'],
+        rows: rows,
+      ),
+    ];
   }
 
   List<pw.Widget> _buildRoomSection({
