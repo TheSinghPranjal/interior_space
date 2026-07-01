@@ -162,6 +162,90 @@ class ProjectNotifier extends StateNotifier<ProjectDesign> {
         ).copyWith(name: room.name));
   }
 
+  /// Load a shared apartment into the active apartment or as a new apartment tab.
+  void importSharedApartment({
+    required ApartmentLayout apartment,
+    required List<RoomDesign> rooms,
+    required bool asNewApartment,
+  }) {
+    final idMap = <String, String>{};
+    final remappedRooms = rooms.map((room) {
+      final newId = _uuid.v4();
+      idMap[room.id] = newId;
+      return room.copyWith(id: newId);
+    }).toList();
+
+    final remappedPlacements = apartment.placements
+        .map(
+          (placement) => ApartmentRoomPlacement(
+            id: _uuid.v4(),
+            roomId: idMap[placement.roomId] ?? placement.roomId,
+            blueprintX: placement.blueprintX,
+            blueprintY: placement.blueprintY,
+            rotation: placement.rotation,
+          ),
+        )
+        .toList();
+
+    final importedApartment = apartment.copyWith(placements: remappedPlacements);
+
+    if (asNewApartment) {
+      if (!state.canAddApartment) return;
+      final newIndex = state.apartmentsOrDefault.length;
+      final finalApartment = importedApartment.copyWith(
+        name: _uniqueApartmentName(importedApartment.name),
+      );
+      final finalRooms = remappedRooms
+          .map((room) => room.copyWith(apartmentIndex: newIndex))
+          .toList();
+      final allRooms = [...state.roomsOrDefault, ...finalRooms];
+
+      state = state.copyWith(
+        apartments: [...state.apartmentsOrDefault, finalApartment],
+        rooms: allRooms,
+        activeApartmentIndex: newIndex,
+        activeRoomIndex: allRooms.length - finalRooms.length,
+      );
+      return;
+    }
+
+    final aptIndex = state.safeActiveApartmentIndex;
+    final oldRoomIds =
+        state.roomsForApartment(aptIndex).map((room) => room.id).toSet();
+    var allRooms =
+        state.roomsOrDefault.where((room) => room.apartmentIndex != aptIndex).toList();
+    final allApartments = state.apartmentsOrDefault
+        .map(
+          (apt) => apt.copyWith(
+            placements: apt.placements
+                .where((placement) => !oldRoomIds.contains(placement.roomId))
+                .toList(),
+          ),
+        )
+        .toList();
+
+    final finalRooms = remappedRooms
+        .map((room) => room.copyWith(apartmentIndex: aptIndex))
+        .toList();
+    allRooms.addAll(finalRooms);
+
+    final name = importedApartment.name.trim();
+    allApartments[aptIndex] = importedApartment.copyWith(
+      name: name.isEmpty ? state.apartmentLayout.name : name,
+    );
+
+    var activeRoomIndex = state.safeActiveIndex;
+    if (finalRooms.isNotEmpty) {
+      activeRoomIndex = allRooms.indexWhere((room) => room.id == finalRooms.first.id);
+    }
+
+    state = state.copyWith(
+      apartments: allApartments,
+      rooms: allRooms,
+      activeRoomIndex: activeRoomIndex.clamp(0, allRooms.length - 1),
+    );
+  }
+
   /// Load a room shared from another device into the active room or as a new tab.
   void importSharedRoom(RoomDesign imported, {required bool asNewRoom}) {
     if (asNewRoom) {
@@ -192,6 +276,17 @@ class ProjectNotifier extends StateNotifier<ProjectDesign> {
   String _uniqueRoomName(String base) {
     final trimmed = base.trim().isEmpty ? 'Imported Room' : base.trim();
     final names = state.roomsForActiveApartment.map((r) => r.name).toSet();
+    if (!names.contains(trimmed)) return trimmed;
+    var i = 2;
+    while (names.contains('$trimmed ($i)')) {
+      i++;
+    }
+    return '$trimmed ($i)';
+  }
+
+  String _uniqueApartmentName(String base) {
+    final trimmed = base.trim().isEmpty ? 'Imported Apartment' : base.trim();
+    final names = state.apartmentsOrDefault.map((apt) => apt.name).toSet();
     if (!names.contains(trimmed)) return trimmed;
     var i = 2;
     while (names.contains('$trimmed ($i)')) {
