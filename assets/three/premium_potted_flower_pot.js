@@ -8,34 +8,16 @@
     return a + Math.random() * (b - a);
   }
 
-  function applyFrondColorVariation(frond) {
-    frond.traverse((obj) => {
-      if (!obj.isMesh) return;
-
-      obj.material = obj.material.clone();
-
-      obj.material.color.offsetHSL(
-        randomBetween(-0.01, 0.015),
-        randomBetween(-0.10, 0.08),
-        randomBetween(-0.12, 0.08)
-      );
-
-      if (typeof obj.material.roughness === 'number') {
-        obj.material.roughness = randomBetween(0.78, 0.90);
-      }
-    });
+  function applyFrondColorVariation(frond, material) {
+    if (!frond.userData.tintApplied) {
+      frond.userData.tintApplied = true;
+      material.color.offsetHSL(randomBetween(-0.01, 0.01), 0, 0);
+    }
   }
 
-  function applyWindVariation(frond) {
-    frond.rotation.z += randomBetween(-0.08, 0.08);
-    frond.rotation.y += randomBetween(-0.10, 0.10);
-    frond.rotation.x += randomBetween(-0.05, 0.05);
-  }
-
-  function finalizeFrondPlacement(frond, plantGroup) {
+  function finalizeFrondPlacement(frond, plantGroup, material) {
     plantGroup.add(frond);
-    applyWindVariation(frond);
-    applyFrondColorVariation(frond);
+    applyFrondColorVariation(frond, material);
   }
 
   //----------------------------------------------------------
@@ -87,13 +69,13 @@
     // FROND TWIST
     //----------------------------------------------------------
 
-    group.rotation.y = randomBetween(-0.25, 0.25);
+    group.rotation.y = randomBetween(-0.06, 0.06);
 
     //----------------------------------------------------------
     // LEAFLETS
     //----------------------------------------------------------
 
-    const leafletCount = 40;
+    const leafletCount = 16;
 
     for (let i = 0; i < leafletCount; i++) {
       const t = i / (leafletCount - 1);
@@ -145,7 +127,6 @@
         }
 
         pos.needsUpdate = true;
-        leaflet.geometry.computeVertexNormals();
 
         const p = leaflet.geometry.attributes.position;
 
@@ -323,7 +304,7 @@
     const stemMinHeight = fh * 0.42;
     const stemMaxHeight = fh * 0.74;
     const stemRadius = radius * 0.010;
-    const clusterRadius = radius * 0.46;
+    const clusterRadius = radius * 0.26;
 
     //----------------------------------------------------------
     // STEM DENSITY
@@ -335,9 +316,9 @@
     // DENSE CANOPY
     //----------------------------------------------------------
 
-    const innerFronds = 24;
-    const middleFronds = 34;
-    const outerFronds = 30;
+    const innerFronds = 12;
+    const middleFronds = 18;
+    const outerFronds = 16;
 
     //----------------------------------------------------------
     // STEMS
@@ -432,13 +413,16 @@
         leafMat
       );
 
-      frond.position.copy(stem.mesh.position);
-      frond.position.y = stem.height * 0.82;
+      frond.position.set(
+        stem.mesh.position.x * 0.75,
+        stem.height * 0.70,
+        stem.mesh.position.z * 0.75
+      );
       frond.rotation.y = Math.random() * Math.PI * 2;
       frond.rotation.x = randomBetween(-0.18, -0.05);
-      frond.rotation.z = randomBetween(-0.15, 0.15);
+      frond.rotation.z = randomBetween(-0.18, 0.18);
 
-      finalizeFrondPlacement(frond, plantGroup);
+      finalizeFrondPlacement(frond, plantGroup, leafMat);
     }
 
     //----------------------------------------------------------
@@ -453,13 +437,16 @@
         leafMat
       );
 
-      frond.position.copy(stem.mesh.position);
-      frond.position.y = stem.height * 0.74;
+      frond.position.set(
+        stem.mesh.position.x * 0.75,
+        stem.height * 0.70,
+        stem.mesh.position.z * 0.75
+      );
       frond.rotation.y = Math.random() * Math.PI * 2;
       frond.rotation.x = randomBetween(-0.45, -0.25);
-      frond.rotation.z = randomBetween(-0.35, 0.35);
+      frond.rotation.z = randomBetween(-0.18, 0.18);
 
-      finalizeFrondPlacement(frond, plantGroup);
+      finalizeFrondPlacement(frond, plantGroup, leafMat);
     }
 
     //----------------------------------------------------------
@@ -474,80 +461,19 @@
         leafMat
       );
 
-      frond.position.copy(stem.mesh.position);
-      frond.position.y = stem.height * 0.66;
-      frond.rotation.y = Math.random() * Math.PI * 2;
-      frond.rotation.x = randomBetween(-0.95, -0.60);
-      frond.rotation.z = randomBetween(-0.55, 0.55);
-
-      finalizeFrondPlacement(frond, plantGroup);
-    }
-
-    //----------------------------------------------------------
-    // HANGING FRONDS
-    //----------------------------------------------------------
-
-    for (let i = 0; i < 18; i++) {
-      const stem = stems[Math.floor(Math.random() * stems.length)];
-
-      const frond = createPalmFrond(
-        randomBetween(fh * 0.58, fh * 0.72),
-        leafMat
-      );
-
-      frond.position.copy(stem.mesh.position);
-      frond.position.y = stem.height * 0.58;
-      frond.rotation.x = randomBetween(-1.25, -0.95);
-      frond.rotation.y = Math.random() * Math.PI * 2;
-      frond.rotation.z = randomBetween(-0.8, 0.8);
-
-      finalizeFrondPlacement(frond, plantGroup);
-    }
-
-    //----------------------------------------------------------
-    // FILL GAPS
-    //----------------------------------------------------------
-
-    for (let i = 0; i < 25; i++) {
-      const stem = stems[Math.floor(Math.random() * stems.length)];
-
-      const frond = createPalmFrond(
-        randomBetween(fh * 0.38, fh * 0.50),
-        leafMat
-      );
-
-      frond.position.copy(stem.mesh.position);
-      frond.position.y = stem.height * 0.70;
-      frond.rotation.y = Math.random() * Math.PI * 2;
-      frond.rotation.x = randomBetween(-0.45, -0.25);
-      frond.scale.set(0.75, 0.75, 0.75);
-
-      finalizeFrondPlacement(frond, plantGroup);
-    }
-
-    //----------------------------------------------------------
-    // TOP SHOOTS
-    //----------------------------------------------------------
-
-    for (let i = 0; i < 18; i++) {
-      const frond = createPalmFrond(
-        randomBetween(fh * 0.18, fh * 0.26),
-        leafMat
-      );
-
       frond.position.set(
-        randomBetween(-0.015, 0.015),
-        randomBetween(fh * 0.42, fh * 0.52),
-        randomBetween(-0.015, 0.015)
+        stem.mesh.position.x * 0.75,
+        stem.height * 0.70,
+        stem.mesh.position.z * 0.75
       );
-
-      frond.rotation.x = randomBetween(-0.05, 0.12);
       frond.rotation.y = Math.random() * Math.PI * 2;
+      frond.rotation.x = randomBetween(-0.55, -0.35);
+      frond.rotation.z = randomBetween(-0.18, 0.18);
 
-      finalizeFrondPlacement(frond, plantGroup);
+      finalizeFrondPlacement(frond, plantGroup, leafMat);
     }
 
-    plantGroup.rotation.y = randomBetween(0, Math.PI * 2);
+    plantGroup.rotation.y = randomBetween(-0.06, 0.06);
 
     group.traverse((obj) => {
       if (!obj.isMesh) return;
