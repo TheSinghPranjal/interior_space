@@ -23,3 +23,15 @@ class ApartmentPdf3DCaptureResult {
   final Uint8List? apartmentTopView;
   final Uint8List? apartmentFrontView;
 }
+
+/// Which rooms and apartment overview to capture for PDF 3D previews.
+enum PdfExportCaptureScope {
+  /// Active room only.
+  singleRoom,
+
+  /// Every room in the active apartment (no apartment overview).
+  allRooms,
+
+  /// Full apartment overview plus every room in the active apartment.
+  apartment,
+}
