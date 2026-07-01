@@ -34,6 +34,22 @@ class SketchCompositeExporter {
     Size size = const Size(1200, 900),
   }) async {
     WidgetsFlutterBinding.ensureInitialized();
+    final blueprintBytes = await renderApartmentBlueprint(
+      project: project,
+      apartmentIndex: apartmentIndex,
+      size: size,
+    );
+    final codec = await ui.instantiateImageCodec(blueprintBytes);
+    final frame = await codec.getNextFrame();
+    return _composite(frame.image, sketch, size);
+  }
+
+  static Future<Uint8List> renderApartmentBlueprint({
+    required ProjectDesign project,
+    required int apartmentIndex,
+    Size size = const Size(900, 700),
+  }) async {
+    WidgetsFlutterBinding.ensureInitialized();
     final layout = project.apartmentsOrDefault[apartmentIndex];
     final rooms = project.roomsForApartment(apartmentIndex);
 
@@ -48,7 +64,8 @@ class SketchCompositeExporter {
     painter.paint(canvas, size);
     final picture = recorder.endRecording();
     final image = await picture.toImage(size.width.toInt(), size.height.toInt());
-    return _composite(image, sketch, size);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    return byteData!.buffer.asUint8List();
   }
 
   static Future<Uint8List> _composite(
@@ -152,6 +169,20 @@ class _ApartmentSketchBlueprintPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2,
     );
+
+    final title = TextPainter(
+      text: TextSpan(
+        text:
+            '${layout.name} — Apartment Floor Plan • ${layout.widthFt.toStringAsFixed(0)} × ${layout.lengthFt.toStringAsFixed(0)} ft',
+        style: TextStyle(
+          color: Colors.blueGrey.shade900,
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: size.width - 32);
+    title.paint(canvas, const Offset(16, 12));
 
     for (final placement in layout.placements) {
       final room = roomById(placement.roomId);
