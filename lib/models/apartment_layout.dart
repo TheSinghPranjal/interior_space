@@ -1,5 +1,6 @@
 import '../core/constants/room_constants.dart';
 import '../sketch/domain/sketch_models.dart';
+import 'apartment_details.dart';
 
 class ApartmentRoomPlacement {
   const ApartmentRoomPlacement({
@@ -57,6 +58,7 @@ class ApartmentLayout {
     this.lengthFt = 60,
     this.placements = const [],
     this.sketch = const SketchDocument(),
+    this.details = const ApartmentDetails(),
   });
 
   final String name;
@@ -64,6 +66,7 @@ class ApartmentLayout {
   final double lengthFt;
   final List<ApartmentRoomPlacement> placements;
   final SketchDocument sketch;
+  final ApartmentDetails details;
 
   ApartmentLayout copyWith({
     String? name,
@@ -71,6 +74,7 @@ class ApartmentLayout {
     double? lengthFt,
     List<ApartmentRoomPlacement>? placements,
     SketchDocument? sketch,
+    ApartmentDetails? details,
   }) {
     return ApartmentLayout(
       name: name ?? this.name,
@@ -78,6 +82,7 @@ class ApartmentLayout {
       lengthFt: lengthFt ?? this.lengthFt,
       placements: placements ?? this.placements,
       sketch: sketch ?? this.sketch,
+      details: details ?? this.details,
     );
   }
 
@@ -100,6 +105,7 @@ class ApartmentLayout {
         'lengthFt': lengthFt,
         'placements': placements.map((p) => p.toJson()).toList(),
         'sketch': sketch.toJson(),
+        if (details.hasAny) 'details': details.toJson(),
       };
 
   factory ApartmentLayout.fromJson(Map<String, dynamic> json) {
@@ -112,6 +118,7 @@ class ApartmentLayout {
               .toList() ??
           [],
       sketch: SketchDocument.fromJson(json['sketch'] as Map<String, dynamic>?),
+      details: ApartmentDetails.fromJson(json['details'] as Map<String, dynamic>?),
     );
   }
 
