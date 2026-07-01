@@ -15,7 +15,7 @@ import '../../services/room_scene_builder.dart';
 import '../../services/room_viewer_html_loader.dart';
 
 typedef Room3DControllerCallback = void Function(
-  Future<Map<int, Room3DExportImages>> Function() captureAllRoomsForExport,
+  Future<ApartmentPdf3DCaptureResult> Function() captureAllRoomsForExport,
 );
 
 class Room3DViewer extends ConsumerStatefulWidget {
@@ -224,8 +224,10 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     }
   }
 
-  Future<Map<int, Room3DExportImages>> _captureAllRoomsForExport() async {
-    if (_controller == null || !_isReady) return {};
+  Future<ApartmentPdf3DCaptureResult> _captureAllRoomsForExport() async {
+    if (_controller == null || !_isReady) {
+      return const ApartmentPdf3DCaptureResult();
+    }
 
     final project = ref.read(projectProvider);
     final isApartment = widget.apartmentMode ||
@@ -233,12 +235,28 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     final rooms = isApartment
         ? project.roomsForActiveApartment
         : [project.activeRoom];
-    if (rooms.isEmpty) return {};
+    if (rooms.isEmpty) return const ApartmentPdf3DCaptureResult();
 
     final builder = ref.read(roomSceneBuilderProvider);
+    final apartmentBuilder = ref.read(apartmentSceneBuilderProvider);
     final showLabels = ref.read(showWallDimensionLabelsProvider);
     final premium = ref.read(premiumFurnitureProvider);
     final captures = <int, Room3DExportImages>{};
+    Uint8List? apartmentTopView;
+
+    if (isApartment) {
+      final apartmentJson = await apartmentBuilder.buildSceneJson(
+        project,
+        showWallDimensionLabels: showLabels,
+        premiumFurniture: premium,
+      );
+      final pushedApartment = await _pushSceneJson(apartmentJson);
+      if (pushedApartment) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        final apartmentViews = await _captureExportViews();
+        apartmentTopView = apartmentViews?.top;
+      }
+    }
 
     for (var i = 0; i < rooms.length; i++) {
       final sceneJson = await builder.buildSceneJson(
@@ -257,7 +275,10 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     }
 
     await _pushScene();
-    return captures;
+    return ApartmentPdf3DCaptureResult(
+      roomImages: captures,
+      apartmentTopView: apartmentTopView,
+    );
   }
 
   Uint8List? _decodeDataUrl(String? dataUrl) {
