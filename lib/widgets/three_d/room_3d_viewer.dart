@@ -7,6 +7,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/enums.dart';
+import '../../models/pdf_export_settings.dart';
 import '../../models/room_3d_export_images.dart';
 import '../../providers/app_mode_provider.dart';
 import '../../providers/project_provider.dart';
@@ -15,7 +16,8 @@ import '../../services/room_scene_builder.dart';
 import '../../services/room_viewer_html_loader.dart';
 
 typedef Room3DControllerCallback = void Function(
-  Future<ApartmentPdf3DCaptureResult> Function() captureAllRoomsForExport,
+  Future<ApartmentPdf3DCaptureResult> Function(PdfExportSettings settings)
+      captureAllRoomsForExport,
 );
 
 class Room3DViewer extends ConsumerStatefulWidget {
@@ -200,32 +202,50 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     );
   }
 
-  Future<Room3DExportImages?> _captureExportViews() async {
+  Future<Uint8List?> _captureCameraView(String mode) async {
     if (_controller == null || !_isReady) return null;
     try {
+      await _controller!.evaluateJavascript(source: "setCameraMode('$mode');");
+      await Future.delayed(const Duration(milliseconds: 350));
       final result = await _controller!.evaluateJavascript(
-        source: 'captureExportViews();',
+        source: 'captureScreenshot();',
       );
       if (result == null) return null;
-
-      var jsonString = result.toString();
-      if (jsonString.startsWith('"') && jsonString.endsWith('"')) {
-        jsonString = jsonDecode(jsonString) as String;
+      var dataUrl = result.toString();
+      if (dataUrl.startsWith('"') && dataUrl.endsWith('"')) {
+        dataUrl = jsonDecode(dataUrl) as String;
       }
-
-      final views = jsonDecode(jsonString) as Map<String, dynamic>;
-      return Room3DExportImages(
-        front: _decodeDataUrl(views['front'] as String?),
-        top: _decodeDataUrl(views['top'] as String?),
-      );
+      return _decodeDataUrl(dataUrl);
     } catch (e) {
-      if (kDebugMode) debugPrint('3D export capture failed: $e');
+      if (kDebugMode) debugPrint('3D view capture failed ($mode): $e');
       return null;
     }
   }
 
-  Future<ApartmentPdf3DCaptureResult> _captureAllRoomsForExport() async {
-    if (_controller == null || !_isReady) {
+  Future<Room3DExportImages?> _captureExportViews(PdfExportSettings settings) async {
+    if (_controller == null || !_isReady) return null;
+
+    final previousMode = ref.read(cameraModeProvider);
+    Uint8List? front;
+    Uint8List? top;
+
+    if (settings.includeFrontView) {
+      front = await _captureCameraView('front');
+    }
+    if (settings.includeTopView) {
+      top = await _captureCameraView('top');
+    }
+
+    await _setCameraMode(previousMode);
+
+    if (front == null && top == null) return null;
+    return Room3DExportImages(front: front, top: top);
+  }
+
+  Future<ApartmentPdf3DCaptureResult> _captureAllRoomsForExport(
+    PdfExportSettings settings,
+  ) async {
+    if (_controller == null || !_isReady || !settings.shouldCapture3d) {
       return const ApartmentPdf3DCaptureResult();
     }
 
@@ -243,6 +263,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     final premium = ref.read(premiumFurnitureProvider);
     final captures = <int, Room3DExportImages>{};
     Uint8List? apartmentTopView;
+    Uint8List? apartmentFrontView;
 
     if (isApartment) {
       final apartmentJson = await apartmentBuilder.buildSceneJson(
@@ -253,8 +274,12 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
       final pushedApartment = await _pushSceneJson(apartmentJson);
       if (pushedApartment) {
         await Future.delayed(const Duration(milliseconds: 500));
-        final apartmentViews = await _captureExportViews();
-        apartmentTopView = apartmentViews?.top;
+        if (settings.includeTopView) {
+          apartmentTopView = await _captureCameraView('top');
+        }
+        if (settings.includeFrontView) {
+          apartmentFrontView = await _captureCameraView('front');
+        }
       }
     }
 
@@ -268,7 +293,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
       if (!pushed) continue;
 
       await Future.delayed(const Duration(milliseconds: 450));
-      final views = await _captureExportViews();
+      final views = await _captureExportViews(settings);
       if (views != null && views.hasAny) {
         captures[i] = views;
       }
@@ -278,6 +303,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     return ApartmentPdf3DCaptureResult(
       roomImages: captures,
       apartmentTopView: apartmentTopView,
+      apartmentFrontView: apartmentFrontView,
     );
   }
 
