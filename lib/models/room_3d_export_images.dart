@@ -11,3 +11,13 @@ class Room3DExportImages {
 
   bool get hasAny => front != null || top != null;
 }
+
+class ApartmentPdf3DCaptureResult {
+  const ApartmentPdf3DCaptureResult({
+    this.roomImages = const {},
+    this.apartmentTopView,
+  });
+
+  final Map<int, Room3DExportImages> roomImages;
+  final Uint8List? apartmentTopView;
+}
