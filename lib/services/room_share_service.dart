@@ -191,6 +191,11 @@ class RoomShareService {
           as Map<String, dynamic>;
       final format = manifest['format'] as String?;
       final version = (manifest['version'] as num?)?.toInt() ?? 0;
+      if (format == 'interior-space-apartment') {
+        throw RoomShareException(
+          'This is an apartment file. Import it from the apartment blueprint view.',
+        );
+      }
       if (format != null && format != formatId) {
         throw RoomShareException('Unsupported room file format: $format');
       }
