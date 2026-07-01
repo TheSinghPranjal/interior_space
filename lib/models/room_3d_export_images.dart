@@ -16,8 +16,10 @@ class ApartmentPdf3DCaptureResult {
   const ApartmentPdf3DCaptureResult({
     this.roomImages = const {},
     this.apartmentTopView,
+    this.apartmentFrontView,
   });
 
   final Map<int, Room3DExportImages> roomImages;
   final Uint8List? apartmentTopView;
+  final Uint8List? apartmentFrontView;
 }
