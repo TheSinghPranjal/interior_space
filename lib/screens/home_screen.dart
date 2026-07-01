@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_spacing.dart';
 import '../core/theme/app_theme.dart';
 import '../models/design_menu_action.dart';
+import '../models/room_3d_export_images.dart';
 import '../providers/apartment_placement_history_provider.dart';
 import '../providers/app_mode_provider.dart';
+import '../providers/pdf_export_settings_provider.dart';
 import '../providers/project_provider.dart';
 import '../providers/room_design_provider.dart';
 import '../services/export_service.dart';
@@ -445,23 +447,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final project = ref.read(projectProvider);
     final room = project.activeRoom;
     final exportService = ref.read(exportServiceProvider);
+    final pdfSettings = ref.read(pdfExportSettingsProvider);
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Generating PDF with 3D preview...'),
-        duration: Duration(seconds: 60),
+      SnackBar(
+        content: Text(
+          pdfSettings.shouldCapture3d
+              ? 'Generating PDF with 3D preview...'
+              : 'Generating PDF...',
+        ),
+        duration: Duration(seconds: pdfSettings.shouldCapture3d ? 60 : 15),
       ),
     );
 
-    final render3dCapture = await captureRoom3DImagesForPdf(
-      context,
-      apartmentMode: false,
-    );
+    final render3dCapture = pdfSettings.shouldCapture3d
+        ? await captureRoom3DImagesForPdf(
+            context,
+            apartmentMode: false,
+            pdfSettings: pdfSettings,
+          )
+        : const ApartmentPdf3DCaptureResult();
 
     final path = await exportService.generatePdf(
       project,
       roomId: room.id,
+      pdfSettings: pdfSettings,
       render3dImagesByRoomIndex: render3dCapture.roomImages.isNotEmpty
           ? render3dCapture.roomImages
           : null,
@@ -482,29 +493,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _exportApartmentPdf(BuildContext context) async {
     final project = ref.read(projectProvider);
     final exportService = ref.read(exportServiceProvider);
+    final pdfSettings = ref.read(pdfExportSettingsProvider);
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text(
-          'Generating PDF with apartment floor plan and 3D top view...',
+          pdfSettings.shouldCapture3d
+              ? 'Generating PDF with floor plan and 3D previews...'
+              : 'Generating PDF with apartment floor plan...',
         ),
-        duration: Duration(seconds: 90),
+        duration: Duration(seconds: pdfSettings.shouldCapture3d ? 90 : 20),
       ),
     );
 
-    final render3dCapture = await captureRoom3DImagesForPdf(
-      context,
-      apartmentMode: true,
-    );
+    final render3dCapture = pdfSettings.shouldCapture3d
+        ? await captureRoom3DImagesForPdf(
+            context,
+            apartmentMode: true,
+            pdfSettings: pdfSettings,
+          )
+        : const ApartmentPdf3DCaptureResult();
 
     final path = await exportService.generatePdf(
       project,
       apartmentIndex: project.safeActiveApartmentIndex,
+      pdfSettings: pdfSettings,
       render3dImagesByRoomIndex: render3dCapture.roomImages.isNotEmpty
           ? render3dCapture.roomImages
           : null,
       apartmentTopView3d: render3dCapture.apartmentTopView,
+      apartmentFrontView3d: render3dCapture.apartmentFrontView,
     );
 
     if (!mounted) return;
