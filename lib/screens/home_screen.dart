@@ -10,6 +10,7 @@ import '../providers/app_mode_provider.dart';
 import '../providers/pdf_export_settings_provider.dart';
 import '../providers/project_provider.dart';
 import '../providers/room_design_provider.dart';
+import '../services/apartment_share_service.dart';
 import '../services/export_service.dart';
 import '../services/project_storage_service.dart';
 import '../services/public_download_saver.dart';
@@ -319,6 +320,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 _exportAllRoomsPdf(context);
                               case 'export_apartment_pdf':
                                 _exportApartmentPdf(context);
+                              case 'export_apartment':
+                                _exportApartment(context);
                             }
                           },
                           itemBuilder: (context) => [
@@ -376,6 +379,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                       Expanded(
                                         child: Text(
                                           'Export PDF (${project.apartmentLayout.name})',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              PopupMenuItem(
+                                value: 'export_apartment',
+                                child: SizedBox(
+                                  width: (MediaQuery.sizeOf(context).width * 0.55)
+                                      .clamp(180, 280),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.upload_file,
+                                          size: 16, color: theme.colorScheme.primary),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'Export apartment (${project.apartmentLayout.name})',
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -611,6 +635,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _exportApartment(BuildContext context) async {
+    final project = ref.read(projectProvider);
+    final layout = project.apartmentLayout;
+    final rooms = project.roomsForActiveApartment;
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      await ref.read(apartmentShareServiceProvider).shareApartment(
+            apartment: layout,
+            rooms: rooms,
+          );
+    } on ApartmentShareException catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not export apartment: $e')),
+      );
+    }
   }
 
   void _confirmResetApartment(BuildContext context) {
