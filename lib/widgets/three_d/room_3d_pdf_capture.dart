@@ -5,11 +5,12 @@ import '../../models/room_3d_export_images.dart';
 import 'room_3d_viewer.dart';
 
 /// Loads the 3D viewer off-screen and captures front/top views for PDF export.
-Future<Map<int, Room3DExportImages>> captureRoom3DImagesForPdf(
+Future<ApartmentPdf3DCaptureResult> captureRoom3DImagesForPdf(
   BuildContext context, {
   required bool apartmentMode,
 }) async {
-  final result = await Navigator.of(context).push<Map<int, Room3DExportImages>>(
+  final result =
+      await Navigator.of(context).push<ApartmentPdf3DCaptureResult>(
     PageRouteBuilder(
       opaque: true,
       barrierDismissible: false,
@@ -19,7 +20,7 @@ Future<Map<int, Room3DExportImages>> captureRoom3DImagesForPdf(
           FadeTransition(opacity: animation, child: child),
     ),
   );
-  return result ?? {};
+  return result ?? const ApartmentPdf3DCaptureResult();
 }
 
 class Room3DPdfCapturePage extends ConsumerStatefulWidget {
@@ -32,7 +33,7 @@ class Room3DPdfCapturePage extends ConsumerStatefulWidget {
 }
 
 class _Room3DPdfCapturePageState extends ConsumerState<Room3DPdfCapturePage> {
-  Future<Map<int, Room3DExportImages>> Function()? _capture;
+  Future<ApartmentPdf3DCaptureResult> Function()? _capture;
   bool _started = false;
 
   Future<void> _runCapture() async {
@@ -44,7 +45,9 @@ class _Room3DPdfCapturePageState extends ConsumerState<Room3DPdfCapturePage> {
       final result = await _capture!();
       if (mounted) Navigator.pop(context, result);
     } catch (_) {
-      if (mounted) Navigator.pop(context, <int, Room3DExportImages>{});
+      if (mounted) {
+        Navigator.pop(context, const ApartmentPdf3DCaptureResult());
+      }
     }
   }
 
@@ -73,7 +76,7 @@ class _Room3DPdfCapturePageState extends ConsumerState<Room3DPdfCapturePage> {
                 const SizedBox(height: 16),
                 Text(
                   widget.apartmentMode
-                      ? 'Capturing 3D previews for all rooms...'
+                      ? 'Capturing apartment top view and room previews...'
                       : 'Capturing 3D preview...',
                   style: const TextStyle(color: Colors.white70),
                   textAlign: TextAlign.center,
