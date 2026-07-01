@@ -12,6 +12,7 @@ import '../../providers/apartment_blueprint_selection_provider.dart';
 import '../../providers/apartment_placement_history_provider.dart';
 import '../../providers/project_provider.dart';
 import '../common/dimension_control.dart';
+import 'apartment_details_dialog.dart';
 import 'apartment_canvas.dart';
 
 class ApartmentSpaceView extends ConsumerWidget {
@@ -339,7 +340,21 @@ class _ApartmentSizeControlsState extends ConsumerState<_ApartmentSizeControls> 
       children: [
         Row(
           children: [
-            Text('Apartment Details', style: theme.textTheme.titleSmall),
+            Text('Apartment Size', style: theme.textTheme.titleSmall),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              tooltip: 'Apartment information',
+              icon: Icon(
+                Icons.info_outline,
+                size: 18,
+                color: widget.layout.details.hasAny
+                    ? theme.colorScheme.primary
+                    : null,
+              ),
+              onPressed: () => showApartmentDetailsDialog(context),
+            ),
             const Spacer(),
             IconButton(
               visualDensity: VisualDensity.compact,
