@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_spacing.dart';
 import '../core/theme/app_theme.dart';
 import '../providers/company_profile_provider.dart';
+import '../providers/pdf_export_settings_provider.dart';
 import '../providers/room_design_provider.dart';
 import '../widgets/company/company_image.dart';
 
@@ -77,6 +78,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final theme = Theme.of(context);
     final profile = ref.watch(companyProfileProvider);
     final premiumFurniture = ref.watch(premiumFurnitureProvider);
+    final pdfSettings = ref.watch(pdfExportSettingsProvider);
 
     ref.listen(companyProfileProvider, (previous, next) {
       if (previous?.logoPath != next.logoPath ||
@@ -249,6 +251,77 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ref.read(companyProfileProvider.notifier).updateEmail(value);
                 },
               ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _SectionCard(
+          title: 'PDF Settings',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                secondary: Icon(
+                  Icons.view_in_ar_outlined,
+                  color: pdfSettings.include3dPreview
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                ),
+                title: const Text('Include 3D previews'),
+                subtitle: Text(
+                  'Add rendered 3D views when exporting room or apartment PDFs.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                  ),
+                ),
+                value: pdfSettings.include3dPreview,
+                onChanged: (value) {
+                  ref
+                      .read(pdfExportSettingsProvider.notifier)
+                      .setInclude3dPreview(value);
+                },
+              ),
+              if (pdfSettings.include3dPreview) ...[
+                const Divider(height: 24),
+                Text(
+                  'Views to include',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: const Text('Top view'),
+                  subtitle: const Text(
+                    'Bird\'s-eye view of each room and the full apartment layout.',
+                  ),
+                  value: pdfSettings.includeTopView,
+                  onChanged: (value) {
+                    if (value == null) return;
+                    ref
+                        .read(pdfExportSettingsProvider.notifier)
+                        .setIncludeTopView(value);
+                  },
+                ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: const Text('Front view'),
+                  subtitle: const Text(
+                    'Front-facing view of each room and the apartment layout.',
+                  ),
+                  value: pdfSettings.includeFrontView,
+                  onChanged: (value) {
+                    if (value == null) return;
+                    ref
+                        .read(pdfExportSettingsProvider.notifier)
+                        .setIncludeFrontView(value);
+                  },
+                ),
+              ],
             ],
           ),
         ),
