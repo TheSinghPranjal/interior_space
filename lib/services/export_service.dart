@@ -48,6 +48,7 @@ class ExportService {
     String? roomId,
     int? apartmentIndex,
     Map<int, Room3DExportImages>? render3dImagesByRoomIndex,
+    Uint8List? apartmentTopView3d,
   }) async {
     if (kIsWeb) return null;
 
@@ -76,6 +77,14 @@ class ExportService {
     final blueprintImages = <int, Uint8List>{};
     for (var i = 0; i < rooms.length; i++) {
       blueprintImages[i] = await _renderRoomBlueprint(rooms[i]);
+    }
+
+    Uint8List? apartmentBlueprintImage;
+    if (!singleRoomExport) {
+      apartmentBlueprintImage = await SketchCompositeExporter.renderApartmentBlueprint(
+        project: project,
+        apartmentIndex: aptIndex,
+      );
     }
 
     Uint8List? apartmentSketchImage;
@@ -118,6 +127,31 @@ class ExportService {
           ],
           pw.SizedBox(height: 8),
           pw.Divider(),
+          if (!singleRoomExport && apartmentBlueprintImage != null) ...[
+            _sectionTitle('Apartment Floor Plan'),
+            pw.Center(
+              child: pw.Image(
+                pw.MemoryImage(apartmentBlueprintImage),
+                fit: pw.BoxFit.contain,
+                height: 420,
+              ),
+            ),
+            pw.SizedBox(height: 12),
+          ],
+          if (!singleRoomExport && apartmentTopView3d != null) ...[
+            _sectionTitle('Apartment 3D Top View'),
+            pw.Center(
+              child: pw.Image(
+                pw.MemoryImage(apartmentTopView3d),
+                fit: pw.BoxFit.contain,
+                height: 320,
+              ),
+            ),
+            pw.SizedBox(height: 12),
+          ],
+          if (!singleRoomExport &&
+              (apartmentBlueprintImage != null || apartmentTopView3d != null))
+            pw.Divider(),
           if (apartmentSketchImage != null) ...[
             _sectionTitle('Apartment Sketch'),
             pw.Center(
