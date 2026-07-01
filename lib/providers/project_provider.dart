@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../core/constants/room_constants.dart';
+import '../models/apartment_details.dart';
 import '../models/apartment_layout.dart';
 import '../models/project_design.dart';
 import '../models/room_design.dart';
@@ -265,6 +266,10 @@ class ProjectNotifier extends StateNotifier<ProjectDesign> {
     _replaceActiveApartment(layout.copyWith(name: name.trim()));
   }
 
+  void updateApartmentDetails(ApartmentDetails details) {
+    _replaceActiveApartment(state.apartmentLayout.copyWith(details: details));
+  }
+
   void updateApartmentDimensions({double? widthFt, double? lengthFt}) {
     final old = state.apartmentLayout;
     final newW = (widthFt ?? old.widthFt).clamp(
@@ -286,12 +291,10 @@ class ProjectNotifier extends StateNotifier<ProjectDesign> {
     }).toList();
 
     _replaceActiveApartment(
-      ApartmentLayout(
-        name: old.name,
+      old.copyWith(
         widthFt: newW,
         lengthFt: newL,
         placements: placements,
-        sketch: old.sketch,
       ),
     );
   }
@@ -306,7 +309,10 @@ class ProjectNotifier extends StateNotifier<ProjectDesign> {
   void resetApartmentLayout() {
     final layout = state.apartmentLayout;
     _replaceActiveApartment(
-      ApartmentLayout.initial(name: layout.name).copyWith(sketch: layout.sketch),
+      ApartmentLayout.initial(name: layout.name).copyWith(
+        sketch: layout.sketch,
+        details: layout.details,
+      ),
     );
   }
 
