@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/pdf_export_settings.dart';
 import '../../models/room_3d_export_images.dart';
 import 'room_3d_viewer.dart';
 
@@ -8,14 +9,22 @@ import 'room_3d_viewer.dart';
 Future<ApartmentPdf3DCaptureResult> captureRoom3DImagesForPdf(
   BuildContext context, {
   required bool apartmentMode,
+  required PdfExportSettings pdfSettings,
 }) async {
+  if (!pdfSettings.shouldCapture3d) {
+    return const ApartmentPdf3DCaptureResult();
+  }
+
   final result =
       await Navigator.of(context).push<ApartmentPdf3DCaptureResult>(
     PageRouteBuilder(
       opaque: true,
       barrierDismissible: false,
       pageBuilder: (context, animation, secondaryAnimation) =>
-          Room3DPdfCapturePage(apartmentMode: apartmentMode),
+          Room3DPdfCapturePage(
+            apartmentMode: apartmentMode,
+            pdfSettings: pdfSettings,
+          ),
       transitionsBuilder: (context, animation, secondaryAnimation, child) =>
           FadeTransition(opacity: animation, child: child),
     ),
@@ -24,16 +33,22 @@ Future<ApartmentPdf3DCaptureResult> captureRoom3DImagesForPdf(
 }
 
 class Room3DPdfCapturePage extends ConsumerStatefulWidget {
-  const Room3DPdfCapturePage({super.key, required this.apartmentMode});
+  const Room3DPdfCapturePage({
+    super.key,
+    required this.apartmentMode,
+    required this.pdfSettings,
+  });
 
   final bool apartmentMode;
+  final PdfExportSettings pdfSettings;
 
   @override
   ConsumerState<Room3DPdfCapturePage> createState() => _Room3DPdfCapturePageState();
 }
 
 class _Room3DPdfCapturePageState extends ConsumerState<Room3DPdfCapturePage> {
-  Future<ApartmentPdf3DCaptureResult> Function()? _capture;
+  Future<ApartmentPdf3DCaptureResult> Function(PdfExportSettings settings)?
+      _capture;
   bool _started = false;
 
   Future<void> _runCapture() async {
@@ -42,7 +57,7 @@ class _Room3DPdfCapturePageState extends ConsumerState<Room3DPdfCapturePage> {
 
     try {
       await Future.delayed(const Duration(milliseconds: 350));
-      final result = await _capture!();
+      final result = await _capture!(widget.pdfSettings);
       if (mounted) Navigator.pop(context, result);
     } catch (_) {
       if (mounted) {
