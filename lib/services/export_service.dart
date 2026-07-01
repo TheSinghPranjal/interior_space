@@ -52,6 +52,7 @@ class ExportService {
     Uint8List? apartmentTopView3d,
     Uint8List? apartmentFrontView3d,
     PdfExportSettings pdfSettings = const PdfExportSettings(),
+    bool includeApartmentSections = false,
   }) async {
     if (kIsWeb) return null;
 
@@ -74,7 +75,11 @@ class ExportService {
     }
     if (rooms.isEmpty) return null;
 
-    final reportTitle = singleRoomExport ? rooms.first.name : apartmentName;
+    final reportTitle = singleRoomExport
+        ? rooms.first.name
+        : includeApartmentSections
+            ? apartmentName
+            : '$apartmentName — All Rooms';
     final generatedAt = DateFormat('MMMM d, yyyy • h:mm a').format(DateTime.now());
 
     final blueprintImages = <int, Uint8List>{};
@@ -83,7 +88,7 @@ class ExportService {
     }
 
     Uint8List? apartmentBlueprintImage;
-    if (!singleRoomExport) {
+    if (!singleRoomExport && includeApartmentSections) {
       apartmentBlueprintImage = await SketchCompositeExporter.renderApartmentBlueprint(
         project: project,
         apartmentIndex: aptIndex,
@@ -92,6 +97,7 @@ class ExportService {
 
     Uint8List? apartmentSketchImage;
     if (!singleRoomExport &&
+        includeApartmentSections &&
         apartmentLayout.sketch.includeInPdfExport &&
         !apartmentLayout.sketch.isEmpty) {
       apartmentSketchImage = await SketchCompositeExporter.renderApartment(
@@ -117,20 +123,24 @@ class ExportService {
           pw.SizedBox(height: 6),
           pw.Text('Generated: $generatedAt'),
           pw.Text('Total rooms: ${rooms.length}'),
-          if (!singleRoomExport) ...[
+          if (!singleRoomExport && includeApartmentSections) ...[
             pw.SizedBox(height: 4),
             pw.Text(
               'Apartment size: ${apartmentLayout.widthFt.toStringAsFixed(1)} × '
               '${apartmentLayout.lengthFt.toStringAsFixed(1)} ft',
             ),
           ],
-          if (!singleRoomExport && apartmentLayout.details.hasAny) ...[
+          if (!singleRoomExport &&
+              includeApartmentSections &&
+              apartmentLayout.details.hasAny) ...[
             pw.SizedBox(height: 12),
             ..._buildApartmentDetailsSection(apartmentLayout.details),
           ],
           pw.SizedBox(height: 8),
           pw.Divider(),
-          if (!singleRoomExport && apartmentBlueprintImage != null) ...[
+          if (!singleRoomExport &&
+              includeApartmentSections &&
+              apartmentBlueprintImage != null) ...[
             _sectionTitle('Apartment Floor Plan'),
             pw.Center(
               child: pw.Image(
@@ -142,6 +152,7 @@ class ExportService {
             pw.SizedBox(height: 12),
           ],
           if (!singleRoomExport &&
+              includeApartmentSections &&
               pdfSettings.shouldCapture3d &&
               apartmentTopView3d != null) ...[
             _sectionTitle('Apartment 3D Top View'),
@@ -155,6 +166,7 @@ class ExportService {
             pw.SizedBox(height: 12),
           ],
           if (!singleRoomExport &&
+              includeApartmentSections &&
               pdfSettings.shouldCapture3d &&
               apartmentFrontView3d != null) ...[
             _sectionTitle('Apartment 3D Front View'),
@@ -168,11 +180,14 @@ class ExportService {
             pw.SizedBox(height: 12),
           ],
           if (!singleRoomExport &&
+              includeApartmentSections &&
               (apartmentBlueprintImage != null ||
                   apartmentTopView3d != null ||
                   apartmentFrontView3d != null))
             pw.Divider(),
-          if (apartmentSketchImage != null) ...[
+          if (!singleRoomExport &&
+              includeApartmentSections &&
+              apartmentSketchImage != null) ...[
             _sectionTitle('Apartment Sketch'),
             pw.Center(
               child: pw.Image(
