@@ -1751,169 +1751,37 @@
     return a + Math.random() * (b - a);
   }
 
-  function applyFrondColorVariation(frond, material) {
-    if (!frond.userData.tintApplied) {
-      frond.userData.tintApplied = true;
-      material.color.offsetHSL(randomBetween(-0.01, 0.01), 0, 0);
-    }
-  }
-
-  function finalizeFrondPlacement(frond, plantGroup, material) {
-    plantGroup.add(frond);
-    applyFrondColorVariation(frond, material);
-  }
-
-  //----------------------------------------------------------
-  // PALM FROND
-  //----------------------------------------------------------
-
-  function createPalmFrond(length, material) {
-    const group = new THREE.Group();
-
-    // Center vein
-    const vein = new THREE.Mesh(
-      new THREE.CylinderGeometry(
-        0.0015,
-        0.0022,
+  function createPalmLeaf(length, material) {
+    const leaf = new THREE.Mesh(
+      new THREE.PlaneGeometry(
         length,
-        6
+        length * 0.07,
+        4,
+        1
       ),
       material
     );
 
-    //----------------------------------------------------------
-    // CURVED VEIN
-    //----------------------------------------------------------
+    const pos = leaf.geometry.attributes.position;
 
-    const veinPos = vein.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
 
-    for (let i = 0; i < veinPos.count; i++) {
-      let x = veinPos.getX(i);
-      let y = veinPos.getY(i);
-      let z = veinPos.getZ(i);
+      const t = (x + length * 0.5) / length;
 
-      const t = y / length;
-
-      z += Math.sin(t * Math.PI) * length * 0.045;
-
-      x += Math.sin(t * Math.PI * 0.5) * length * 0.01;
-
-      veinPos.setXYZ(i, x, y, z);
+      pos.setXYZ(
+        i,
+        x,
+        y,
+        Math.sin(t * Math.PI) * length * 0.02
+      );
     }
 
-    veinPos.needsUpdate = true;
-    vein.geometry.computeVertexNormals();
+    pos.needsUpdate = true;
+    leaf.geometry.computeVertexNormals();
 
-    vein.position.y = length * 0.5;
-
-    group.add(vein);
-
-    //----------------------------------------------------------
-    // FROND TWIST
-    //----------------------------------------------------------
-
-    group.rotation.y = randomBetween(-0.06, 0.06);
-
-    //----------------------------------------------------------
-    // LEAFLETS
-    //----------------------------------------------------------
-
-    const leafletCount = 16;
-
-    for (let i = 0; i < leafletCount; i++) {
-      const t = i / (leafletCount - 1);
-
-      const y =
-        t * length +
-        randomBetween(-0.004, 0.004);
-
-      const centerWeight = 1 - Math.abs(t - 0.5) * 2;
-
-      const leafletLength =
-        length *
-        (0.07 +
-          centerWeight * 0.18 +
-          randomBetween(-0.015, 0.015));
-
-      [-1, 1].forEach((side) => {
-        const leaflet = new THREE.Mesh(
-          new THREE.PlaneGeometry(
-            leafletLength,
-            leafletLength * 0.055,
-            4,
-            1
-          ),
-          material
-        );
-
-        leaflet.position.set(
-          side * leafletLength * 0.28,
-          y,
-          0
-        );
-
-        leaflet.position.y -= Math.pow(t, 2) * 0.02;
-
-        const pos = leaflet.geometry.attributes.position;
-
-        for (let j = 0; j < pos.count; j++) {
-          let x = pos.getX(j);
-          let ly = pos.getY(j);
-
-          const lt = (x + leafletLength * 0.5) / leafletLength;
-
-          const scale = 1.0 - lt * 0.75;
-
-          ly *= scale;
-
-          pos.setXY(j, x, ly);
-        }
-
-        pos.needsUpdate = true;
-
-        const p = leaflet.geometry.attributes.position;
-
-        for (let j = 0; j < p.count; j++) {
-          let x = p.getX(j);
-          let ly = p.getY(j);
-          let z = p.getZ(j);
-
-          const lt = (x + leafletLength * 0.5) / leafletLength;
-
-          z += Math.sin(lt * Math.PI) * leafletLength * 0.03;
-
-          p.setXYZ(j, x, ly, z);
-        }
-
-        p.needsUpdate = true;
-        leaflet.geometry.computeVertexNormals();
-
-        const droop = Math.pow(t, 1.6);
-
-        leaflet.rotation.z =
-          side *
-          randomBetween(0.75, 1.0);
-
-        leaflet.rotation.y =
-          side * randomBetween(0.20, 0.35);
-
-        leaflet.rotation.x =
-          -droop *
-          randomBetween(0.25, 0.45);
-
-        leaflet.scale.set(
-          randomBetween(0.9, 1.15),
-          randomBetween(0.85, 1.1),
-          1
-        );
-
-        if (Math.random() > 0.06) {
-          group.add(leaflet);
-        }
-      });
-    }
-
-    return group;
+    return leaf;
   }
 
   function buildPremiumPottedFlowerPot(renderer, item, textureUrl) {
@@ -1931,25 +1799,17 @@
       roughness: 1,
       metalness: 0,
     });
-    const stemMat = new THREE.MeshPhysicalMaterial({
+    const stemMat = new THREE.MeshStandardMaterial({
       color: 0x3c7d2b,
       roughness: 0.95,
       metalness: 0,
-      clearcoat: 0.05,
     });
-    const leafMat = new THREE.MeshPhysicalMaterial({
+    const leafMat = new THREE.MeshStandardMaterial({
       color: 0x3d7f2e,
       roughness: 0.86,
       metalness: 0,
       side: THREE.DoubleSide,
-      clearcoat: 0.08,
-      transparent: true,
-      opacity: 0.98,
-      depthWrite: true,
     });
-    if ('transmission' in leafMat) {
-      leafMat.transmission = 0.04;
-    }
 
     const potH = fh * 0.28;
     const potTop = radius * 0.95;
@@ -1957,10 +1817,6 @@
 
     const potBodyHeight = potH * 0.74;
     const rimHeight = potH * 0.26;
-
-    //----------------------------------------------------------
-    // CERAMIC POT
-    //----------------------------------------------------------
 
     const ceramicPotMat = new THREE.MeshPhysicalMaterial({
       color: 0xb88767,
@@ -1976,16 +1832,12 @@
         potTop * 0.98,
         potBottom,
         potBodyHeight,
-        48
+        32
       ),
       ceramicPotMat
     );
     potBody.position.y = potBodyHeight * 0.5;
     group.add(potBody);
-
-    //----------------------------------------------------------
-    // CERAMIC RIM
-    //----------------------------------------------------------
 
     const rimMat = new THREE.MeshPhysicalMaterial({
       color: 0xf8f8f6,
@@ -2001,7 +1853,7 @@
         potTop,
         potTop * 0.97,
         rimHeight,
-        48
+        32
       ),
       rimMat
     );
@@ -2013,7 +1865,7 @@
         potTop * 0.88,
         potTop * 0.88,
         0.02,
-        40
+        24
       ),
       soilMat
     );
@@ -2040,34 +1892,12 @@
     plantGroup.position.y = soil.position.y + 0.01;
     group.add(plantGroup);
 
-    //----------------------------------------------------------
-    // PALM STEMS
-    //----------------------------------------------------------
-
     const stemMinHeight = fh * 0.42;
     const stemMaxHeight = fh * 0.74;
     const stemRadius = radius * 0.010;
     const clusterRadius = radius * 0.26;
-
-    //----------------------------------------------------------
-    // STEM DENSITY
-    //----------------------------------------------------------
-
-    const stemCount = 85;
-
-    //----------------------------------------------------------
-    // DENSE CANOPY
-    //----------------------------------------------------------
-
-    const innerFronds = 12;
-    const middleFronds = 18;
-    const outerFronds = 16;
-
-    //----------------------------------------------------------
-    // STEMS
-    //----------------------------------------------------------
-
-    const stems = [];
+    const stemCount = 45;
+    const leafLevels = 3;
 
     for (let i = 0; i < stemCount; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -2075,148 +1905,55 @@
       const x = Math.cos(angle) * r;
       const z = Math.sin(angle) * r;
 
-      const h = randomBetween(stemMinHeight, stemMaxHeight);
+      const h =
+        stemMinHeight +
+        Math.pow(Math.random(), 1.6) * (stemMaxHeight - stemMinHeight);
 
       const stem = new THREE.Mesh(
         new THREE.CylinderGeometry(
           stemRadius * 0.65,
           stemRadius,
           h,
-          8
+          6
         ),
         stemMat
       );
 
       stem.position.set(x, h * 0.5, z);
-
-      stem.rotation.z = (Math.random() - 0.5) * 0.15;
-      stem.rotation.x = (Math.random() - 0.5) * 0.12;
-
-      stem.material = stemMat.clone();
-      stem.material.color.offsetHSL(0, 0, randomBetween(-0.05, 0.05));
+      stem.rotation.y = Math.random() * Math.PI * 2;
 
       stem.castShadow = true;
       stem.receiveShadow = true;
 
       plantGroup.add(stem);
 
-      stems.push({
-        mesh: stem,
-        height: h,
-      });
+      for (let l = 0; l < leafLevels; l++) {
+        const y =
+          h * (0.42 + l * 0.17) +
+          randomBetween(-0.01, 0.01);
+
+        [-1, 1].forEach((side) => {
+          const leaf = createPalmLeaf(
+            randomBetween(fh * 0.12, fh * 0.18),
+            leafMat
+          );
+
+          leaf.position.set(
+            side * 0.012,
+            y,
+            0
+          );
+
+          leaf.rotation.z = side * 0.65;
+          leaf.rotation.y = randomBetween(-0.3, 0.3);
+
+          leaf.castShadow = true;
+          leaf.receiveShadow = true;
+
+          stem.add(leaf);
+        });
+      }
     }
-
-    stems.forEach((s) => {
-      const scale = randomBetween(0.9, 1.12);
-      s.mesh.scale.set(scale, 1, scale);
-    });
-
-    for (let i = 0; i < 18; i++) {
-      const h = randomBetween(fh * 0.45, fh * 0.62);
-
-      const stem = new THREE.Mesh(
-        new THREE.CylinderGeometry(
-          stemRadius * 0.6,
-          stemRadius,
-          h,
-          8
-        ),
-        stemMat
-      );
-
-      stem.position.set(
-        randomBetween(-0.02, 0.02),
-        h * 0.5,
-        randomBetween(-0.02, 0.02)
-      );
-
-      stem.material = stemMat.clone();
-      stem.material.color.offsetHSL(0, 0, randomBetween(-0.05, 0.05));
-
-      stem.castShadow = true;
-      stem.receiveShadow = true;
-
-      plantGroup.add(stem);
-
-      stems.push({
-        mesh: stem,
-        height: h,
-      });
-    }
-
-    //----------------------------------------------------------
-    // INNER FRONDS
-    //----------------------------------------------------------
-
-    for (let i = 0; i < innerFronds; i++) {
-      const stem = stems[Math.floor(Math.random() * stems.length)];
-
-      const frond = createPalmFrond(
-        randomBetween(fh * 0.34, fh * 0.42),
-        leafMat
-      );
-
-      frond.position.set(
-        stem.mesh.position.x * 0.75,
-        stem.height * 0.70,
-        stem.mesh.position.z * 0.75
-      );
-      frond.rotation.y = Math.random() * Math.PI * 2;
-      frond.rotation.x = randomBetween(-0.18, -0.05);
-      frond.rotation.z = randomBetween(-0.18, 0.18);
-
-      finalizeFrondPlacement(frond, plantGroup, leafMat);
-    }
-
-    //----------------------------------------------------------
-    // MIDDLE FRONDS
-    //----------------------------------------------------------
-
-    for (let i = 0; i < middleFronds; i++) {
-      const stem = stems[Math.floor(Math.random() * stems.length)];
-
-      const frond = createPalmFrond(
-        randomBetween(fh * 0.42, fh * 0.55),
-        leafMat
-      );
-
-      frond.position.set(
-        stem.mesh.position.x * 0.75,
-        stem.height * 0.70,
-        stem.mesh.position.z * 0.75
-      );
-      frond.rotation.y = Math.random() * Math.PI * 2;
-      frond.rotation.x = randomBetween(-0.45, -0.25);
-      frond.rotation.z = randomBetween(-0.18, 0.18);
-
-      finalizeFrondPlacement(frond, plantGroup, leafMat);
-    }
-
-    //----------------------------------------------------------
-    // OUTER FRONDS
-    //----------------------------------------------------------
-
-    for (let i = 0; i < outerFronds; i++) {
-      const stem = stems[Math.floor(Math.random() * stems.length)];
-
-      const frond = createPalmFrond(
-        randomBetween(fh * 0.52, fh * 0.66),
-        leafMat
-      );
-
-      frond.position.set(
-        stem.mesh.position.x * 0.75,
-        stem.height * 0.70,
-        stem.mesh.position.z * 0.75
-      );
-      frond.rotation.y = Math.random() * Math.PI * 2;
-      frond.rotation.x = randomBetween(-0.55, -0.35);
-      frond.rotation.z = randomBetween(-0.18, 0.18);
-
-      finalizeFrondPlacement(frond, plantGroup, leafMat);
-    }
-
-    plantGroup.rotation.y = randomBetween(-0.06, 0.06);
 
     group.traverse((obj) => {
       if (!obj.isMesh) return;
