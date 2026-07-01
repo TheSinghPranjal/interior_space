@@ -315,6 +315,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     : _confirmReset(context, activeRoom.name);
                               case 'export_room':
                                 _exportCurrentRoomPdf(context);
+                              case 'export_all_rooms':
+                                _exportAllRoomsPdf(context);
                               case 'export_apartment_pdf':
                                 _exportApartmentPdf(context);
                             }
@@ -337,38 +339,51 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                             ),
                             const PopupMenuDivider(),
-                            PopupMenuItem(
-                              value: 'export_room',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.picture_as_pdf_outlined,
-                                      size: 16, color: theme.colorScheme.primary),
-                                  const SizedBox(width: 12),
-                                  const Text('Export current room'),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem(
-                              value: 'export_apartment_pdf',
-                              child: SizedBox(
-                                width: (MediaQuery.sizeOf(context).width * 0.55)
-                                    .clamp(180, 280),
+                            if (!isApartment) ...[
+                              PopupMenuItem(
+                                value: 'export_room',
                                 child: Row(
                                   children: [
                                     Icon(Icons.picture_as_pdf_outlined,
                                         size: 16, color: theme.colorScheme.primary),
                                     const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        'Export PDF (${project.apartmentLayout.name})',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
+                                    const Text('Export current room PDF'),
                                   ],
                                 ),
                               ),
-                            ),
+                              PopupMenuItem(
+                                value: 'export_all_rooms',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.picture_as_pdf_outlined,
+                                        size: 16, color: theme.colorScheme.primary),
+                                    const SizedBox(width: 12),
+                                    const Text('Export all rooms PDF'),
+                                  ],
+                                ),
+                              ),
+                            ] else
+                              PopupMenuItem(
+                                value: 'export_apartment_pdf',
+                                child: SizedBox(
+                                  width: (MediaQuery.sizeOf(context).width * 0.55)
+                                      .clamp(180, 280),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.picture_as_pdf_outlined,
+                                          size: 16, color: theme.colorScheme.primary),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'Export PDF (${project.apartmentLayout.name})',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ],
@@ -464,8 +479,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final render3dCapture = pdfSettings.shouldCapture3d
         ? await captureRoom3DImagesForPdf(
             context,
-            apartmentMode: false,
             pdfSettings: pdfSettings,
+            scope: PdfExportCaptureScope.singleRoom,
           )
         : const ApartmentPdf3DCaptureResult();
 
@@ -473,6 +488,65 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       project,
       roomId: room.id,
       pdfSettings: pdfSettings,
+      includeApartmentSections: false,
+      render3dImagesByRoomIndex: render3dCapture.roomImages.isNotEmpty
+          ? render3dCapture.roomImages
+          : null,
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          path != null
+              ? 'PDF saved to ${PublicDownloadSaver.displayPath(path)}'
+              : 'Could not save PDF. Check storage permission.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _exportAllRoomsPdf(BuildContext context) async {
+    final project = ref.read(projectProvider);
+    final exportService = ref.read(exportServiceProvider);
+    final pdfSettings = ref.read(pdfExportSettingsProvider);
+    final rooms = project.roomsForActiveApartment;
+
+    if (rooms.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No rooms to export')),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          pdfSettings.shouldCapture3d
+              ? 'Generating PDF for ${rooms.length} rooms with 3D previews...'
+              : 'Generating PDF for ${rooms.length} rooms...',
+        ),
+        duration: Duration(
+          seconds: pdfSettings.shouldCapture3d ? 60 + rooms.length * 15 : 20,
+        ),
+      ),
+    );
+
+    final render3dCapture = pdfSettings.shouldCapture3d
+        ? await captureRoom3DImagesForPdf(
+            context,
+            pdfSettings: pdfSettings,
+            scope: PdfExportCaptureScope.allRooms,
+          )
+        : const ApartmentPdf3DCaptureResult();
+
+    final path = await exportService.generatePdf(
+      project,
+      apartmentIndex: project.safeActiveApartmentIndex,
+      pdfSettings: pdfSettings,
+      includeApartmentSections: false,
       render3dImagesByRoomIndex: render3dCapture.roomImages.isNotEmpty
           ? render3dCapture.roomImages
           : null,
@@ -510,8 +584,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final render3dCapture = pdfSettings.shouldCapture3d
         ? await captureRoom3DImagesForPdf(
             context,
-            apartmentMode: true,
             pdfSettings: pdfSettings,
+            scope: PdfExportCaptureScope.apartment,
           )
         : const ApartmentPdf3DCaptureResult();
 
@@ -519,6 +593,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       project,
       apartmentIndex: project.safeActiveApartmentIndex,
       pdfSettings: pdfSettings,
+      includeApartmentSections: true,
       render3dImagesByRoomIndex: render3dCapture.roomImages.isNotEmpty
           ? render3dCapture.roomImages
           : null,
