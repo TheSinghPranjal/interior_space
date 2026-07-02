@@ -116,9 +116,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ? Colors.amber.shade700
                   : theme.colorScheme.onSurface.withValues(alpha: 0.55),
             ),
-            title: const Text('Premium furniture'),
+            title: const Text('Premium'),
             subtitle: Text(
-              'Use high-detail 3D models for furniture, AC units, and appliances.',
+              'Use high-detail 3D models for furniture, AC units, and appliances. Add daily objects and highly designed furniture.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
               ),
