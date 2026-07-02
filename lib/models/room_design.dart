@@ -10,6 +10,7 @@ import 'floor_config.dart';
 import 'furniture_item.dart';
 import 'light_config.dart';
 import 'room_dimensions.dart';
+import 'stair_config.dart';
 import 'wall_config.dart';
 import 'wall_tv_unit_config.dart';
 import 'window_config.dart';
@@ -32,6 +33,7 @@ class RoomDesign {
     this.cupboards = const [],
     this.lights = const [],
     this.fans = const [],
+    this.stairs = const [],
     this.furniture = const [],
     this.aiPromptHistory = const [],
     this.sketch = const SketchDocument(),
@@ -53,6 +55,7 @@ class RoomDesign {
   final List<CupboardConfig> cupboards;
   final List<LightConfig> lights;
   final List<FanConfig> fans;
+  final List<StairConfig> stairs;
   final List<FurnitureItem> furniture;
   final List<String> aiPromptHistory;
   final SketchDocument sketch;
@@ -75,6 +78,7 @@ class RoomDesign {
     List<CupboardConfig>? cupboards,
     List<LightConfig>? lights,
     List<FanConfig>? fans,
+    List<StairConfig>? stairs,
     List<FurnitureItem>? furniture,
     List<String>? aiPromptHistory,
     SketchDocument? sketch,
@@ -96,6 +100,7 @@ class RoomDesign {
       cupboards: cupboards ?? this.cupboards,
       lights: lights ?? this.lights,
       fans: fans ?? this.fans,
+      stairs: stairs ?? this.stairs,
       furniture: furniture ?? this.furniture,
       aiPromptHistory: aiPromptHistory ?? this.aiPromptHistory,
       sketch: sketch ?? this.sketch,
@@ -119,6 +124,7 @@ class RoomDesign {
         'cupboards': cupboards.map((c) => c.toJson()).toList(),
         'lights': lights.map((l) => l.toJson()).toList(),
         'fans': fans.map((f) => f.toJson()).toList(),
+        'stairs': stairs.map((s) => s.toJson()).toList(),
         'furniture': furniture.map((f) => f.toJson()).toList(),
         'aiPromptHistory': aiPromptHistory,
         'sketch': sketch.toJson(),
@@ -201,6 +207,10 @@ class RoomDesign {
           [],
       fans: (json['fans'] as List<dynamic>?)
               ?.map((e) => FanConfig.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      stairs: (json['stairs'] as List<dynamic>?)
+              ?.map((e) => StairConfig.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
       furniture: furniture,
