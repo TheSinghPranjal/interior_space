@@ -13,6 +13,8 @@ class DoorConfig {
     this.color = '#8B5E3C',
     this.material = DoorMaterial.wood,
     this.texturePath,
+    this.swingDirection = DoorSwingDirection.inward,
+    this.hingeSide = DoorHingeSide.start,
   });
 
   final String id;
@@ -24,6 +26,8 @@ class DoorConfig {
   final String color;
   final DoorMaterial material;
   final String? texturePath;
+  final DoorSwingDirection swingDirection;
+  final DoorHingeSide hingeSide;
 
   double wallLengthFt(RoomDimensions dims) => dims.lengthForWall(wall);
 
@@ -48,6 +52,8 @@ class DoorConfig {
     DoorMaterial? material,
     String? texturePath,
     bool clearTexture = false,
+    DoorSwingDirection? swingDirection,
+    DoorHingeSide? hingeSide,
   }) {
     return DoorConfig(
       id: id,
@@ -59,6 +65,8 @@ class DoorConfig {
       color: color ?? this.color,
       material: material ?? this.material,
       texturePath: clearTexture ? null : (texturePath ?? this.texturePath),
+      swingDirection: swingDirection ?? this.swingDirection,
+      hingeSide: hingeSide ?? this.hingeSide,
     );
   }
 
@@ -72,6 +80,8 @@ class DoorConfig {
         'color': color,
         'material': material.name,
         'texturePath': texturePath,
+        'swingDirection': swingDirection.name,
+        'hingeSide': hingeSide.name,
       };
 
   factory DoorConfig.fromJson(Map<String, dynamic> json) {
@@ -89,6 +99,14 @@ class DoorConfig {
         json['material'] as String? ?? 'wood',
       ),
       texturePath: json['texturePath'] as String?,
+      swingDirection: DoorSwingDirection.values.firstWhere(
+        (d) => d.name == json['swingDirection'],
+        orElse: () => DoorSwingDirection.inward,
+      ),
+      hingeSide: DoorHingeSide.values.firstWhere(
+        (h) => h.name == json['hingeSide'],
+        orElse: () => DoorHingeSide.start,
+      ),
     );
   }
 }
