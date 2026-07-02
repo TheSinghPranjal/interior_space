@@ -153,10 +153,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         icon: Icons.window_outlined,
         child: WindowsEditor(),
       ),
-      DesignMenuAction.furniture => const EditorScreen(
-        title: 'Furniture',
+      DesignMenuAction.furniture => EditorScreen(
+        title: ref.read(premiumFurnitureProvider)
+            ? 'Furniture & Objects'
+            : 'Furniture',
         icon: Icons.chair_outlined,
-        child: FurnitureEditor(),
+        child: const FurnitureEditor(),
       ),
       DesignMenuAction.lighting => const EditorScreen(
         title: 'Lighting and Fan',
