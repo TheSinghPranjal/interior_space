@@ -66,6 +66,10 @@ enum FalseCeilingType {
 
 enum DoorMaterial { wood, metal, glass, laminate }
 
+enum DoorSwingDirection { inward, outward }
+
+enum DoorHingeSide { start, end }
+
 enum CupboardTexture { matte, glossy, laminate, veneer }
 
 enum LightType { ceiling, spot, ledStrip, chandelier, wall }
@@ -270,6 +274,20 @@ extension KitchenChimneyStyleLabel on KitchenChimneyStyle {
         KitchenChimneyStyle.wallMounted => 'Wall Mounted',
         KitchenChimneyStyle.glass => 'Glass Chimney',
         KitchenChimneyStyle.stainlessSteel => 'Stainless Steel',
+      };
+}
+
+extension DoorSwingDirectionLabel on DoorSwingDirection {
+  String get label => switch (this) {
+        DoorSwingDirection.inward => 'Opens into room',
+        DoorSwingDirection.outward => 'Opens outward',
+      };
+}
+
+extension DoorHingeSideLabel on DoorHingeSide {
+  String get label => switch (this) {
+        DoorHingeSide.start => 'Hinge at start of opening',
+        DoorHingeSide.end => 'Hinge at end of opening',
       };
 }
 
