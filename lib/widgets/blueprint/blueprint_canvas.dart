@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/utils/blueprint_viewport_fit.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/blueprint_door_paint.dart';
 import '../../core/utils/blueprint_stair_paint.dart';
 import '../../core/utils/blueprint_placement.dart';
 import '../../core/utils/blueprint_wall_border_paint.dart';
@@ -370,6 +371,24 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     _deselect();
   }
 
+  void _flipDoorSwing(RoomDesign design) {
+    if (_selectedId == null || _selectedType != 'door_wall' || !_selectionValid(design)) return;
+    final door = design.doors.firstWhere((d) => d.id == _selectedId);
+    final next = door.swingDirection == DoorSwingDirection.inward
+        ? DoorSwingDirection.outward
+        : DoorSwingDirection.inward;
+    ref.read(roomDesignProvider.notifier).updateDoor(door.copyWith(swingDirection: next));
+    HapticFeedback.selectionClick();
+  }
+
+  void _flipDoorHinge(RoomDesign design) {
+    if (_selectedId == null || _selectedType != 'door_wall' || !_selectionValid(design)) return;
+    final door = design.doors.firstWhere((d) => d.id == _selectedId);
+    final next = door.hingeSide == DoorHingeSide.start ? DoorHingeSide.end : DoorHingeSide.start;
+    ref.read(roomDesignProvider.notifier).updateDoor(door.copyWith(hingeSide: next));
+    HapticFeedback.selectionClick();
+  }
+
   void _rotateSelected(RoomDesign design, double degrees) {
     if (_selectedId == null || _selectedType == null || !_selectionValid(design)) return;
     HapticFeedback.selectionClick();
@@ -661,38 +680,118 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     final edge = (_isDragging && _selectedId == door.id && _tempPositionFromEdge != null)
         ? _tempPositionFromEdge!
         : door.positionFromEdge;
-    final rect = _wallStripRect(
-      wall: door.wall,
-      positionFromEdge: edge,
-      widthFt: door.width,
+    final hit = _doorHitRect(
+      door: door.copyWith(positionFromEdge: edge),
       roomRect: roomRect,
       scale: scale,
     );
+    final isSelected = _selectedId == door.id;
+    final isDragging = isSelected && _isDragging;
+    final itemCenter = hit.center;
 
-    return _itemBox(
-      id: door.id,
-      dragType: 'door_wall',
-      left: rect.left,
-      top: rect.top,
-      width: rect.width,
-      height: rect.height,
-      label: DoorConfig.displayLabel(design.doors, door),
-      color: ColorUtils.fromHex(door.color),
-      rotation: door.rotation,
-      design: design,
-      roomRect: roomRect,
-      scale: scale,
-      onWallDrag: (Offset center) {
-        _tempPositionFromEdge = _edgeFromCenter(
-          wall: door.wall,
-          center: center,
-          itemWidthFt: door.width,
-          roomRect: roomRect,
-          scale: scale,
-          maxEdge: door.maxPositionFromEdge(design.dimensions),
-        );
-      },
+    return Positioned(
+      left: hit.left,
+      top: hit.top,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onLongPress: () => _selectItem(door.id, 'door_wall'),
+        onPanDown: (_) {
+          _holdItemId = door.id;
+          _holdTimer?.cancel();
+          _holdTimer = Timer(_holdDuration, () {
+            if (_holdItemId != door.id) return;
+            _selectItem(door.id, 'door_wall');
+            _beginDrag(itemCenter);
+          });
+        },
+        onPanUpdate: (details) {
+          if (_selectedId != door.id || !_isDragging) return;
+          setState(() {
+            _dragDelta += details.delta;
+            _tempPositionFromEdge = _edgeFromCenter(
+              wall: door.wall,
+              center: (_dragStartCenter ?? itemCenter) + _dragDelta,
+              itemWidthFt: door.width,
+              roomRect: roomRect,
+              scale: scale,
+              maxEdge: door.maxPositionFromEdge(design.dimensions),
+            );
+          });
+        },
+        onPanEnd: (_) {
+          _cancelHold();
+          if (_selectedId == door.id && _isDragging) {
+            _commitDrag(design, roomRect, scale);
+          }
+        },
+        onPanCancel: () {
+          _cancelHold();
+          if (_selectedId == door.id && _isDragging) {
+            _commitDrag(design, roomRect, scale);
+          }
+        },
+        child: SizedBox(
+          width: hit.width,
+          height: hit.height,
+          child: CustomPaint(
+            painter: _DoorSymbolPainter(
+              door: door.copyWith(positionFromEdge: edge),
+              roomRect: roomRect,
+              scale: scale,
+              hitRect: hit,
+              selected: isSelected,
+              dragging: isDragging,
+            ),
+          ),
+        ),
+      ),
     );
+  }
+
+  Rect _doorHitRect({
+    required DoorConfig door,
+    required Rect roomRect,
+    required double scale,
+  }) {
+    final dw = door.width * scale;
+    final offset = door.positionFromEdge * scale;
+    final inward = door.swingDirection == DoorSwingDirection.inward;
+    final pad = dw + 8;
+
+    switch (door.wall) {
+      case WallId.front:
+        final x0 = roomRect.left + offset;
+        return Rect.fromLTWH(
+          x0 - 4,
+          inward ? roomRect.top - 4 : roomRect.top - pad,
+          dw + 8,
+          inward ? pad : pad,
+        );
+      case WallId.back:
+        final x0 = roomRect.left + offset;
+        return Rect.fromLTWH(
+          x0 - 4,
+          inward ? roomRect.bottom - pad + 4 : roomRect.bottom - 4,
+          dw + 8,
+          pad,
+        );
+      case WallId.left:
+        final y0 = roomRect.top + offset;
+        return Rect.fromLTWH(
+          inward ? roomRect.left - 4 : roomRect.left - pad,
+          y0 - 4,
+          pad,
+          dw + 8,
+        );
+      case WallId.right:
+        final y0 = roomRect.top + offset;
+        return Rect.fromLTWH(
+          inward ? roomRect.right - pad + 4 : roomRect.right - 4,
+          y0 - 4,
+          pad,
+          dw + 8,
+        );
+    }
   }
 
   Widget _buildWindowItem({
@@ -918,10 +1017,8 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     } else if (_selectedType == 'door_wall') {
       final door = design.doors.firstWhere((d) => d.id == _selectedId);
       final edge = _tempPositionFromEdge ?? door.positionFromEdge;
-      itemRect = _wallStripRect(
-        wall: door.wall,
-        positionFromEdge: edge,
-        widthFt: door.width,
+      itemRect = _doorHitRect(
+        door: door.copyWith(positionFromEdge: edge),
         roomRect: roomRect,
         scale: scale,
       );
@@ -981,6 +1078,20 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (_selectedType == 'door_wall') ...[
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.swap_vert, color: Colors.white, size: 18),
+                  tooltip: 'Flip open direction',
+                  onPressed: () => _flipDoorSwing(design),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.flip, color: Colors.white, size: 18),
+                  tooltip: 'Flip hinge side',
+                  onPressed: () => _flipDoorHinge(design),
+                ),
+              ],
               if (canRotate) ...[
                 IconButton(
                   visualDensity: VisualDensity.compact,
@@ -1204,6 +1315,47 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       ),
     );
   }
+}
+
+class _DoorSymbolPainter extends CustomPainter {
+  _DoorSymbolPainter({
+    required this.door,
+    required this.roomRect,
+    required this.scale,
+    required this.hitRect,
+    required this.selected,
+    required this.dragging,
+  });
+
+  final DoorConfig door;
+  final Rect roomRect;
+  final double scale;
+  final Rect hitRect;
+  final bool selected;
+  final bool dragging;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.translate(-hitRect.left, -hitRect.top);
+    BlueprintDoorPaint.draw(
+      canvas: canvas,
+      roomRect: roomRect,
+      scale: scale,
+      door: door,
+      fillColor: ColorUtils.fromHex(door.color),
+      strokeColor: selected ? AppTheme.primary : ColorUtils.fromHex(door.color),
+      selected: selected || dragging,
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _DoorSymbolPainter oldDelegate) =>
+      oldDelegate.door != door ||
+      oldDelegate.selected != selected ||
+      oldDelegate.dragging != dragging ||
+      oldDelegate.hitRect != hitRect;
 }
 
 class _StairSymbolPainter extends CustomPainter {
