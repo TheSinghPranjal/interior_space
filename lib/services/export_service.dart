@@ -16,8 +16,9 @@ import '../models/fan_config.dart';
 import '../models/furniture_item.dart';
 import '../models/light_config.dart';
 import '../models/project_design.dart';
-import '../models/room_3d_export_images.dart';
 import '../models/room_design.dart';
+import '../models/room_3d_export_images.dart';
+import '../models/stair_config.dart';
 import '../models/wall_tv_unit_config.dart';
 import '../models/window_config.dart';
 import 'blueprint_image_exporter.dart';
@@ -376,6 +377,23 @@ class ExportService {
           rows: room.doors.map(_doorRow).toList(),
         ),
       ],
+      if (room.stairs.isNotEmpty) ...[
+        pw.SizedBox(height: 10),
+        _sectionTitle('Stairs (${room.stairs.length})'),
+        _detailTable(
+          headers: const [
+            'Width',
+            'Height',
+            'Length',
+            'Steps',
+            'Rise',
+            'Tread',
+            'Shape',
+            'Finish',
+          ],
+          rows: room.stairs.map(_stairRow).toList(),
+        ),
+      ],
       if (room.windows.isNotEmpty) ...[
         pw.SizedBox(height: 10),
         _sectionTitle('Windows (${room.windows.length})'),
@@ -524,6 +542,17 @@ class ExportService {
         '${fan.positionX.toStringAsFixed(2)}, ${fan.positionY.toStringAsFixed(2)}',
         fan.height.toStringAsFixed(2),
         fan.color,
+      ];
+
+  List<String> _stairRow(StairConfig stair) => [
+        '${stair.width.toStringAsFixed(1)} ft',
+        '${stair.height.toStringAsFixed(1)} ft',
+        '${stair.depth.toStringAsFixed(1)} ft',
+        '${stair.safeStepCount}',
+        '${stair.risePerStep.toStringAsFixed(2)} ft',
+        '${stair.treadDepth.toStringAsFixed(2)} ft',
+        stair.shape.label,
+        stair.materialPreset.label,
       ];
 
   Future<Uint8List> _renderRoomBlueprint(RoomDesign room) async {
