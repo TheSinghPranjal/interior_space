@@ -155,6 +155,30 @@ class _DoorCardState extends ConsumerState<_DoorCard> {
             EditorHelperText(
               'Wall length: ${door.wallLengthFt(design.dimensions).toStringAsFixed(1)} ft',
             ),
+            DropdownButtonFormField<DoorSwingDirection>(
+              initialValue: door.swingDirection,
+              decoration: const InputDecoration(labelText: 'Open direction'),
+              items: DoorSwingDirection.values
+                  .map((d) => DropdownMenuItem(value: d, child: Text(d.label)))
+                  .toList(),
+              onChanged: enabled
+                  ? (d) {
+                      if (d != null) notifier.updateDoor(door.copyWith(swingDirection: d));
+                    }
+                  : null,
+            ),
+            DropdownButtonFormField<DoorHingeSide>(
+              initialValue: door.hingeSide,
+              decoration: const InputDecoration(labelText: 'Hinge side'),
+              items: DoorHingeSide.values
+                  .map((h) => DropdownMenuItem(value: h, child: Text(h.label)))
+                  .toList(),
+              onChanged: enabled
+                  ? (h) {
+                      if (h != null) notifier.updateDoor(door.copyWith(hingeSide: h));
+                    }
+                  : null,
+            ),
             ColorPickerField(
               label: 'Door Color',
               colorHex: door.color,
