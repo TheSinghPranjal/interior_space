@@ -1717,16 +1717,6 @@
             group.add(nosing);
           }
 
-          [-1, 1].forEach((side) => {
-            const stringer = new THREE.Mesh(
-              new THREE.BoxGeometry(0.07, totalH * 1.02, Math.sqrt(totalH * totalH + totalD * totalD)),
-              treadMat
-            );
-            stringer.rotation.x = -Math.atan2(totalH, totalD);
-            stringer.position.set(side * fw * 0.47, totalH / 2, 0);
-            group.add(stringer);
-          });
-
           const buildRail = (side, useGlass) => {
             const railX = side * fw * 0.44;
             const mat = useGlass ? glassRail : railMat;
