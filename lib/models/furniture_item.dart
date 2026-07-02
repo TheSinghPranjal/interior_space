@@ -77,6 +77,14 @@ class FurnitureItem {
     );
   }
 
+  CarBodyStyle get carBodyStyle {
+    if (type != FurnitureType.car) return CarBodyStyle.sedan;
+    return CarBodyStyle.values.firstWhere(
+      (s) => s.name == variant,
+      orElse: () => CarBodyStyle.sedan,
+    );
+  }
+
   FurnitureMaterialPreset get material {
     return FurnitureMaterialPreset.values.firstWhere(
       (m) => m.name == materialPreset,
@@ -100,9 +108,9 @@ class FurnitureItem {
         FurnitureType.bathtub ||
         FurnitureType.flowerPot ||
         FurnitureType.fridge ||
-        FurnitureType.shoeRack =>
+        FurnitureType.shoeRack ||
+        FurnitureType.car =>
           true,
-        _ => false,
       };
 
   bool get isWallMounted => type.isWallMounted;
@@ -220,6 +228,12 @@ class FurnitureItem {
       depth: catalog.depth,
       color: catalog.color,
       premiumCatalogId: catalog.idKey,
+      variant: catalog.baseType == FurnitureType.car
+          ? CarBodyStyle.sedan.name
+          : null,
+      materialPreset: catalog.baseType == FurnitureType.car
+          ? FurnitureMaterialPreset.glossy.name
+          : null,
     );
     if (dimensions == null) return base;
     final cols = 3;
@@ -375,6 +389,16 @@ class FurnitureItem {
           height: 3.0,
           depth: 1.2,
           color: '#6D4C41',
+        ),
+      FurnitureType.car => FurnitureItem(
+          id: id,
+          type: type,
+          width: 6.0,
+          height: 4.8,
+          depth: 15.0,
+          color: '#1E3A5F',
+          variant: CarBodyStyle.sedan.name,
+          materialPreset: FurnitureMaterialPreset.glossy.name,
         ),
     };
 
