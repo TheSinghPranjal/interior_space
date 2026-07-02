@@ -48,6 +48,11 @@ class PdfExportSettingsNotifier extends StateNotifier<PdfExportSettings> {
     }
     await _persist();
   }
+
+  Future<void> setIncludeSketchInPdf(bool value) async {
+    state = state.copyWith(includeSketchInPdf: value);
+    await _persist();
+  }
 }
 
 final pdfExportSettingsProvider =
