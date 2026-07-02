@@ -5,6 +5,7 @@ enum DesignMenuAction {
   walls,
   flooring,
   ceiling,
+  stairs,
   doors,
   windows,
   furniture,
@@ -18,6 +19,7 @@ extension DesignMenuActionInfo on DesignMenuAction {
         DesignMenuAction.walls => 'Walls',
         DesignMenuAction.flooring => 'Flooring',
         DesignMenuAction.ceiling => 'Ceiling',
+        DesignMenuAction.stairs => 'Stairs',
         DesignMenuAction.doors => 'Doors',
         DesignMenuAction.windows => 'Windows, Ac & Curtains',
         DesignMenuAction.furniture =>
@@ -31,6 +33,7 @@ extension DesignMenuActionInfo on DesignMenuAction {
         DesignMenuAction.walls => Icons.wallpaper,
         DesignMenuAction.flooring => Icons.grid_on,
         DesignMenuAction.ceiling => Icons.roofing,
+        DesignMenuAction.stairs => Icons.stairs_outlined,
         DesignMenuAction.doors => Icons.door_front_door,
         DesignMenuAction.windows => Icons.window,
         DesignMenuAction.furniture => Icons.chair,
