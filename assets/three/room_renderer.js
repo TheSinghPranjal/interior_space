@@ -411,7 +411,7 @@
       return [
         'bed', 'chair', 'table', 'diningTable', 'flowerPot',
         'storageUnit', 'fridge', 'washingMachine', 'shoeRack',
-        'sink', 'kitchenChimney',
+        'sink', 'kitchenChimney', 'car',
       ].indexOf(type) >= 0;
     }
 
@@ -1720,6 +1720,9 @@
           case 'kitchenChimney':
             group = this._buildKitchenChimneyGroup(item);
             break;
+          case 'car':
+            group = this._buildCarGroup(item, tex);
+            break;
           default:
             group = this._buildGenericFurniture(item);
         }
@@ -1748,6 +1751,28 @@
         return PremiumBedBuilder.build(this, item, textureUrl);
       }
       return this._buildStandardBedGroup(item, textureUrl);
+    }
+
+    _buildCarGroup(item, textureUrl) {
+      if (this._isPremiumFurniture()) {
+        if (typeof PremiumSedanCarBuilder !== 'undefined') {
+          return PremiumSedanCarBuilder.build(this, item, textureUrl);
+        }
+        if (typeof PremiumCatalogBuilder !== 'undefined') {
+          return PremiumCatalogBuilder.build(this, item, textureUrl);
+        }
+      }
+      const fw = item.width * FT;
+      const fd = item.depth * FT;
+      const fh = item.height * FT;
+      const group = new THREE.Group();
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(fw, fh * 0.45, fd),
+        this._makeMaterial(item.color, 0.35, 0.2, textureUrl, null, 1, 1)
+      );
+      body.position.y = fh * 0.22;
+      group.add(body);
+      return group;
     }
 
     _buildStandardBedGroup(item, textureUrl) {
