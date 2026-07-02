@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/utils/polygon_room_geometry.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/blueprint_door_paint.dart';
 import '../../core/utils/blueprint_furniture_paint.dart';
 import '../../core/utils/blueprint_stair_paint.dart';
 import '../../core/utils/blueprint_wall_border_paint.dart';
@@ -100,16 +101,14 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
 
   void _drawDoors(Canvas canvas) {
     for (final door in design.doors) {
-      final paint = Paint()..color = ColorUtils.fromHex(door.color);
-      final dw = door.width * scale;
-      final offset = door.positionFromEdge * scale;
-      final rect = switch (door.wall) {
-        WallId.front => Rect.fromLTWH(roomRect.left + offset, roomRect.top - 3, dw, 6),
-        WallId.back => Rect.fromLTWH(roomRect.left + offset, roomRect.bottom - 3, dw, 6),
-        WallId.left => Rect.fromLTWH(roomRect.left - 3, roomRect.top + offset, 6, dw),
-        WallId.right => Rect.fromLTWH(roomRect.right - 3, roomRect.top + offset, 6, dw),
-      };
-      canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(2)), paint);
+      BlueprintDoorPaint.draw(
+        canvas: canvas,
+        roomRect: roomRect,
+        scale: scale,
+        door: door,
+        fillColor: ColorUtils.fromHex(door.color).withValues(alpha: 0.85),
+        strokeColor: ColorUtils.fromHex(door.color).withValues(alpha: 0.85),
+      );
     }
   }
 
