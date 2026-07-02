@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../models/pdf_export_settings.dart';
 import '../models/apartment_details.dart';
+import '../models/apartment_layout.dart';
 import '../models/ac_unit_config.dart';
 import '../models/door_config.dart';
 import '../models/enums.dart';
@@ -95,17 +96,15 @@ class ExportService {
       );
     }
 
-    Uint8List? apartmentSketchImage;
-    if (!singleRoomExport &&
-        includeApartmentSections &&
-        apartmentLayout.sketch.includeInPdfExport &&
-        !apartmentLayout.sketch.isEmpty) {
-      apartmentSketchImage = await SketchCompositeExporter.renderApartment(
-        project: project,
-        apartmentIndex: aptIndex,
-        sketch: apartmentLayout.sketch,
-      );
-    }
+    final sketchPages = pdfSettings.includeSketchInPdf
+        ? await _renderSketchPages(
+            project: project,
+            apartmentLayout: apartmentLayout,
+            rooms: rooms,
+            aptIndex: aptIndex,
+            includeApartmentSections: includeApartmentSections,
+          )
+        : const <_SketchPdfPage>[];
 
     pdf.addPage(
       pw.MultiPage(
@@ -185,20 +184,6 @@ class ExportService {
                   apartmentTopView3d != null ||
                   apartmentFrontView3d != null))
             pw.Divider(),
-          if (!singleRoomExport &&
-              includeApartmentSections &&
-              apartmentSketchImage != null) ...[
-            _sectionTitle('Apartment Sketch'),
-            pw.Center(
-              child: pw.Image(
-                pw.MemoryImage(apartmentSketchImage),
-                fit: pw.BoxFit.contain,
-                height: 420,
-              ),
-            ),
-            pw.SizedBox(height: 16),
-            pw.Divider(),
-          ],
           ...rooms.asMap().entries.expand((entry) {
             final index = entry.key;
             final room = entry.value;
@@ -217,6 +202,33 @@ class ExportService {
         ],
       ),
     );
+
+    for (final sketchPage in sketchPages) {
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (context) => pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+            children: [
+              pw.Text(
+                sketchPage.title,
+                style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+              ),
+              pw.SizedBox(height: 16),
+              pw.Expanded(
+                child: pw.Center(
+                  child: pw.Image(
+                    pw.MemoryImage(sketchPage.image),
+                    fit: pw.BoxFit.contain,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     final fileName = '${reportTitle.replaceAll(' ', '_')}_design.pdf';
     return PublicDownloadSaver.saveBytes(
@@ -515,11 +527,56 @@ class ExportService {
       ];
 
   Future<Uint8List> _renderRoomBlueprint(RoomDesign room) async {
-    if (room.sketch.includeInPdfExport && !room.sketch.isEmpty) {
-      return SketchCompositeExporter.renderRoom(room: room, sketch: room.sketch);
-    }
     return BlueprintImageExporter.render(room);
   }
+
+  Future<List<_SketchPdfPage>> _renderSketchPages({
+    required ProjectDesign project,
+    required ApartmentLayout apartmentLayout,
+    required List<RoomDesign> rooms,
+    required int aptIndex,
+    required bool includeApartmentSections,
+  }) async {
+    final pages = <_SketchPdfPage>[];
+
+    if (includeApartmentSections && !apartmentLayout.sketch.isEmpty) {
+      pages.add(
+        _SketchPdfPage(
+          title: 'Apartment Sketch — ${apartmentLayout.name}',
+          image: await SketchCompositeExporter.renderApartment(
+            project: project,
+            apartmentIndex: aptIndex,
+            sketch: apartmentLayout.sketch,
+          ),
+        ),
+      );
+    }
+
+    for (final room in rooms) {
+      if (room.sketch.isEmpty) continue;
+      pages.add(
+        _SketchPdfPage(
+          title: 'Room Sketch — ${room.name}',
+          image: await SketchCompositeExporter.renderRoom(
+            room: room,
+            sketch: room.sketch,
+          ),
+        ),
+      );
+    }
+
+    return pages;
+  }
+}
+
+class _SketchPdfPage {
+  const _SketchPdfPage({
+    required this.title,
+    required this.image,
+  });
+
+  final String title;
+  final Uint8List image;
 }
 
 final exportServiceProvider = Provider<ExportService>((ref) {
