@@ -24,6 +24,7 @@ import '../widgets/editors/flooring_editor.dart';
 import '../widgets/editors/furniture_editor.dart';
 import '../widgets/editors/lighting_editor.dart';
 import '../widgets/editors/room_setup_editor.dart';
+import '../widgets/editors/stairs_editor.dart';
 import '../widgets/editors/walls_editor.dart';
 import '../widgets/editors/windows_editor.dart';
 import '../widgets/navigation/apartment_tabs_bar.dart';
@@ -142,6 +143,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         title: 'Ceiling',
         icon: Icons.roofing_outlined,
         child: CeilingEditor(),
+      ),
+      DesignMenuAction.stairs => const EditorScreen(
+        title: 'Stairs',
+        icon: Icons.stairs_outlined,
+        child: StairsEditor(),
       ),
       DesignMenuAction.doors => const EditorScreen(
         title: 'Doors',
