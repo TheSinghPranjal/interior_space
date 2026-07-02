@@ -263,13 +263,6 @@ class SketchToolOptionsPanel extends ConsumerWidget {
                 }).toList(),
               ),
             ],
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-              title: const Text('Include sketch in PDF'),
-              value: doc.includeInPdfExport,
-              onChanged: (v) => controller.setIncludeInPdf(v ?? false),
-            ),
           ],
         ),
       ),
