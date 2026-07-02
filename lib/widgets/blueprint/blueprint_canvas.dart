@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/utils/blueprint_viewport_fit.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/blueprint_stair_paint.dart';
 import '../../core/utils/blueprint_placement.dart';
 import '../../core/utils/blueprint_wall_border_paint.dart';
 import '../../core/utils/color_utils.dart';
@@ -16,6 +17,7 @@ import '../../models/door_config.dart';
 import '../../models/enums.dart';
 import '../../models/furniture_item.dart';
 import '../../models/room_design.dart';
+import '../../models/stair_config.dart';
 import '../../models/wall_tv_unit_config.dart';
 import '../../models/window_config.dart';
 import '../../providers/room_design_provider.dart';
@@ -98,6 +100,8 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       case 'furniture_floor':
       case 'furniture_wall':
         return design.furniture.any((f) => f.id == _selectedId);
+      case 'stair_floor':
+        return design.stairs.any((s) => s.id == _selectedId);
       case 'door_wall':
         return design.doors.any((d) => d.id == _selectedId);
       case 'window_wall':
@@ -178,6 +182,14 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
                     ),
                   ),
                 ),
+            ...design.stairs.map((stair) {
+              return _buildStairItem(
+                stair: stair,
+                design: design,
+                roomRect: roomRect,
+                scale: scale,
+              );
+            }),
             ...design.furniture.where((f) => !f.isWallMounted).map((item) {
               return _buildFloorItem(
                 item: item,
@@ -296,6 +308,11 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       notifier.updateFurniture(
         item.copyWith(blueprintX: _tempBlueprintX!, blueprintY: _tempBlueprintY!),
       );
+    } else if (_selectedType == 'stair_floor' && _tempBlueprintX != null && _tempBlueprintY != null) {
+      final stair = design.stairs.firstWhere((s) => s.id == _selectedId);
+      notifier.updateStair(
+        stair.copyWith(blueprintX: _tempBlueprintX!, blueprintY: _tempBlueprintY!),
+      );
     } else if (_selectedType == 'furniture_wall' && _tempPositionFromEdge != null) {
       final item = design.furniture.firstWhere((f) => f.id == _selectedId);
       notifier.updateFurniture(item.copyWith(positionFromEdge: _tempPositionFromEdge!));
@@ -336,6 +353,8 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       case 'furniture_floor':
       case 'furniture_wall':
         notifier.removeFurniture(id);
+      case 'stair_floor':
+        notifier.removeStair(id);
       case 'door_wall':
         notifier.removeDoor(id);
       case 'window_wall':
@@ -360,6 +379,10 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       final item = design.furniture.firstWhere((f) => f.id == _selectedId);
       final next = (item.rotation + degrees) % 360;
       notifier.updateFurniture(item.copyWith(rotation: next < 0 ? next + 360 : next));
+    } else if (_selectedType == 'stair_floor') {
+      final stair = design.stairs.firstWhere((s) => s.id == _selectedId);
+      final next = (stair.rotation + degrees) % 360;
+      notifier.updateStair(stair.copyWith(rotation: next < 0 ? next + 360 : next));
     } else if (_selectedType == 'door_wall') {
       final door = design.doors.firstWhere((d) => d.id == _selectedId);
       final next = (door.rotation + degrees) % 360;
@@ -402,6 +425,129 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     );
     _tempBlueprintX = _isDragging ? clamped.bx : defaultBx;
     _tempBlueprintY = _isDragging ? clamped.by : defaultBy;
+  }
+
+  void _computeStairPosition({
+    required StairConfig stair,
+    required RoomDesign design,
+    required Rect roomRect,
+    required double defaultBx,
+    required double defaultBy,
+  }) {
+    final center = (_dragStartCenter ?? Offset.zero) + _dragDelta;
+    final clamped = BlueprintPlacement.clampBlueprintCenter(
+      centerXNorm: (center.dx - roomRect.left) / roomRect.width,
+      centerYNorm: (center.dy - roomRect.top) / roomRect.height,
+      widthFt: stair.width,
+      depthFt: stair.depth,
+      rotationDeg: stair.rotation,
+      roomWidthFt: design.dimensions.effectiveWidth,
+      roomLengthFt: design.dimensions.effectiveLength,
+    );
+    _tempBlueprintX = _isDragging ? clamped.bx : defaultBx;
+    _tempBlueprintY = _isDragging ? clamped.by : defaultBy;
+  }
+
+  Widget _buildStairItem({
+    required StairConfig stair,
+    required RoomDesign design,
+    required Rect roomRect,
+    required double scale,
+  }) {
+    final bx = (_isDragging && _selectedId == stair.id && _tempBlueprintX != null)
+        ? _tempBlueprintX!
+        : stair.blueprintX;
+    final by = (_isDragging && _selectedId == stair.id && _tempBlueprintY != null)
+        ? _tempBlueprintY!
+        : stair.blueprintY;
+    final footprint = BlueprintPlacement.footprintLayout(
+      blueprintX: bx,
+      blueprintY: by,
+      widthFt: stair.width,
+      depthFt: stair.depth,
+      roomRect: roomRect,
+      scale: scale,
+    );
+    final hit = BlueprintPlacement.layoutPixels(
+      blueprintX: bx,
+      blueprintY: by,
+      widthFt: stair.width,
+      depthFt: stair.depth,
+      rotationDeg: stair.rotation,
+      roomRect: roomRect,
+      scale: scale,
+    );
+    final isSelected = _selectedId == stair.id;
+    final isDragging = isSelected && _isDragging;
+    final itemCenter = Offset(hit.left + hit.bboxW / 2, hit.top + hit.bboxH / 2);
+
+    return Positioned(
+      left: hit.left,
+      top: hit.top,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onLongPress: () => _selectItem(stair.id, 'stair_floor'),
+        onPanDown: (_) {
+          _holdItemId = stair.id;
+          _holdTimer?.cancel();
+          _holdTimer = Timer(_holdDuration, () {
+            if (_holdItemId != stair.id) return;
+            _selectItem(stair.id, 'stair_floor');
+            _beginDrag(itemCenter);
+          });
+        },
+        onPanUpdate: (details) {
+          if (_selectedId != stair.id || !_isDragging) return;
+          setState(() {
+            _dragDelta += details.delta;
+            _computeStairPosition(
+              stair: stair,
+              design: design,
+              roomRect: roomRect,
+              defaultBx: stair.blueprintX,
+              defaultBy: stair.blueprintY,
+            );
+          });
+        },
+        onPanEnd: (_) {
+          _cancelHold();
+          if (_selectedId == stair.id && _isDragging) {
+            _commitDrag(design, roomRect, scale);
+          }
+        },
+        onPanCancel: () {
+          _cancelHold();
+          if (_selectedId == stair.id && _isDragging) {
+            _commitDrag(design, roomRect, scale);
+          }
+        },
+        child: SizedBox(
+          width: hit.bboxW,
+          height: hit.bboxH,
+          child: Center(
+            child: OverflowBox(
+              maxWidth: footprint.innerW,
+              maxHeight: footprint.innerH,
+              minWidth: footprint.innerW,
+              minHeight: footprint.innerH,
+              alignment: Alignment.center,
+              child: Transform.rotate(
+                angle: stair.rotation * math.pi / 180,
+                child: CustomPaint(
+                  size: Size(footprint.innerW, footprint.innerH),
+                  painter: _StairSymbolPainter(
+                    stair: stair,
+                    fillColor: ColorUtils.fromHex(stair.color),
+                    selected: isSelected,
+                    dragging: isDragging,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildFloorItem({
@@ -730,6 +876,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     if (!_selectionValid(design)) return const SizedBox.shrink();
 
     final canRotate = _selectedType == 'furniture_floor' ||
+        _selectedType == 'stair_floor' ||
         _selectedType == 'door_wall' ||
         _selectedType == 'window_wall' ||
         _selectedType == 'curtain_wall' ||
@@ -747,6 +894,20 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
         widthFt: item.width,
         depthFt: item.depth,
         rotationDeg: item.rotation,
+        roomRect: roomRect,
+        scale: scale,
+      );
+      itemRect = Rect.fromLTWH(hit.left, hit.top, hit.bboxW, hit.bboxH);
+    } else if (_selectedType == 'stair_floor') {
+      final stair = design.stairs.firstWhere((s) => s.id == _selectedId);
+      final bx = _tempBlueprintX ?? stair.blueprintX;
+      final by = _tempBlueprintY ?? stair.blueprintY;
+      final hit = BlueprintPlacement.layoutPixels(
+        blueprintX: bx,
+        blueprintY: by,
+        widthFt: stair.width,
+        depthFt: stair.depth,
+        rotationDeg: stair.rotation,
         roomRect: roomRect,
         scale: scale,
       );
@@ -1043,6 +1204,47 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       ),
     );
   }
+}
+
+class _StairSymbolPainter extends CustomPainter {
+  _StairSymbolPainter({
+    required this.stair,
+    required this.fillColor,
+    required this.selected,
+    required this.dragging,
+  });
+
+  final StairConfig stair;
+  final Color fillColor;
+  final bool selected;
+  final bool dragging;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    BlueprintStairPaint.draw(
+      canvas: canvas,
+      rect: Offset.zero & size,
+      stair: stair,
+      fillColor: fillColor.withValues(alpha: dragging ? 0.55 : 0.42),
+      lineColor: selected ? AppTheme.primary : const Color(0xFF263238),
+    );
+    if (selected) {
+      canvas.drawRect(
+        Offset.zero & size,
+        Paint()
+          ..color = AppTheme.primary
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _StairSymbolPainter oldDelegate) =>
+      oldDelegate.stair != stair ||
+      oldDelegate.selected != selected ||
+      oldDelegate.dragging != dragging ||
+      oldDelegate.fillColor != fillColor;
 }
 
 class _BlueprintPainter extends CustomPainter {
