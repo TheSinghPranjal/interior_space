@@ -1,4 +1,4 @@
-/* global THREE, PremiumBedBuilder, PremiumPottedFlowerPotBuilder */
+/* global THREE, PremiumBedBuilder, PremiumPottedFlowerPotBuilder, PremiumSedanCarBuilder */
 (function (global) {
   'use strict';
 
@@ -228,6 +228,23 @@
     return addShadows(group);
   }
 
+  function buildSedanCar(renderer, item, textureUrl) {
+    if (typeof PremiumSedanCarBuilder !== 'undefined') {
+      return PremiumSedanCarBuilder.build(renderer, item, textureUrl);
+    }
+    const group = new THREE.Group();
+    const fw = item.width * FT;
+    const fd = item.depth * FT;
+    const fh = item.height * FT;
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(fw, fh * 0.45, fd),
+      renderer._makeMaterial(item.color, 0.2, 0.4, textureUrl, null, 1, 1)
+    );
+    body.position.y = fh * 0.22;
+    group.add(body);
+    return addShadows(group);
+  }
+
   function buildCatalogItem(renderer, item, textureUrl) {
     const id = item.premiumCatalogId;
     switch (id) {
@@ -243,6 +260,8 @@
         return buildMonstera(renderer, item, textureUrl);
       case 'luxuryBed':
         return buildLuxuryBed(renderer, item, textureUrl);
+      case 'sedanCar':
+        return buildSedanCar(renderer, item, textureUrl);
       default:
         return null;
     }
