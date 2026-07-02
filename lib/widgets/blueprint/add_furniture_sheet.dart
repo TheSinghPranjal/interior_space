@@ -29,7 +29,9 @@ class AddFurnitureSheet extends ConsumerWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                ...FurnitureType.values.map((type) {
+                ...FurnitureType.values
+                    .where((type) => type != FurnitureType.car)
+                    .map((type) {
                   return ActionChip(
                     avatar: Icon(type.icon, size: 16),
                     label: Text(type.label),
