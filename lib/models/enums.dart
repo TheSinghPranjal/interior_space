@@ -83,6 +83,7 @@ enum CameraMode {
 enum FurnitureType {
   bathtub,
   bed,
+  car,
   chair,
   diningTable,
   flowerPot,
@@ -100,6 +101,8 @@ enum FurnitureType {
 }
 
 enum DiningTableShape { rectangular, round }
+
+enum CarBodyStyle { sedan }
 
 enum StorageUnitStyle { singleDoor, doubleDoor, drawerUnit, openShelf }
 
@@ -175,6 +178,7 @@ extension WallBarrierTypeLabel on WallBarrierType {
 extension FurnitureTypeLabel on FurnitureType {
   String get label => switch (this) {
         FurnitureType.bed => 'Bed',
+        FurnitureType.car => 'Car',
         FurnitureType.sofa => 'Sofa',
         FurnitureType.table => 'Table',
         FurnitureType.diningTable => 'Dining Table',
@@ -194,6 +198,7 @@ extension FurnitureTypeLabel on FurnitureType {
 
   IconData get icon => switch (this) {
         FurnitureType.bed => Icons.bed,
+        FurnitureType.car => Icons.directions_car_outlined,
         FurnitureType.sofa => Icons.weekend,
         FurnitureType.table => Icons.table_restaurant,
         FurnitureType.diningTable => Icons.dining,
@@ -216,6 +221,12 @@ extension DiningTableShapeLabel on DiningTableShape {
   String get label => switch (this) {
         DiningTableShape.rectangular => 'Rectangular',
         DiningTableShape.round => 'Round',
+      };
+}
+
+extension CarBodyStyleLabel on CarBodyStyle {
+  String get label => switch (this) {
+        CarBodyStyle.sedan => 'Sedan',
       };
 }
 

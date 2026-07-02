@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../models/design_menu_action.dart';
+import '../../providers/room_design_provider.dart';
 
-class DesignMenuFab extends StatefulWidget {
+class DesignMenuFab extends ConsumerStatefulWidget {
   const DesignMenuFab({
     super.key,
     required this.onAction,
@@ -12,10 +14,10 @@ class DesignMenuFab extends StatefulWidget {
   final ValueChanged<DesignMenuAction> onAction;
 
   @override
-  State<DesignMenuFab> createState() => _DesignMenuFabState();
+  ConsumerState<DesignMenuFab> createState() => _DesignMenuFabState();
 }
 
-class _DesignMenuFabState extends State<DesignMenuFab>
+class _DesignMenuFabState extends ConsumerState<DesignMenuFab>
     with SingleTickerProviderStateMixin {
   bool _isOpen = false;
   late final AnimationController _controller;
@@ -69,6 +71,7 @@ class _DesignMenuFabState extends State<DesignMenuFab>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final premiumFurniture = ref.watch(premiumFurnitureProvider);
     final maxMenuHeight = MediaQuery.sizeOf(context).height * 0.52;
 
     return Column(
@@ -92,7 +95,7 @@ class _DesignMenuFabState extends State<DesignMenuFab>
                       return Padding(
                         padding: const EdgeInsets.only(bottom: _itemSpacing),
                         child: _MenuItem(
-                          label: action.label,
+                          label: action.label(premiumFurniture: premiumFurniture),
                           icon: action.icon,
                           iconSize: _iconSize,
                           iconGlyphSize: _iconGlyphSize,
