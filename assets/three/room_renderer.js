@@ -522,6 +522,7 @@
       this._buildAcUnits(cfg.acUnits || [], layout);
       this._buildWallTvUnits(cfg.wallTvUnits || [], layout);
       this._buildCupboards(cfg.cupboards, w, l, h);
+      this._buildStairs(cfg.stairs || [], w, l);
       this._buildFurniture(cfg.furniture, w, l);
       if (!lightweight) {
         this._buildLights(cfg.lights, w, l, h);
@@ -1648,6 +1649,155 @@
         case 'left': return { x: -roomW / 2, z: -roomL / 2 + offset };
         case 'right': return { x: roomW / 2, z: -roomL / 2 + offset };
         default: return { x: 0, z: 0 };
+      }
+    }
+
+    _buildStairs(stairs, w, l) {
+      if (!stairs || !stairs.length) return;
+
+      stairs.forEach((stair) => {
+        try {
+          const group = new THREE.Group();
+          const fw = stair.width * FT;
+          const totalH = stair.height * FT;
+          const totalD = stair.depth * FT;
+          const n = Math.max(2, Math.min(30, parseInt(stair.stepCount, 10) || 10));
+          const rise = totalH / n;
+          const tread = totalD / n;
+          const tex = this._resolveTextureUrl(stair.textureDataUrl, stair.texturePath);
+          const finish = this._stairFinishProps(stair.materialPreset);
+          const treadMat = this._makeMaterial(
+            stair.color,
+            finish.rough,
+            finish.metal,
+            tex,
+            finish.proc,
+            1,
+            1
+          );
+          const riserMat = this._cloneMaterial(treadMat);
+          if (riserMat.color) riserMat.color.multiplyScalar(0.92);
+          const railMat = new THREE.MeshStandardMaterial({
+            color: 0xb0bec5,
+            roughness: 0.18,
+            metalness: 0.82,
+            envMapIntensity: 1.2,
+          });
+          const glassRail = new THREE.MeshStandardMaterial({
+            color: 0xdfe7ef,
+            roughness: 0.08,
+            metalness: 0.15,
+            transparent: true,
+            opacity: 0.55,
+          });
+
+          for (let i = 0; i < n; i++) {
+            const yBase = i * rise;
+            const zCenter = totalD / 2 - tread * (i + 0.5);
+
+            const riser = new THREE.Mesh(
+              new THREE.BoxGeometry(fw * 0.94, rise * 0.96, tread * 0.07),
+              riserMat
+            );
+            riser.position.set(0, yBase + rise * 0.48, zCenter - tread * 0.46);
+            group.add(riser);
+
+            const treadMesh = new THREE.Mesh(
+              new THREE.BoxGeometry(fw * 0.94, rise * 0.09, tread * 0.96),
+              treadMat
+            );
+            treadMesh.position.set(0, yBase + rise - rise * 0.045, zCenter);
+            group.add(treadMesh);
+
+            const nosing = new THREE.Mesh(
+              new THREE.BoxGeometry(fw * 0.94, rise * 0.045, tread * 0.08),
+              treadMat
+            );
+            nosing.position.set(0, yBase + rise - rise * 0.02, zCenter + tread * 0.44);
+            group.add(nosing);
+          }
+
+          [-1, 1].forEach((side) => {
+            const stringer = new THREE.Mesh(
+              new THREE.BoxGeometry(0.07, totalH * 1.02, Math.sqrt(totalH * totalH + totalD * totalD)),
+              treadMat
+            );
+            stringer.rotation.x = -Math.atan2(totalH, totalD);
+            stringer.position.set(side * fw * 0.47, totalH / 2, 0);
+            group.add(stringer);
+          });
+
+          const buildRail = (side, useGlass) => {
+            const railX = side * fw * 0.44;
+            const mat = useGlass ? glassRail : railMat;
+            for (let i = 0; i <= n; i++) {
+              const postH = 0.75 + (i / n) * 0.35;
+              const post = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.022, 0.026, postH, 10),
+                mat
+              );
+              post.position.set(
+                railX,
+                i * rise + postH / 2,
+                totalD / 2 - tread * i
+              );
+              group.add(post);
+            }
+            const railLen = Math.sqrt(totalH * totalH + totalD * totalD) * 1.02;
+            const handrail = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.032, 0.032, railLen, 12),
+              mat
+            );
+            handrail.rotation.x = Math.atan2(totalH, totalD);
+            handrail.position.set(railX, totalH / 2 + 0.78, 0);
+            group.add(handrail);
+
+            for (let i = 0; i < n; i++) {
+              const bal = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.012, 0.012, 0.42 + (i / n) * 0.12, 8),
+                mat
+              );
+              bal.position.set(
+                railX,
+                i * rise + 0.55,
+                totalD / 2 - tread * (i + 0.5)
+              );
+              group.add(bal);
+            }
+          };
+
+          if (stair.showLeftRailing !== false) buildRail(-1, false);
+          if (stair.showRightRailing !== false) buildRail(1, stair.materialPreset === 'glass');
+
+          const x = (stair.blueprintX - 0.5) * w;
+          const z = (stair.blueprintY - 0.5) * l;
+          group.position.set(x, 0, z);
+          group.rotation.y = -(stair.rotation || 0) * Math.PI / 180;
+          group.traverse((c) => {
+            if (c.isMesh) {
+              c.castShadow = true;
+              c.receiveShadow = true;
+            }
+          });
+          this.roomGroup.add(group);
+        } catch (err) {
+          console.error('Stair build failed:', stair.id, err);
+        }
+      });
+    }
+
+    _stairFinishProps(preset) {
+      switch (preset) {
+        case 'marble':
+          return { rough: 0.16, metal: 0.08, proc: null };
+        case 'carpet':
+          return { rough: 0.94, metal: 0.0, proc: 'fabric' };
+        case 'metallic':
+          return { rough: 0.2, metal: 0.78, proc: null };
+        case 'glossy':
+          return { rough: 0.12, metal: 0.32, proc: null };
+        default:
+          return { rough: 0.62, metal: 0.04, proc: 'wood' };
       }
     }
 
