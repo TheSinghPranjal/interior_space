@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/theme/app_spacing.dart';
 import '../core/theme/app_theme.dart';
+import '../providers/app_nav_settings_provider.dart';
 import '../providers/company_profile_provider.dart';
 import '../providers/pdf_export_settings_provider.dart';
 import '../providers/room_design_provider.dart';
@@ -79,6 +80,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final profile = ref.watch(companyProfileProvider);
     final premiumFurniture = ref.watch(premiumFurnitureProvider);
     final pdfSettings = ref.watch(pdfExportSettingsProvider);
+    final navSettings = ref.watch(appNavSettingsProvider);
 
     ref.listen(companyProfileProvider, (previous, next) {
       if (previous?.logoPath != next.logoPath ||
@@ -322,6 +324,79 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   },
                 ),
               ],
+              const Divider(height: 24),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                secondary: Icon(
+                  Icons.draw_outlined,
+                  color: pdfSettings.includeSketchInPdf
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                ),
+                title: const Text('Include sketch pages'),
+                subtitle: Text(
+                  'Append edited sketch pages at the end of exported PDFs. '
+                  'Only rooms and apartments with sketch annotations are included.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                  ),
+                ),
+                value: pdfSettings.includeSketchInPdf,
+                onChanged: (value) {
+                  ref
+                      .read(pdfExportSettingsProvider.notifier)
+                      .setIncludeSketchInPdf(value);
+                },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _SectionCard(
+          title: 'Navigation',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                secondary: Icon(
+                  Icons.draw_outlined,
+                  color: navSettings.showSketchTab
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                ),
+                title: const Text('Show Sketch tab'),
+                subtitle: Text(
+                  'Display the Sketch tab in the bottom navigation bar.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                  ),
+                ),
+                value: navSettings.showSketchTab,
+                onChanged: (value) {
+                  ref.read(appNavSettingsProvider.notifier).setShowSketchTab(value);
+                },
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                secondary: Icon(
+                  Icons.auto_awesome_outlined,
+                  color: navSettings.showAiAssistTab
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                ),
+                title: const Text('Show AI Assist tab'),
+                subtitle: Text(
+                  'Display the AI Assist tab in the bottom navigation bar.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                  ),
+                ),
+                value: navSettings.showAiAssistTab,
+                onChanged: (value) {
+                  ref.read(appNavSettingsProvider.notifier).setShowAiAssistTab(value);
+                },
+              ),
             ],
           ),
         ),
