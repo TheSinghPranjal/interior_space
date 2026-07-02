@@ -13,14 +13,15 @@ enum DesignMenuAction {
 }
 
 extension DesignMenuActionInfo on DesignMenuAction {
-  String get label => switch (this) {
+  String label({bool premiumFurniture = false}) => switch (this) {
         DesignMenuAction.roomSetup => 'Room Setup',
         DesignMenuAction.walls => 'Walls',
         DesignMenuAction.flooring => 'Flooring',
         DesignMenuAction.ceiling => 'Ceiling',
         DesignMenuAction.doors => 'Doors',
         DesignMenuAction.windows => 'Windows, Ac & Curtains',
-        DesignMenuAction.furniture => 'Furniture',
+        DesignMenuAction.furniture =>
+          premiumFurniture ? 'Furniture & Objects' : 'Furniture',
         DesignMenuAction.lighting => 'Lighting',
         DesignMenuAction.blueprint => 'Blueprint',
       };
