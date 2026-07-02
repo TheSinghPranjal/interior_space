@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_spacing.dart';
 import '../core/theme/app_theme.dart';
 import '../models/design_menu_action.dart';
+import '../models/app_nav_settings.dart';
 import '../models/room_3d_export_images.dart';
 import '../providers/apartment_placement_history_provider.dart';
 import '../providers/app_mode_provider.dart';
+import '../providers/app_nav_settings_provider.dart';
 import '../providers/pdf_export_settings_provider.dart';
 import '../providers/project_provider.dart';
 import '../providers/room_design_provider.dart';
@@ -45,6 +47,32 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   MainNavTab _selectedTab = MainNavTab.room;
 
+  List<MainNavTab> _visibleTabs(AppNavSettings navSettings) {
+    return [
+      MainNavTab.room,
+      MainNavTab.blueprint,
+      if (navSettings.showSketchTab) MainNavTab.sketch,
+      MainNavTab.preview3d,
+      if (navSettings.showAiAssistTab) MainNavTab.aiAssist,
+      MainNavTab.settings,
+    ];
+  }
+
+  int _navSelectedIndex(AppNavSettings navSettings) {
+    final visible = _visibleTabs(navSettings);
+    if (visible.contains(_selectedTab)) {
+      return visible.indexOf(_selectedTab);
+    }
+    return 0;
+  }
+
+  void _ensureSelectedTabVisible(AppNavSettings navSettings) {
+    final visible = _visibleTabs(navSettings);
+    if (!visible.contains(_selectedTab)) {
+      setState(() => _selectedTab = MainNavTab.room);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -60,8 +88,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  void _onTabSelected(int index) {
-    final tab = MainNavTab.values[index];
+  void _onTabSelected(int index, AppNavSettings navSettings) {
+    final tab = _visibleTabs(navSettings)[index];
     final isApartment = ref.read(appSpaceModeProvider) == AppSpaceMode.apartment;
 
     if (tab == MainNavTab.preview3d) {
@@ -145,10 +173,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final activeRoom = ref.watch(roomDesignProvider);
     final appMode = ref.watch(appSpaceModeProvider);
     final isApartment = appMode == AppSpaceMode.apartment;
+    final navSettings = ref.watch(appNavSettingsProvider);
     final theme = Theme.of(context);
 
     ref.listen(projectProvider, (_, next) {
       ref.read(projectStorageProvider).saveCurrent(next);
+    });
+
+    ref.listen(appNavSettingsProvider, (previous, next) {
+      _ensureSelectedTabVisible(next);
     });
 
     return Scaffold(
@@ -179,8 +212,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
         child: NavigationBar(
-          selectedIndex: _selectedTab.index,
-          onDestinationSelected: _onTabSelected,
+          selectedIndex: _navSelectedIndex(navSettings),
+          onDestinationSelected: (index) => _onTabSelected(index, navSettings),
           destinations: [
             NavigationDestination(
               icon: Icon(isApartment ? Icons.apartment_outlined : Icons.meeting_room_outlined),
@@ -192,21 +225,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               selectedIcon: Icon(Icons.architecture),
               label: 'Blueprint',
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.draw_outlined),
-              selectedIcon: Icon(Icons.draw),
-              label: 'Sketch',
-            ),
+            if (navSettings.showSketchTab)
+              const NavigationDestination(
+                icon: Icon(Icons.draw_outlined),
+                selectedIcon: Icon(Icons.draw),
+                label: 'Sketch',
+              ),
             const NavigationDestination(
               icon: Icon(Icons.view_in_ar_outlined),
               selectedIcon: Icon(Icons.view_in_ar),
               label: '3D',
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.auto_awesome_outlined),
-              selectedIcon: Icon(Icons.auto_awesome),
-              label: 'AI Assist',
-            ),
+            if (navSettings.showAiAssistTab)
+              const NavigationDestination(
+                icon: Icon(Icons.auto_awesome_outlined),
+                selectedIcon: Icon(Icons.auto_awesome),
+                label: 'AI Assist',
+              ),
             const NavigationDestination(
               icon: Icon(Icons.settings_outlined),
               selectedIcon: Icon(Icons.settings),
