@@ -17,6 +17,7 @@ import '../models/placed_item_config_snapshot.dart';
 import '../models/project_design.dart';
 import '../models/room_design.dart';
 import '../models/room_dimensions.dart';
+import '../models/stair_config.dart';
 import '../models/wall_config.dart';
 import '../models/wall_tv_unit_config.dart';
 import '../models/window_config.dart';
@@ -299,6 +300,34 @@ class RoomDesignNotifier extends StateNotifier<RoomDesign> {
   void removeFan(String id) {
     _mutate(
       (r) => r.copyWith(fans: r.fans.where((f) => f.id != id).toList()),
+    );
+  }
+
+  void addStair() {
+    _mutate((r) {
+      final index = r.stairs.length;
+      final cols = 2;
+      final col = index % cols;
+      final row = index ~/ cols;
+      final stair = StairConfig.initial(_uuid.v4(), r.dimensions).copyWith(
+        blueprintX: 0.28 + col * 0.32,
+        blueprintY: 0.35 + row * 0.22,
+      );
+      return r.copyWith(stairs: [...r.stairs, stair]);
+    });
+  }
+
+  void updateStair(StairConfig stair) {
+    _mutate(
+      (r) => r.copyWith(
+        stairs: r.stairs.map((s) => s.id == stair.id ? stair : s).toList(),
+      ),
+    );
+  }
+
+  void removeStair(String id) {
+    _mutate(
+      (r) => r.copyWith(stairs: r.stairs.where((s) => s.id != id).toList()),
     );
   }
 
