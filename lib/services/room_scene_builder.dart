@@ -114,6 +114,9 @@ class RoomSceneBuilder {
       for (final wall in room.walls) {
         collect(wall.wallpaperPath);
       }
+      for (final stair in room.stairs) {
+        collect(stair.texturePath);
+      }
       for (final door in room.doors) {
         collect(door.texturePath);
       }
@@ -170,6 +173,14 @@ class RoomSceneBuilder {
       acUnits.add({
         ...unit.toJson(),
         'textureDataUrl': await textureUrl(unit.texturePath),
+      });
+    }
+
+    final stairs = <Map<String, dynamic>>[];
+    for (final stair in design.stairs) {
+      stairs.add({
+        ...stair.toJson(),
+        'textureDataUrl': await textureUrl(stair.texturePath),
       });
     }
 
@@ -230,6 +241,7 @@ class RoomSceneBuilder {
       'cupboards': const <Map<String, dynamic>>[],
       'lights': design.lights.map((l) => l.toJson()).toList(),
       'fans': design.fans.map((f) => f.toJson()).toList(),
+      'stairs': stairs,
       'furniture': await Future.wait(
         design.furniture.map((f) async {
           return {
