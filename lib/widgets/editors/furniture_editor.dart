@@ -85,7 +85,9 @@ class _FurnitureEditorState extends ConsumerState<FurnitureEditor> {
               key: const ValueKey('catalog_view'),
               children: [
                 SectionCard(
-                  title: 'Furniture Placement',
+                  title: premiumEnabled
+                      ? 'Furniture & Objects Placement'
+                      : 'Furniture Placement',
                   subtitle:
                       'Premium catalog • Tap Add on any item to place in your room',
                   trailing: TextButton.icon(
@@ -127,9 +129,12 @@ class _FurnitureEditorState extends ConsumerState<FurnitureEditor> {
               key: const ValueKey('placement_view'),
               children: [
                 SectionCard(
-                  title: 'Furniture Placement',
-                  subtitle:
-                      'Add items to the blueprint • Wardrobe & Wall TV included • Drag in Blueprint',
+                  title: premiumEnabled
+                      ? 'Furniture & Objects Placement'
+                      : 'Furniture Placement',
+                  subtitle: premiumEnabled
+                      ? 'Add furniture and daily objects • Wardrobe & Wall TV included • Drag in Blueprint'
+                      : 'Add items to the blueprint • Wardrobe & Wall TV included • Drag in Blueprint',
                   trailing: Tooltip(
                     message: premiumEnabled
                         ? 'Browse premium catalog'
@@ -148,7 +153,9 @@ class _FurnitureEditorState extends ConsumerState<FurnitureEditor> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      ...FurnitureType.values.map((type) {
+                      ...FurnitureType.values
+                          .where((type) => type != FurnitureType.car)
+                          .map((type) {
                         return ActionChip(
                           avatar: Icon(type.icon, size: 16),
                           label: Text(type.label),
@@ -410,7 +417,7 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard>
               label: 'Width',
               value: item.width,
               min: 1,
-              max: 12,
+              max: item.type == FurnitureType.car ? 10 : 12,
               suffix: 'ft',
               onChanged: enabled ? (v) => notifier.updateFurniture(item.copyWith(width: v)) : null,
             ),
@@ -418,7 +425,7 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard>
               label: 'Height',
               value: item.height,
               min: 1,
-              max: 9,
+              max: item.type == FurnitureType.car ? 8 : 9,
               suffix: 'ft',
               onChanged: enabled ? (v) => notifier.updateFurniture(item.copyWith(height: v)) : null,
             ),
@@ -426,7 +433,7 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard>
               label: 'Depth',
               value: item.depth,
               min: 1,
-              max: 8,
+              max: item.type == FurnitureType.car ? 22 : 8,
               suffix: 'ft',
               onChanged: enabled ? (v) => notifier.updateFurniture(item.copyWith(depth: v)) : null,
             ),
@@ -472,6 +479,42 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard>
     bool enabled,
     RoomDesignNotifier notifier,
   ) {
+    if (item.type == FurnitureType.car) {
+      return [
+        DropdownButtonFormField<CarBodyStyle>(
+          value: item.carBodyStyle,
+          decoration: const InputDecoration(labelText: 'Body Style'),
+          items: CarBodyStyle.values
+              .map((s) => DropdownMenuItem(value: s, child: Text(s.label)))
+              .toList(),
+          onChanged: enabled
+              ? (s) {
+                  if (s != null) {
+                    notifier.updateFurniture(item.copyWith(variant: s.name));
+                  }
+                }
+              : null,
+        ),
+        DropdownButtonFormField<FurnitureMaterialPreset>(
+          value: item.material,
+          decoration: const InputDecoration(labelText: 'Finish'),
+          items: <FurnitureMaterialPreset>[
+            FurnitureMaterialPreset.glossy,
+            FurnitureMaterialPreset.metallic,
+            FurnitureMaterialPreset.black,
+            FurnitureMaterialPreset.white,
+            FurnitureMaterialPreset.whiteMatte,
+          ].map((m) => DropdownMenuItem(value: m, child: Text(m.label))).toList(),
+          onChanged: enabled
+              ? (m) {
+                  if (m != null) {
+                    notifier.updateFurniture(item.copyWith(materialPreset: m.name));
+                  }
+                }
+              : null,
+        ),
+      ];
+    }
     if (item.isPremiumCatalogItem) return const [];
     return switch (item.type) {
       FurnitureType.diningTable => [
