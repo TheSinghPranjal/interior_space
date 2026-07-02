@@ -234,7 +234,66 @@ class _CatalogPreviewPainter extends CustomPainter {
         _drawPlant(canvas, size, style: _PlantStyle.monstera);
       case PremiumCatalogId.luxuryBed:
         _drawBed(canvas, size);
+      case PremiumCatalogId.sedanCar:
+        _drawCar(canvas, size);
     }
+  }
+
+  void _drawCar(Canvas canvas, Size size) {
+    final cx = size.width * 0.5;
+    final cy = size.height * 0.58;
+    final carW = size.width * 0.72;
+    final carH = size.height * 0.22;
+
+    final body = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(cx, cy), width: carW, height: carH),
+      Radius.circular(carH * 0.28),
+    );
+    canvas.drawRRect(body, Paint()..color = definition.previewTop);
+
+    final cabin = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset(cx, cy - carH * 0.18),
+        width: carW * 0.52,
+        height: carH * 0.55,
+      ),
+      Radius.circular(carH * 0.2),
+    );
+    canvas.drawRRect(cabin, Paint()..color = definition.previewTop.withValues(alpha: 0.85));
+
+    final glassPaint = Paint()..color = definition.previewAccent.withValues(alpha: 0.75);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(cx, cy - carH * 0.22),
+          width: carW * 0.34,
+          height: carH * 0.28,
+        ),
+        const Radius.circular(4),
+      ),
+      glassPaint,
+    );
+
+    for (final dx in [-carW * 0.34, carW * 0.34]) {
+      canvas.drawCircle(
+        Offset(cx + dx, cy + carH * 0.42),
+        carH * 0.18,
+        Paint()..color = definition.previewBottom,
+      );
+      canvas.drawCircle(
+        Offset(cx + dx, cy + carH * 0.42),
+        carH * 0.1,
+        Paint()..color = definition.previewAccent,
+      );
+    }
+
+    canvas.drawRRect(
+      body,
+      Paint()
+        ..color = definition.previewAccent.withValues(alpha: 0.5)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
   }
 
   void _drawBathtub(Canvas canvas, Size size, {required bool withWater, required bool vintage}) {
