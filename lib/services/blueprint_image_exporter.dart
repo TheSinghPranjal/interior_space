@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../core/utils/blueprint_door_paint.dart';
 import '../core/utils/blueprint_furniture_paint.dart';
 import '../core/utils/blueprint_stair_paint.dart';
 import '../core/utils/blueprint_wall_border_paint.dart';
@@ -121,16 +122,14 @@ class _BlueprintExportPainter {
 
   void _drawDoors(Canvas canvas) {
     for (final door in design.doors) {
-      final paint = Paint()..color = ColorUtils.fromHex(door.color);
-      final dw = door.width * _scale;
-      final offset = door.positionFromEdge * _scale;
-      final rect = switch (door.wall) {
-        WallId.front => Rect.fromLTWH(_roomRect.left + offset, _roomRect.top - 4, dw, 8),
-        WallId.back => Rect.fromLTWH(_roomRect.left + offset, _roomRect.bottom - 4, dw, 8),
-        WallId.left => Rect.fromLTWH(_roomRect.left - 4, _roomRect.top + offset, 8, dw),
-        WallId.right => Rect.fromLTWH(_roomRect.right - 4, _roomRect.top + offset, 8, dw),
-      };
-      canvas.drawRect(rect, paint);
+      BlueprintDoorPaint.draw(
+        canvas: canvas,
+        roomRect: _roomRect,
+        scale: _scale,
+        door: door,
+        fillColor: ColorUtils.fromHex(door.color).withValues(alpha: 0.9),
+        strokeColor: ColorUtils.fromHex(door.color).withValues(alpha: 0.9),
+      );
     }
   }
 
