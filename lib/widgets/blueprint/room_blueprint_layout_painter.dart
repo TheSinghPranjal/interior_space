@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/utils/polygon_room_geometry.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/blueprint_furniture_paint.dart';
+import '../../core/utils/blueprint_stair_paint.dart';
 import '../../core/utils/blueprint_wall_border_paint.dart';
 import '../../core/utils/color_utils.dart';
 import '../../models/enums.dart';
@@ -41,6 +42,7 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
     _drawCurtains(canvas);
     _drawAcUnits(canvas);
     _drawWallTvUnits(canvas);
+    _drawStairs(canvas);
     _drawFurniture(canvas);
     _drawFans(canvas);
     _drawRoomBorder(canvas);
@@ -188,6 +190,18 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
         WallId.right => Rect.fromLTWH(roomRect.right - 3, roomRect.top + offset, 6, uw),
       };
       canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(2)), paint);
+    }
+  }
+
+  void _drawStairs(Canvas canvas) {
+    for (final stair in design.stairs) {
+      BlueprintStairPaint.drawFloorItem(
+        canvas: canvas,
+        roomRect: roomRect,
+        scale: scale,
+        stair: stair,
+        color: ColorUtils.fromHex(stair.color),
+      );
     }
   }
 
