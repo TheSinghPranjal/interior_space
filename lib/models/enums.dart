@@ -102,6 +102,16 @@ enum FurnitureType {
 
 enum DiningTableShape { rectangular, round }
 
+enum StairShape { straight }
+
+enum StairMaterialPreset {
+  wood,
+  carpet,
+  marble,
+  glossy,
+  metallic,
+}
+
 enum CarBodyStyle { sedan }
 
 enum StorageUnitStyle { singleDoor, doubleDoor, drawerUnit, openShelf }
@@ -227,6 +237,22 @@ extension DiningTableShapeLabel on DiningTableShape {
 extension CarBodyStyleLabel on CarBodyStyle {
   String get label => switch (this) {
         CarBodyStyle.sedan => 'Sedan',
+      };
+}
+
+extension StairShapeLabel on StairShape {
+  String get label => switch (this) {
+        StairShape.straight => 'Straight',
+      };
+}
+
+extension StairMaterialPresetLabel on StairMaterialPreset {
+  String get label => switch (this) {
+        StairMaterialPreset.wood => 'Wood',
+        StairMaterialPreset.carpet => 'Carpet',
+        StairMaterialPreset.marble => 'Marble',
+        StairMaterialPreset.glossy => 'Glossy Finish',
+        StairMaterialPreset.metallic => 'Metallic',
       };
 }
 
