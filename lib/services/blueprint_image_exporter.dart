@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../core/utils/blueprint_furniture_paint.dart';
+import '../core/utils/blueprint_stair_paint.dart';
 import '../core/utils/blueprint_wall_border_paint.dart';
 import '../core/utils/color_utils.dart';
 import '../models/enums.dart';
@@ -63,6 +64,7 @@ class _BlueprintExportPainter {
     _drawWindows(canvas);
     _drawAcUnits(canvas);
     _drawWallTvUnits(canvas);
+    _drawStairs(canvas);
     _drawFurniture(canvas);
     _drawFans(canvas);
     _drawDimensions(canvas);
@@ -174,6 +176,18 @@ class _BlueprintExportPainter {
         WallId.right => Rect.fromLTWH(_roomRect.right - 4, _roomRect.top + offset, 8, uw),
       };
       canvas.drawRect(rect, paint);
+    }
+  }
+
+  void _drawStairs(Canvas canvas) {
+    for (final stair in design.stairs) {
+      BlueprintStairPaint.drawFloorItem(
+        canvas: canvas,
+        roomRect: _roomRect,
+        scale: _scale,
+        stair: stair,
+        color: ColorUtils.fromHex(stair.color),
+      );
     }
   }
 
