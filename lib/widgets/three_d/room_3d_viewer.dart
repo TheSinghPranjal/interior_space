@@ -441,6 +441,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
             await Future.delayed(const Duration(milliseconds: 300));
             await _pushScene();
             if (mounted) {
+              await Future.delayed(const Duration(milliseconds: 150));
               await _setCameraMode(ref.read(cameraModeProvider));
               _notifyCaptureReady();
             }

@@ -232,6 +232,10 @@
           this._buildRoom();
         }
         this._applyCameraMode(this.cameraMode);
+        requestAnimationFrame(() => {
+          this._onResize();
+          this._applyCameraMode(this.cameraMode);
+        });
         this._updateWallVisibility();
         this._notifyReady();
       } catch (e) {
@@ -303,50 +307,94 @@
       }
     }
 
+    _computeOrbitFitDistance(w, l, h) {
+      const vFovRad = THREE.MathUtils.degToRad(this.camera.fov);
+      const aspect = this.camera.aspect > 0 ? this.camera.aspect : 1;
+      const hFovRad = 2 * Math.atan(Math.tan(vFovRad / 2) * aspect);
+      const padding = this.isApartmentMode ? 1.65 : 1.55;
+
+      const distVert = (h / 2) / Math.tan(vFovRad / 2);
+      const distHoriz = (Math.max(w, l) / 2) / Math.tan(hFovRad / 2);
+      const cornerDist = Math.sqrt(w * w + l * l + h * h) / 2;
+      return Math.max(distVert, distHoriz, cornerDist) * padding;
+    }
+
+    _applyOrbitCamera(w, l, h) {
+      const targetY = h * 0.38;
+      const target = new THREE.Vector3(0, targetY, 0);
+      const distance = this._computeOrbitFitDistance(w, l, h);
+
+      // Front-elevated orbit: outside the front wall, slightly to the right, looking in.
+      const dir = new THREE.Vector3(0.32, 0.3, -1).normalize();
+      this.camera.position.copy(target).addScaledVector(dir, distance);
+      this.camera.lookAt(target);
+      this.controls.target.copy(target);
+    }
+
     _applyCameraMode(mode) {
       if (!this.config) return;
-      let width, length, height;
-      if (this.config.mode === 'apartment') {
-        width = this.config.apartment.width;
-        length = this.config.apartment.length;
-        height = (this.roomSize.h || 10) / FT;
-      } else {
-        ({ width, length, height } = this.config.room);
-      }
-      const w = width * FT;
-      const l = length * FT;
-      const h = height * FT;
-      const cx = 0, cz = 0;
+
+      const w = this.roomSize.w || this._configWidthMeters();
+      const l = this.roomSize.l || this._configLengthMeters();
+      const h = this.roomSize.h || this._configHeightMeters();
+      const cx = 0;
+      const cz = 0;
       const eyeY = h * 0.4;
 
       this.controls.enabled = mode === 'orbit' || mode === 'isometric';
-      this.controls.minDistance = Math.min(w, l) * 0.4;
-      this.controls.maxDistance = Math.max(w, l) * 2.5;
+      this.controls.minDistance = Math.min(w, l) * 0.25;
+      this.controls.maxDistance = Math.max(w, l) * 4;
 
       switch (mode) {
         case 'top':
           this.camera.position.set(cx, h * 2.8, cz);
           this.camera.lookAt(cx, 0, cz);
+          this.controls.target.set(cx, 0, cz);
           break;
         case 'front':
-          this.camera.position.set(cx, eyeY, -l * 1.3);
+          this.camera.position.set(cx, eyeY, -l * 1.35);
           this.camera.lookAt(cx, eyeY * 0.8, cz);
+          this.controls.target.set(cx, eyeY * 0.8, cz);
           break;
         case 'side':
-          this.camera.position.set(w * 1.3, eyeY, cz);
+          this.camera.position.set(w * 1.35, eyeY, cz);
           this.camera.lookAt(cx, eyeY * 0.8, cz);
+          this.controls.target.set(cx, eyeY * 0.8, cz);
           break;
         case 'isometric':
-          this.camera.position.set(w * 0.75, h * 1.1, l * 0.75);
+          this.camera.position.set(w * 0.85, h * 1.25, l * 0.85);
           this.camera.lookAt(cx, h * 0.3, cz);
+          this.controls.target.set(cx, h * 0.3, cz);
           break;
         default:
-          this.camera.position.set(w * 0.7, h * 0.55, l * 0.7);
-          this.camera.lookAt(cx, h * 0.35, cz);
+          this._applyOrbitCamera(w, l, h);
       }
-      this.controls.target.set(cx, h * 0.35, cz);
       this.controls.update();
       this._updateWallVisibility();
+    }
+
+    _configWidthMeters() {
+      if (this.config.mode === 'apartment') {
+        return this.config.apartment.width * FT;
+      }
+      const room = this.config.room || {};
+      return (room.effectiveWidth ?? room.width ?? 12) * FT;
+    }
+
+    _configLengthMeters() {
+      if (this.config.mode === 'apartment') {
+        return this.config.apartment.length * FT;
+      }
+      const room = this.config.room || {};
+      return (room.effectiveLength ?? room.length ?? 12) * FT;
+    }
+
+    _configHeightMeters() {
+      if (this.config.mode === 'apartment') {
+        return (this.roomSize.h || 10 * FT);
+      }
+      const room = this.config.room || {};
+      return (room.height ?? 10) * FT;
     }
 
     _updateWallVisibility() {

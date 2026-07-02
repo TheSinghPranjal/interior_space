@@ -4,6 +4,7 @@ import 'package:screenshot/screenshot.dart';
 
 import '../core/theme/app_spacing.dart';
 import '../core/theme/app_theme.dart';
+import '../models/enums.dart';
 import '../providers/app_mode_provider.dart';
 import '../providers/project_provider.dart';
 import '../providers/room_design_provider.dart';
@@ -25,6 +26,14 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
   final _screenshotController = ScreenshotController();
 
   static const _immersiveBg = Color(0xFF121816);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(cameraModeProvider.notifier).state = CameraMode.orbit;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
