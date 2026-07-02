@@ -10,6 +10,7 @@ enum PremiumCatalogId {
   indoorPlant,
   monstera,
   luxuryBed,
+  sedanCar,
 }
 
 class PremiumCatalogDefinition {
@@ -126,6 +127,19 @@ const premiumFurnitureCatalog = <PremiumCatalogDefinition>[
     height: 3.0,
     depth: 6.8,
     color: '#5D4037',
+  ),
+  PremiumCatalogDefinition(
+    id: PremiumCatalogId.sedanCar,
+    name: 'Sedan Car',
+    baseType: FurnitureType.car,
+    icon: Icons.directions_car_outlined,
+    previewTop: Color(0xFF1565C0),
+    previewBottom: Color(0xFF263238),
+    previewAccent: Color(0xFFECEFF1),
+    width: 6.0,
+    height: 4.8,
+    depth: 15.0,
+    color: '#1E3A5F',
   ),
 ];
 
