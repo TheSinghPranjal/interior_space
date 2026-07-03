@@ -46,6 +46,7 @@ class BlueprintStairPaint {
 
     final centerX = rect.center.dx;
     final bottomY = rect.bottom - rect.height * 0.08;
+
     final topY = rect.top + rect.height * 0.12;
 
     canvas.drawCircle(
