@@ -4,28 +4,40 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+
 	<key>CFBundleDisplayName</key>
-	<string>Interior Space</string>
+	<string>Abode Home</string>
+
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+
 	<key>CFBundleName</key>
-	<string>interior_space</string>
+	<string>Abode Home</string>
+
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+
 	<key>CFBundleShortVersionString</key>
 	<string>$(FLUTTER_BUILD_NAME)</string>
+
 	<key>CFBundleSignature</key>
 	<string>????</string>
+
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -47,64 +59,81 @@
 			</array>
 		</dict>
 	</dict>
+
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Upload wallpaper and texture images for room customization.</string>
+
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
+
 	<key>UIFileSharingEnabled</key>
 	<true/>
+
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>Interior Space Room</string>
+			<string>Abode Home Room</string>
+
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
+
 			<key>LSHandlerRank</key>
 			<string>Owner</string>
+
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>com.interior-space.room</string>
+				<string>com.abodehome.room</string>
 				<string>public.zip-archive</string>
 				<string>public.data</string>
 			</array>
 		</dict>
 	</array>
+
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>
 			<key>UTTypeIdentifier</key>
-			<string>com.interior-space.room</string>
+			<string>com.abodehome.room</string>
+
 			<key>UTTypeDescription</key>
-			<string>Interior Space Room Design</string>
+			<string>Abode Home Room Design</string>
+
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.zip-archive</string>
 				<string>public.data</string>
 			</array>
+
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
 				<array>
 					<string>ispace</string>
 				</array>
+
 				<key>public.mime-type</key>
 				<string>application/zip</string>
 			</dict>
 		</dict>
 	</array>
+
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
+
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -112,5 +141,6 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+
 </dict>
 </plist>
