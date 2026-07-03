@@ -76,6 +76,7 @@ class BlueprintStairPaint {
       arrowPaint,
     );
 
+
     if (showLabel) {
       final tp = TextPainter(
         text: TextSpan(
