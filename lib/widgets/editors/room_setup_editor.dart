@@ -5,6 +5,7 @@ import '../../core/constants/room_constants.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/enums.dart';
+import '../../providers/app_nav_settings_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../providers/room_design_provider.dart';
 import '../../screens/custom_room_shape_screen.dart';
@@ -17,15 +18,14 @@ class RoomSetupEditor extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final showAiAssist = ref.watch(appNavSettingsProvider).showAiAssistTab;
+
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),
-      children: const [
-        _RoomDimensionsSection(),
-        SectionCard(
-          title: 'Room',
-          child: _RoomIdentityFields(),
-        ),
-        _AiAssistantSection(),
+      children: [
+        const _RoomDimensionsSection(),
+        const _RoomIdentitySection(),
+        if (showAiAssist) const _AiAssistantSection(),
       ],
     );
   }
@@ -144,14 +144,13 @@ class _RoomDimensionsSectionState extends ConsumerState<_RoomDimensionsSection> 
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: AppSpacing.sm),
-                    if (!_editingEnabled)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: Text(
-                          'Tap edit to adjust width, length, and height.',
-                          style: theme.textTheme.bodySmall,
-                        ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: Text(
+                        'Tap edit to adjust width, length, and height.',
+                        style: theme.textTheme.bodySmall,
                       ),
+                    ),
                     DimensionControl(
                       label: 'Width (Front & Back walls)',
                       value: dims.width,
@@ -180,83 +179,97 @@ class _RoomDimensionsSectionState extends ConsumerState<_RoomDimensionsSection> 
                           notifier.updateDimensions(dims.copyWith(height: v)),
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    Text('Custom room shape', style: theme.textTheme.titleSmall),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      isPolygon
-                          ? 'Polygon room with ${dims.polygonVertices.length} corners and '
-                              '${dims.polygonVertices.length} walls.'
-                          : 'Draw any shape (3+ walls) on a 20×20 ft grid. '
-                              'Corners snap every ${RoomConstants.customRoomGridSnapFt} ft.',
-                      style: theme.textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        FilledButton.tonalIcon(
-                          onPressed: () async {
-                            await Navigator.of(context).push<bool>(
-                              MaterialPageRoute(
-                                builder: (_) => const CustomRoomShapeScreen(),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Custom room shape', style: theme.textTheme.titleSmall),
+                              const SizedBox(height: AppSpacing.xs),
+                              Text(
+                                isPolygon
+                                    ? 'Polygon room with ${dims.polygonVertices.length} corners and '
+                                        '${dims.polygonVertices.length} walls.'
+                                    : 'Draw any shape (3+ walls) on a 20×20 ft grid. '
+                                        'Corners snap every ${RoomConstants.customRoomGridSnapFt} ft.',
+                                style: theme.textTheme.bodySmall,
                               ),
-                            );
-                          },
-                          icon: const Icon(Icons.pentagon_outlined, size: 18),
-                          label: Text(isPolygon ? 'Edit shape' : 'Draw custom room'),
-                        ),
-                        if (isPolygon)
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const CustomWallsEditorScreen(),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.wallpaper_outlined, size: 18),
-                            label: const Text('Edit walls'),
-                          ),
-                        if (isPolygon)
-                          TextButton(
-                            onPressed: () {
-                              showDialog<void>(
-                                context: context,
-                                builder: (ctx) => AlertDialog(
-                                  title: const Text('Switch to rectangular room?'),
-                                  content: const Text(
-                                    'This removes the custom polygon and resets to a standard 4-wall room.',
+                              const SizedBox(height: AppSpacing.sm),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  FilledButton.tonalIcon(
+                                    onPressed: () async {
+                                      await Navigator.of(context).push<bool>(
+                                        MaterialPageRoute(
+                                          builder: (_) => const CustomRoomShapeScreen(),
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.pentagon_outlined, size: 18),
+                                    label: Text(isPolygon ? 'Edit shape' : 'Draw custom room'),
                                   ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(ctx),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    FilledButton(
+                                  if (isPolygon)
+                                    OutlinedButton.icon(
                                       onPressed: () {
-                                        notifier.setRectangularRoom();
-                                        Navigator.pop(ctx);
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => const CustomWallsEditorScreen(),
+                                          ),
+                                        );
                                       },
-                                      child: const Text('Reset'),
+                                      icon: const Icon(Icons.wallpaper_outlined, size: 18),
+                                      label: const Text('Edit walls'),
                                     ),
-                                  ],
+                                  if (isPolygon)
+                                    TextButton(
+                                      onPressed: () {
+                                        showDialog<void>(
+                                          context: context,
+                                          builder: (ctx) => AlertDialog(
+                                            title: const Text('Switch to rectangular room?'),
+                                            content: const Text(
+                                              'This removes the custom polygon and resets to a standard 4-wall room.',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(ctx),
+                                                child: const Text('Cancel'),
+                                              ),
+                                              FilledButton(
+                                                onPressed: () {
+                                                  notifier.setRectangularRoom();
+                                                  Navigator.pop(ctx);
+                                                },
+                                                child: const Text('Reset'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                      child: const Text('Use rectangular room'),
+                                    ),
+                                ],
+                              ),
+                              if (isPolygon)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: AppSpacing.xs),
+                                  child: Text(
+                                    'Footprint: ${formatDimensionFt(dims.effectiveWidth)} × '
+                                    '${formatDimensionFt(dims.effectiveLength)} ft',
+                                    style: theme.textTheme.bodySmall,
+                                  ),
                                 ),
-                              );
-                            },
-                            child: const Text('Use rectangular room'),
+                            ],
                           ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        const _RoomDimensionImagePanel(),
                       ],
                     ),
-                    if (isPolygon)
-                      Padding(
-                        padding: const EdgeInsets.only(top: AppSpacing.xs),
-                        child: Text(
-                          'Footprint: ${formatDimensionFt(dims.effectiveWidth)} × '
-                          '${formatDimensionFt(dims.effectiveLength)} ft',
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ),
                   ],
                 ),
                 secondChild: const SizedBox.shrink(),
@@ -264,6 +277,25 @@ class _RoomDimensionsSectionState extends ConsumerState<_RoomDimensionsSection> 
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _RoomDimensionImagePanel extends StatelessWidget {
+  const _RoomDimensionImagePanel();
+
+  static const _assetPath = 'assets/icon/room_dimension.png';
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 120,
+      child: Image.asset(
+        _assetPath,
+        fit: BoxFit.contain,
+        alignment: Alignment.topRight,
+        opacity: const AlwaysStoppedAnimation(0.95),
       ),
     );
   }
@@ -324,6 +356,48 @@ class _AiAssistantSection extends ConsumerWidget {
           suffixIcon: Icon(Icons.auto_awesome),
         ),
         onSubmitted: ref.read(roomDesignProvider.notifier).applyAiSuggestion,
+      ),
+    );
+  }
+}
+
+class _RoomIdentitySection extends ConsumerWidget {
+  const _RoomIdentitySection();
+
+  static const _imageAssetPath = 'assets/icon/room_plant.png';
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.55)),
+          boxShadow: AppSpacing.cardShadow(context),
+          image: const DecorationImage(
+            image: AssetImage(_imageAssetPath),
+            alignment: Alignment.centerRight,
+            fit: BoxFit.contain,
+          ),
+        ),
+        child: Padding(
+          padding: AppSpacing.cardPadding,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Room', style: theme.textTheme.titleMedium),
+              const SizedBox(height: AppSpacing.md - 4),
+              const _RoomIdentityFields(),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -403,23 +477,15 @@ class _RoomTypeField extends ConsumerWidget {
         overflow: TextOverflow.ellipsis,
         maxLines: 1,
       ),
-      selectedItemBuilder: (context) => RoomType.values
+      items: RoomType.values
           .map(
-            (type) => Align(
-              alignment: AlignmentDirectional.centerStart,
+            (type) => DropdownMenuItem(
+              value: type,
               child: Text(
                 type.label,
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
-            ),
-          )
-          .toList(),
-      items: RoomType.values
-          .map(
-            (type) => DropdownMenuItem(
-              value: type,
-              child: Text(type.label),
             ),
           )
           .toList(),
