@@ -64,6 +64,7 @@ class BlueprintStairPaint {
       ..strokeCap = StrokeCap.round;
 
     canvas.drawLine(Offset(centerX, bottomY), Offset(centerX, topY), arrowPaint);
+
     final head = math.min(rect.width, rect.height) * 0.07;
     canvas.drawLine(
       Offset(centerX, topY),
