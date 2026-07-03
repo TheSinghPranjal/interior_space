@@ -70,6 +70,7 @@ class BlueprintStairPaint {
       Offset(centerX - head * 0.55, topY + head),
       arrowPaint,
     );
+
     canvas.drawLine(
       Offset(centerX, topY),
       Offset(centerX + head * 0.55, topY + head),
