@@ -38,3 +38,5 @@ flutter:
   assets:
     - assets/three/viewer.html
     - assets/textures/
+    - assets/icon/room_dimension.png
+    - assets/icon/room_plant.png
