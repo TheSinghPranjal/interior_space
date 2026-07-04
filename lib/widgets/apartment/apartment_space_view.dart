@@ -53,35 +53,9 @@ class ApartmentSpaceView extends ConsumerWidget {
         autofocus: true,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            return Column(
-              children: [
-                if (!showBlueprintOnly)
-                  Flexible(
-                    fit: FlexFit.loose,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxHeight: isLandscape
-                            ? constraints.maxHeight * 0.45
-                            : constraints.maxHeight * 0.55,
-                      ),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: _ApartmentHeaderPanel(
-                          layout: layout,
-                          rooms: rooms,
-                          compact: isLandscape,
-                          canUndo: history.canUndo,
-                          canRedo: history.canRedo,
-                          onUndo: undoMove,
-                          onRedo: redoMove,
-                          onAddRoom: (roomId) {
-                            ref.read(projectProvider.notifier).addRoomToApartment(roomId);
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                if (showBlueprintOnly)
+            if (showBlueprintOnly) {
+              return Column(
+                children: [
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
@@ -133,8 +107,7 @@ class ApartmentSpaceView extends ConsumerWidget {
                       ],
                     ),
                   ),
-                const Expanded(child: ApartmentCanvas()),
-                if (showBlueprintOnly)
+                  const Expanded(child: ApartmentCanvas()),
                   Padding(
                     padding: const EdgeInsets.all(AppSpacing.md),
                     child: SizedBox(
@@ -146,7 +119,30 @@ class ApartmentSpaceView extends ConsumerWidget {
                       ),
                     ),
                   ),
-              ],
+                ],
+              );
+            }
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _ApartmentHeaderPanel(
+                    layout: layout,
+                    rooms: rooms,
+                    hideIntro: isLandscape,
+                    canUndo: history.canUndo,
+                    canRedo: history.canRedo,
+                    onUndo: undoMove,
+                    onRedo: redoMove,
+                    onAddRoom: (roomId) {
+                      ref.read(projectProvider.notifier).addRoomToApartment(roomId);
+                    },
+                  ),
+                  _ApartmentFloorPlanCard(layout: layout),
+                ],
+              ),
             );
           },
         ),
@@ -260,11 +256,81 @@ class ApartmentSpaceView extends ConsumerWidget {
   }
 }
 
+class _ApartmentFloorPlanCard extends StatelessWidget {
+  const _ApartmentFloorPlanCard({required this.layout});
+
+  final ApartmentLayout layout;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.55)),
+          boxShadow: AppSpacing.cardShadow(context),
+        ),
+        child: Padding(
+          padding: AppSpacing.cardPadding,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.grid_on, size: 18, color: theme.colorScheme.primary),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'Apartment floor plan',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                  Text(
+                    '${layout.widthFt.toStringAsFixed(0)}×${layout.lengthFt.toStringAsFixed(0)} ft',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Long-press a room to move it • Pinch to zoom • Select multiple to move together',
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final aspect = layout.widthFt / layout.lengthFt;
+                  final height = (constraints.maxWidth / aspect).clamp(280.0, 520.0);
+
+                  return SizedBox(
+                    height: height,
+                    width: double.infinity,
+                    child: const ApartmentCanvas(),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ApartmentHeaderPanel extends StatelessWidget {
   const _ApartmentHeaderPanel({
     required this.layout,
     required this.rooms,
-    required this.compact,
+    required this.hideIntro,
     required this.canUndo,
     required this.canRedo,
     required this.onUndo,
@@ -274,7 +340,7 @@ class _ApartmentHeaderPanel extends StatelessWidget {
 
   final ApartmentLayout layout;
   final List<RoomDesign> rooms;
-  final bool compact;
+  final bool hideIntro;
   final bool canUndo;
   final bool canRedo;
   final VoidCallback onUndo;
@@ -302,7 +368,7 @@ class _ApartmentHeaderPanel extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (!compact)
+              if (!hideIntro)
                 Row(
                   children: [
                     Icon(Icons.apartment, size: 18, color: theme.colorScheme.primary),
@@ -315,11 +381,11 @@ class _ApartmentHeaderPanel extends StatelessWidget {
                     ),
                   ],
                 ),
-              if (!compact) const SizedBox(height: AppSpacing.sm),
+              if (!hideIntro) const SizedBox(height: AppSpacing.sm),
               Text('Your Rooms — ${layout.name}', style: theme.textTheme.titleMedium),
               const SizedBox(height: AppSpacing.sm),
               SizedBox(
-                height: compact ? 40 : 48,
+                height: 56,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: rooms.length,
@@ -343,26 +409,26 @@ class _ApartmentHeaderPanel extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Padding(
-                            padding: EdgeInsets.symmetric(
+                            padding: const EdgeInsets.symmetric(
                               horizontal: 12,
-                              vertical: compact ? 6 : 8,
+                              vertical: 10,
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
                                   Icons.meeting_room,
-                                  size: 14,
+                                  size: 16,
                                   color: theme.colorScheme.primary,
                                 ),
                                 const SizedBox(width: 6),
-                                Text(room.name, style: theme.textTheme.labelMedium),
+                                Text(room.name, style: theme.textTheme.labelLarge),
                                 if (onBlueprint > 0) ...[
                                   const SizedBox(width: 4),
                                   Text(
                                     '($onBlueprint)',
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 12,
                                       color: theme.colorScheme.primary,
                                     ),
                                   ),
@@ -371,9 +437,9 @@ class _ApartmentHeaderPanel extends StatelessWidget {
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.add_circle_outline, size: 20),
+                            icon: const Icon(Icons.add_circle_outline, size: 22),
                             tooltip: 'Add to blueprint',
-                            visualDensity: VisualDensity.compact,
+                            visualDensity: VisualDensity.standard,
                             onPressed: () => onAddRoom(room.id),
                           ),
                         ],
@@ -386,18 +452,17 @@ class _ApartmentHeaderPanel extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: AppSpacing.xs),
                   child: Text(
-                    '${layout.placements.length} room(s) on blueprint • Long-press to move • Select all to move together',
+                    '${layout.placements.length} room(s) on blueprint',
                     style: theme.textTheme.bodySmall,
                   ),
                 ),
               Padding(
-                padding: EdgeInsets.only(top: compact ? AppSpacing.sm : AppSpacing.md),
+                padding: const EdgeInsets.only(top: AppSpacing.md),
                 child: const Divider(height: 1),
               ),
-              SizedBox(height: compact ? AppSpacing.sm : AppSpacing.md - 4),
+              const SizedBox(height: AppSpacing.md - 4),
               _ApartmentSizeControls(
                 layout: layout,
-                compact: compact,
                 canUndo: canUndo,
                 canRedo: canRedo,
                 onUndo: onUndo,
@@ -414,7 +479,6 @@ class _ApartmentHeaderPanel extends StatelessWidget {
 class _ApartmentSizeControls extends ConsumerStatefulWidget {
   const _ApartmentSizeControls({
     required this.layout,
-    required this.compact,
     required this.canUndo,
     required this.canRedo,
     required this.onUndo,
@@ -422,7 +486,6 @@ class _ApartmentSizeControls extends ConsumerStatefulWidget {
   });
 
   final ApartmentLayout layout;
-  final bool compact;
   final bool canUndo;
   final bool canRedo;
   final VoidCallback onUndo;
@@ -440,14 +503,6 @@ class _ApartmentSizeControlsState extends ConsumerState<_ApartmentSizeControls> 
   void initState() {
     super.initState();
     _expanded = false;
-  }
-
-  @override
-  void didUpdateWidget(covariant _ApartmentSizeControls oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!oldWidget.compact && widget.compact && _expanded) {
-      setState(() => _expanded = false);
-    }
   }
 
   @override
@@ -513,50 +568,50 @@ class _ApartmentSizeControlsState extends ConsumerState<_ApartmentSizeControls> 
             ),
           ],
         ),
-        AnimatedCrossFade(
-          firstCurve: Curves.easeOut,
-          secondCurve: Curves.easeIn,
-          sizeCurve: Curves.easeInOut,
-          crossFadeState:
-              _expanded ? CrossFadeState.showFirst : CrossFadeState.showSecond,
-          duration: const Duration(milliseconds: 200),
-          firstChild: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 4),
-              const _ApartmentNameField(),
-              const SizedBox(height: AppSpacing.sm),
-              if (!_editingEnabled)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: Text(
-                    'Tap edit to adjust width and length.',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ),
-              DimensionControl(
-                label: 'Width',
-                value: widget.layout.widthFt,
-                min: RoomConstants.minApartmentWidth,
-                max: RoomConstants.maxApartmentWidth,
-                enabled: _editingEnabled,
-                onChanged: (v) => ref
-                    .read(projectProvider.notifier)
-                    .updateApartmentDimensions(widthFt: v),
-              ),
-              DimensionControl(
-                label: 'Length',
-                value: widget.layout.lengthFt,
-                min: RoomConstants.minApartmentLength,
-                max: RoomConstants.maxApartmentLength,
-                enabled: _editingEnabled,
-                onChanged: (v) => ref
-                    .read(projectProvider.notifier)
-                    .updateApartmentDimensions(lengthFt: v),
-              ),
-            ],
-          ),
-          secondChild: const SizedBox.shrink(),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeInOut,
+          alignment: Alignment.topCenter,
+          clipBehavior: Clip.hardEdge,
+          child: _expanded
+              ? Column(
+                  key: const ValueKey('apartment-size-expanded'),
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 4),
+                    const _ApartmentNameField(),
+                    const SizedBox(height: AppSpacing.sm),
+                    if (!_editingEnabled)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        child: Text(
+                          'Tap edit to adjust width and length.',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                    DimensionControl(
+                      label: 'Width',
+                      value: widget.layout.widthFt,
+                      min: RoomConstants.minApartmentWidth,
+                      max: RoomConstants.maxApartmentWidth,
+                      enabled: _editingEnabled,
+                      onChanged: (v) => ref
+                          .read(projectProvider.notifier)
+                          .updateApartmentDimensions(widthFt: v),
+                    ),
+                    DimensionControl(
+                      label: 'Length',
+                      value: widget.layout.lengthFt,
+                      min: RoomConstants.minApartmentLength,
+                      max: RoomConstants.maxApartmentLength,
+                      enabled: _editingEnabled,
+                      onChanged: (v) => ref
+                          .read(projectProvider.notifier)
+                          .updateApartmentDimensions(lengthFt: v),
+                    ),
+                  ],
+                )
+              : const SizedBox(width: double.infinity),
         ),
       ],
     );
