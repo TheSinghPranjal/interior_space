@@ -3,10 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/enums.dart';
 import '../../providers/room_design_provider.dart';
-import '../../services/texture_service.dart';
 import '../common/color_picker_field.dart';
 import '../common/section_card.dart';
-import '../common/texture_upload_field.dart';
+import '../common/texture_picker_widget.dart';
 
 class CeilingEditor extends ConsumerWidget {
   const CeilingEditor({super.key});
@@ -43,15 +42,12 @@ class CeilingEditor extends ConsumerWidget {
                 },
               ),
               SizedBox(height: 10),
-              TextureUploadField(
+              TexturePickerWidget(
                 texturePath: ceiling.texturePath,
-                onPick: () async {
-                  final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
-                  if (path != null) {
-                    ref.read(roomDesignProvider.notifier).updateCeiling(
-                          ceiling.copyWith(texturePath: path),
-                        );
-                  }
+                onTextureSelected: (path) {
+                  ref.read(roomDesignProvider.notifier).updateCeiling(
+                        ceiling.copyWith(texturePath: path),
+                      );
                 },
                 onClear: ceiling.texturePath == null
                     ? null
