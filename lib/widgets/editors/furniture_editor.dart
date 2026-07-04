@@ -8,14 +8,13 @@ import '../../models/premium_catalog_item.dart';
 import '../../models/room_design.dart';
 import '../../providers/placed_item_clipboard_provider.dart';
 import '../../providers/room_design_provider.dart';
-import '../../services/texture_service.dart';
 import '../common/placed_item_config_menu.dart';
 import '../common/color_picker_field.dart';
 import '../common/editor_item_card.dart';
 import '../common/dimension_slider.dart';
 import '../common/item_editor_header.dart';
 import '../common/section_card.dart';
-import '../common/texture_upload_field.dart';
+import '../common/texture_picker_widget.dart';
 import 'premium_catalog_panel.dart';
 import 'wall_tv_unit_card.dart';
 
@@ -456,13 +455,10 @@ class _FurnitureCardState extends ConsumerState<_FurnitureCard>
               onChanged: (c) => notifier.updateFurniture(item.copyWith(color: c)),
             ),
             if (item.supportsTextureUpload && enabled)
-              TextureUploadField(
+              TexturePickerWidget(
                 texturePath: item.texturePath,
-                onPick: () async {
-                  final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
-                  if (path != null) {
-                    notifier.updateFurniture(item.copyWith(texturePath: path));
-                  }
+                onTextureSelected: (path) {
+                  notifier.updateFurniture(item.copyWith(texturePath: path));
                 },
                 onClear: item.texturePath == null
                     ? null
