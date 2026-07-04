@@ -5,13 +5,12 @@ import '../../core/constants/room_constants.dart';
 import '../../models/door_config.dart';
 import '../../models/enums.dart';
 import '../../providers/room_design_provider.dart';
-import '../../services/texture_service.dart';
 import '../common/color_picker_field.dart';
 import '../common/editor_item_card.dart';
 import '../common/dimension_slider.dart';
 import '../common/item_editor_header.dart';
 import '../common/section_card.dart';
-import '../common/texture_upload_field.dart';
+import '../common/texture_picker_widget.dart';
 
 class DoorsEditor extends ConsumerWidget {
   const DoorsEditor({super.key});
@@ -199,15 +198,12 @@ class _DoorCardState extends ConsumerState<_DoorCard> {
             ),
           SizedBox(height: 10),
             if (enabled)
-              TextureUploadField(
+              TexturePickerWidget(
                 texturePath: door.texturePath,
                 uploadLabel: 'Upload Door Texture',
                 changeLabel: 'Change Door Texture',
-                onPick: () async {
-                  final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
-                  if (path != null) {
-                    notifier.updateDoor(door.copyWith(texturePath: path));
-                  }
+                onTextureSelected: (path) {
+                  notifier.updateDoor(door.copyWith(texturePath: path));
                 },
                 onClear: door.texturePath == null
                     ? null
