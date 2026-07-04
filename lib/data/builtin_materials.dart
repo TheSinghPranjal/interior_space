@@ -1,0 +1,77 @@
+import '../models/material_item.dart';
+
+final _d = DateTime(2024, 1, 1);
+
+/// Built-in material catalog. Color swatches stand in until texture assets are added.
+final List<MaterialItem> builtinMaterials = [
+  // ─────────────── FLOOR ───────────────
+  MaterialItem(id: 'f_oak', name: 'Light Oak Wood', category: MaterialCategory.floor, subCategory: 'wood', colorHex: '#C8A97E', createdAt: _d),
+  MaterialItem(id: 'f_walnut', name: 'Dark Walnut', category: MaterialCategory.floor, subCategory: 'wood', colorHex: '#5C3317', createdAt: _d),
+  MaterialItem(id: 'f_pine', name: 'Pine Wood', category: MaterialCategory.floor, subCategory: 'wood', colorHex: '#D4A55A', createdAt: _d),
+  MaterialItem(id: 'f_teak', name: 'Teak Wood', category: MaterialCategory.floor, subCategory: 'wood', colorHex: '#8B5E3C', createdAt: _d),
+  MaterialItem(id: 'f_carrara', name: 'Carrara Marble', category: MaterialCategory.floor, subCategory: 'marble', colorHex: '#F5F5F0', createdAt: _d),
+  MaterialItem(id: 'f_nero', name: 'Nero Marble', category: MaterialCategory.floor, subCategory: 'marble', colorHex: '#2A2A2A', createdAt: _d),
+  MaterialItem(id: 'f_emperador', name: 'Emperador', category: MaterialCategory.floor, subCategory: 'marble', colorHex: '#6B3E26', createdAt: _d),
+  MaterialItem(id: 'f_black_g', name: 'Black Galaxy', category: MaterialCategory.floor, subCategory: 'granite', colorHex: '#1C1C1E', createdAt: _d),
+  MaterialItem(id: 'f_kashmir', name: 'Kashmir White', category: MaterialCategory.floor, subCategory: 'granite', colorHex: '#E8E0D5', createdAt: _d),
+  MaterialItem(id: 'f_tan_brown', name: 'Tan Brown', category: MaterialCategory.floor, subCategory: 'granite', colorHex: '#8B6347', createdAt: _d),
+  MaterialItem(id: 'f_beige_t', name: 'Beige Porcelain', category: MaterialCategory.floor, subCategory: 'tiles', colorHex: '#D4C5A9', createdAt: _d),
+  MaterialItem(id: 'f_hex_wh', name: 'Hex White', category: MaterialCategory.floor, subCategory: 'tiles', colorHex: '#F0EDE8', createdAt: _d),
+  MaterialItem(id: 'f_terrazzo', name: 'Terrazzo Beige', category: MaterialCategory.floor, subCategory: 'tiles', colorHex: '#E8DDD0', createdAt: _d),
+  MaterialItem(id: 'f_slate', name: 'Slate Grey', category: MaterialCategory.floor, subCategory: 'tiles', colorHex: '#7A8B8B', createdAt: _d),
+  MaterialItem(id: 'f_grey_conc', name: 'Grey Concrete', category: MaterialCategory.floor, subCategory: 'concrete', colorHex: '#9E9E9E', createdAt: _d),
+  MaterialItem(id: 'f_raw_conc', name: 'Raw Concrete', category: MaterialCategory.floor, subCategory: 'concrete', colorHex: '#B0A898', createdAt: _d),
+  MaterialItem(id: 'f_red_brick', name: 'Red Brick', category: MaterialCategory.floor, subCategory: 'brick', colorHex: '#8B3A3A', createdAt: _d),
+  MaterialItem(id: 'f_wh_brick', name: 'White Brick', category: MaterialCategory.floor, subCategory: 'brick', colorHex: '#F0ECE4', createdAt: _d),
+
+  // ─────────────── WALL ────────────────
+  MaterialItem(id: 'w_sage', name: 'Sage Green', category: MaterialCategory.wall, subCategory: 'paint', colorHex: '#7A9E7E', createdAt: _d),
+  MaterialItem(id: 'w_navy', name: 'Navy Blue', category: MaterialCategory.wall, subCategory: 'paint', colorHex: '#2C3E6B', createdAt: _d),
+  MaterialItem(id: 'w_ivory', name: 'Ivory White', category: MaterialCategory.wall, subCategory: 'paint', colorHex: '#F5F0E8', createdAt: _d),
+  MaterialItem(id: 'w_terracotta', name: 'Terracotta', category: MaterialCategory.wall, subCategory: 'paint', colorHex: '#C4724A', createdAt: _d),
+  MaterialItem(id: 'w_charcoal', name: 'Charcoal', category: MaterialCategory.wall, subCategory: 'paint', colorHex: '#36454F', createdAt: _d),
+  MaterialItem(id: 'w_blush', name: 'Blush Pink', category: MaterialCategory.wall, subCategory: 'paint', colorHex: '#E8BCAE', createdAt: _d),
+  MaterialItem(id: 'w_beige_wp', name: 'Beige Wallpaper', category: MaterialCategory.wall, subCategory: 'wallpaper', colorHex: '#DDD0B8', createdAt: _d),
+  MaterialItem(id: 'w_floral', name: 'Floral Print', category: MaterialCategory.wall, subCategory: 'wallpaper', colorHex: '#C8B8A2', createdAt: _d),
+  MaterialItem(id: 'w_geo', name: 'Geometric', category: MaterialCategory.wall, subCategory: 'wallpaper', colorHex: '#B8C4C8', createdAt: _d),
+  MaterialItem(id: 'w_sandstone', name: 'Sandstone', category: MaterialCategory.wall, subCategory: 'stone', colorHex: '#C8B090', createdAt: _d),
+  MaterialItem(id: 'w_limestone', name: 'Limestone', category: MaterialCategory.wall, subCategory: 'stone', colorHex: '#D4C8B0', createdAt: _d),
+  MaterialItem(id: 'w_st_marble', name: 'Stone Marble', category: MaterialCategory.wall, subCategory: 'stone', colorHex: '#E8E0D8', createdAt: _d),
+  MaterialItem(id: 'w_pine_pnl', name: 'Pine Panel', category: MaterialCategory.wall, subCategory: 'wood', colorHex: '#C8A46A', createdAt: _d),
+  MaterialItem(id: 'w_teak_pnl', name: 'Teak Panel', category: MaterialCategory.wall, subCategory: 'wood', colorHex: '#7A5030', createdAt: _d),
+  MaterialItem(id: 'w_slat', name: 'Wood Slat Panel', category: MaterialCategory.wall, subCategory: 'panels', colorHex: '#A07850', createdAt: _d),
+  MaterialItem(id: 'w_fluted', name: 'Fluted Panel', category: MaterialCategory.wall, subCategory: 'panels', colorHex: '#C8BCA8', createdAt: _d),
+  MaterialItem(id: 'w_shiplap', name: 'Shiplap', category: MaterialCategory.wall, subCategory: 'panels', colorHex: '#F0ECE4', createdAt: _d),
+  MaterialItem(id: 'w_3d_wave', name: '3D Wave Panel', category: MaterialCategory.wall, subCategory: '3dPanels', colorHex: '#E8E4E0', createdAt: _d),
+  MaterialItem(id: 'w_3d_hex', name: '3D Hex Panel', category: MaterialCategory.wall, subCategory: '3dPanels', colorHex: '#D8D4D0', createdAt: _d),
+  MaterialItem(id: 'w_wh_brick', name: 'White Brick', category: MaterialCategory.wall, subCategory: 'stone', colorHex: '#F0EDE8', createdAt: _d),
+
+  // ─────────────── CEILING ─────────────
+  MaterialItem(id: 'c_gyp_plain', name: 'Gypsum Plain', category: MaterialCategory.ceiling, subCategory: 'gypsum', colorHex: '#F8F8F6', createdAt: _d),
+  MaterialItem(id: 'c_gyp_cove', name: 'Cove Gypsum', category: MaterialCategory.ceiling, subCategory: 'gypsum', colorHex: '#F4F4F2', createdAt: _d),
+  MaterialItem(id: 'c_pop_tex', name: 'POP Texture', category: MaterialCategory.ceiling, subCategory: 'pop', colorHex: '#F0EDE8', createdAt: _d),
+  MaterialItem(id: 'c_pop_rose', name: 'POP Rosette', category: MaterialCategory.ceiling, subCategory: 'pop', colorHex: '#F5F2EC', createdAt: _d),
+  MaterialItem(id: 'c_wood_pnl', name: 'Wood Panel', category: MaterialCategory.ceiling, subCategory: 'wood', colorHex: '#A07840', createdAt: _d),
+  MaterialItem(id: 'c_shiplap', name: 'Shiplap Ceiling', category: MaterialCategory.ceiling, subCategory: 'wood', colorHex: '#C8BCA8', createdAt: _d),
+  MaterialItem(id: 'c_false_wh', name: 'False Ceiling (Cove)', category: MaterialCategory.ceiling, subCategory: 'falseCeiling', colorHex: '#F0F0EE', createdAt: _d),
+  MaterialItem(id: 'c_false_blk', name: 'False Ceiling Dark', category: MaterialCategory.ceiling, subCategory: 'falseCeiling', colorHex: '#2C2C2C', createdAt: _d),
+  MaterialItem(id: 'c_pvc', name: 'PVC Panel', category: MaterialCategory.ceiling, subCategory: 'falseCeiling', colorHex: '#E8E8E6', createdAt: _d),
+  MaterialItem(id: 'c_led_warm', name: 'LED Cove Warm', category: MaterialCategory.ceiling, subCategory: 'ledCove', colorHex: '#F5E8C0', createdAt: _d),
+  MaterialItem(id: 'c_led_cool', name: 'LED Cove Cool', category: MaterialCategory.ceiling, subCategory: 'ledCove', colorHex: '#D0E8F5', createdAt: _d),
+
+  // ─────────────── FURNITURE ───────────
+  MaterialItem(id: 'fu_linen', name: 'Natural Linen', category: MaterialCategory.furniture, subCategory: 'sofas', colorHex: '#D4C8A8', createdAt: _d),
+  MaterialItem(id: 'fu_velvet', name: 'Forest Velvet', category: MaterialCategory.furniture, subCategory: 'sofas', colorHex: '#4A7A5A', createdAt: _d),
+  MaterialItem(id: 'fu_leather', name: 'Tan Leather', category: MaterialCategory.furniture, subCategory: 'sofas', colorHex: '#C8895A', createdAt: _d),
+  MaterialItem(id: 'fu_boucle', name: 'Bouclé Cream', category: MaterialCategory.furniture, subCategory: 'sofas', colorHex: '#E8E0D0', createdAt: _d),
+  MaterialItem(id: 'fu_oak_t', name: 'Oak Table Top', category: MaterialCategory.furniture, subCategory: 'tables', colorHex: '#C8A97E', createdAt: _d),
+  MaterialItem(id: 'fu_marble_t', name: 'Marble Table Top', category: MaterialCategory.furniture, subCategory: 'tables', colorHex: '#F0EDE8', createdAt: _d),
+  MaterialItem(id: 'fu_glass_t', name: 'Clear Glass', category: MaterialCategory.furniture, subCategory: 'tables', colorHex: '#D0E8F0', createdAt: _d),
+  MaterialItem(id: 'fu_fabric_c', name: 'Sage Fabric', category: MaterialCategory.furniture, subCategory: 'chairs', colorHex: '#7A9E7E', createdAt: _d),
+  MaterialItem(id: 'fu_wlnt_c', name: 'Walnut Frame', category: MaterialCategory.furniture, subCategory: 'chairs', colorHex: '#5C3317', createdAt: _d),
+  MaterialItem(id: 'fu_linen_b', name: 'Linen Bedding', category: MaterialCategory.furniture, subCategory: 'beds', colorHex: '#E8E0D0', createdAt: _d),
+  MaterialItem(id: 'fu_sage_b', name: 'Sage Bedding', category: MaterialCategory.furniture, subCategory: 'beds', colorHex: '#A8C0A0', createdAt: _d),
+  MaterialItem(id: 'fu_cane', name: 'Cane Weave', category: MaterialCategory.furniture, subCategory: 'storage', colorHex: '#C8A46A', createdAt: _d),
+  MaterialItem(id: 'fu_rattan', name: 'Rattan', category: MaterialCategory.furniture, subCategory: 'storage', colorHex: '#B89060', createdAt: _d),
+  MaterialItem(id: 'fu_decor', name: 'Decor Accent', category: MaterialCategory.furniture, subCategory: 'decor', colorHex: '#C4A77D', createdAt: _d),
+];
