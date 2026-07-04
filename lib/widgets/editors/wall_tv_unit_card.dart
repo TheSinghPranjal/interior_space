@@ -8,13 +8,12 @@ import '../../models/room_design.dart';
 import '../../models/wall_tv_unit_config.dart';
 import '../../providers/placed_item_clipboard_provider.dart';
 import '../../providers/room_design_provider.dart';
-import '../../services/texture_service.dart';
 import '../common/placed_item_config_menu.dart';
 import '../common/color_picker_field.dart';
 import '../common/editor_item_card.dart';
 import '../common/dimension_slider.dart';
 import '../common/item_editor_header.dart';
-import '../common/texture_upload_field.dart';
+import '../common/texture_picker_widget.dart';
 
 class WallTvUnitCard extends ConsumerStatefulWidget {
   const WallTvUnitCard({
@@ -234,13 +233,10 @@ class _WallTvUnitCardState extends ConsumerState<WallTvUnitCard>
           onChanged: (c) => notifier.updateWallTvUnit(unit.copyWith(color: c)),
         ),
         if (enabled)
-          TextureUploadField(
+          TexturePickerWidget(
             texturePath: unit.texturePath,
-            onPick: () async {
-              final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
-              if (path != null) {
-                notifier.updateWallTvUnit(unit.copyWith(texturePath: path));
-              }
+            onTextureSelected: (path) {
+              notifier.updateWallTvUnit(unit.copyWith(texturePath: path));
             },
             onClear: unit.texturePath == null
                 ? null
