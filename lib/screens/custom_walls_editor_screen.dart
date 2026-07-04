@@ -6,11 +6,10 @@ import '../core/utils/polygon_room_geometry.dart';
 import '../models/enums.dart';
 import '../models/wall_config.dart';
 import '../providers/room_design_provider.dart';
-import '../services/texture_service.dart';
 import '../widgets/common/color_picker_field.dart';
 import '../widgets/common/dimension_slider.dart';
 import '../widgets/common/section_card.dart';
-import '../widgets/common/texture_upload_field.dart';
+import '../widgets/common/texture_picker_widget.dart';
 import '../widgets/common/editor_item_card.dart' show EditorHelperText;
 import '../widgets/editors/wall_barrier_type_field.dart';
 
@@ -203,17 +202,14 @@ class _PolygonWallFields extends ConsumerWidget {
           ),
         ],
         if (wall.surfaceType == SurfaceType.wallpaper) ...[
-          TextureUploadField(
+          TexturePickerWidget(
             texturePath: wall.wallpaperPath,
             uploadLabel: 'Upload Wallpaper',
             changeLabel: 'Change Wallpaper',
-            onPick: () async {
-              final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
-              if (path != null) {
-                notifier.updateWall(
-                  wall.copyWith(surfaceType: SurfaceType.wallpaper, wallpaperPath: path),
-                );
-              }
+            onTextureSelected: (path) {
+              notifier.updateWall(
+                wall.copyWith(surfaceType: SurfaceType.wallpaper, wallpaperPath: path),
+              );
             },
             onClear: wall.wallpaperPath == null
                 ? null
