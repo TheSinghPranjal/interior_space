@@ -70,44 +70,50 @@ class BlueprintView extends ConsumerWidget {
         const Expanded(child: BlueprintCanvas()),
         Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _showAddFurnitureSheet(context, ref),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add Item'),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _importRoom(context, ref),
-                  icon: const Icon(Icons.upload_file, size: 18),
-                  label: const Text('Import'),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                flex: 2,
-                child: FilledButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const Preview3DScreen(),
-                        fullscreenDialog: true,
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.view_in_ar),
-                  label: const Text('Show 3D Model'),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 520;
+              return Row(
+                children: [
+                  Expanded(
+                    child: _BlueprintActionButton(
+                      compact: compact,
+                      onPressed: () => _showAddFurnitureSheet(context, ref),
+                      icon: Icons.add,
+                      label: 'Add Item',
+                    ),
                   ),
-                ),
-              ),
-            ],
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: _BlueprintActionButton(
+                      compact: compact,
+                      onPressed: () => _importRoom(context, ref),
+                      icon: Icons.upload_file,
+                      label: 'Import',
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    flex: compact ? 1 : 2,
+                    child: _BlueprintActionButton(
+                      compact: compact,
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const Preview3DScreen(),
+                            fullscreenDialog: true,
+                          ),
+                        );
+                      },
+                      icon: Icons.view_in_ar,
+                      label: 'Show 3D Model',
+                      filled: true,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ],
@@ -225,5 +231,63 @@ class BlueprintView extends ConsumerWidget {
       isScrollControlled: true,
       builder: (context) => const AddFurnitureSheet(),
     );
+  }
+}
+
+class _BlueprintActionButton extends StatelessWidget {
+  const _BlueprintActionButton({
+    required this.compact,
+    required this.onPressed,
+    required this.icon,
+    required this.label,
+    this.filled = false,
+  });
+
+  final bool compact;
+  final VoidCallback onPressed;
+  final IconData icon;
+  final String label;
+  final bool filled;
+
+  @override
+  Widget build(BuildContext context) {
+    final buttonStyle = filled
+        ? FilledButton.styleFrom(
+            padding: EdgeInsets.symmetric(vertical: compact ? 12 : 14),
+          )
+        : OutlinedButton.styleFrom(
+            padding: EdgeInsets.symmetric(vertical: compact ? 12 : 14),
+          );
+
+    final Widget button;
+    if (compact) {
+      button = filled
+          ? FilledButton(
+              onPressed: onPressed,
+              style: buttonStyle,
+              child: Icon(icon, size: 22),
+            )
+          : OutlinedButton(
+              onPressed: onPressed,
+              style: buttonStyle,
+              child: Icon(icon, size: 22),
+            );
+    } else {
+      button = filled
+          ? FilledButton.icon(
+              onPressed: onPressed,
+              style: buttonStyle,
+              icon: Icon(icon),
+              label: Text(label),
+            )
+          : OutlinedButton.icon(
+              onPressed: onPressed,
+              style: buttonStyle,
+              icon: Icon(icon, size: 18),
+              label: Text(label),
+            );
+    }
+
+    return Tooltip(message: label, child: button);
   }
 }
