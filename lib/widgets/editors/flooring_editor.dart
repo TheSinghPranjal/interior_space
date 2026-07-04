@@ -3,10 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/enums.dart';
 import '../../providers/room_design_provider.dart';
-import '../../services/texture_service.dart';
 import '../common/color_picker_field.dart';
 import '../common/section_card.dart';
-import '../common/texture_upload_field.dart';
+import '../common/texture_picker_widget.dart';
 
 class FlooringEditor extends ConsumerWidget {
   const FlooringEditor({super.key});
@@ -98,20 +97,17 @@ class FlooringEditor extends ConsumerWidget {
                       floor.copyWith(tileWidth: v),
                     ),
               ),
-              TextureUploadField(
+              TexturePickerWidget(
                 texturePath: floor.texturePath,
                 uploadLabel: 'Upload Tile Texture',
                 changeLabel: 'Change Texture',
-                onPick: () async {
-                  final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
-                  if (path != null) {
-                    ref.read(roomDesignProvider.notifier).updateFloor(
-                          floor.copyWith(
-                            surfaceType: SurfaceType.texture,
-                            texturePath: path,
-                          ),
-                        );
-                  }
+                onTextureSelected: (path) {
+                  ref.read(roomDesignProvider.notifier).updateFloor(
+                        floor.copyWith(
+                          surfaceType: SurfaceType.texture,
+                          texturePath: path,
+                        ),
+                      );
                 },
                 onClear: floor.texturePath == null
                     ? null
