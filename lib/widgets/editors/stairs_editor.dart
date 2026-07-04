@@ -4,13 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/enums.dart';
 import '../../models/stair_config.dart';
 import '../../providers/room_design_provider.dart';
-import '../../services/texture_service.dart';
 import '../common/color_picker_field.dart';
 import '../common/dimension_slider.dart';
 import '../common/editor_item_card.dart';
 import '../common/item_editor_header.dart';
 import '../common/section_card.dart';
-import '../common/texture_upload_field.dart';
+import '../common/texture_picker_widget.dart';
 
 class StairsEditor extends ConsumerWidget {
   const StairsEditor({super.key});
@@ -201,13 +200,10 @@ class _StairCardState extends ConsumerState<_StairCard> {
                 : null,
           ),
           if (enabled)
-            TextureUploadField(
+            TexturePickerWidget(
               texturePath: stair.texturePath,
-              onPick: () async {
-                final path = await ref.read(textureServiceProvider).pickAndSaveTexture();
-                if (path != null) {
-                  notifier.updateStair(stair.copyWith(texturePath: path));
-                }
+              onTextureSelected: (path) {
+                notifier.updateStair(stair.copyWith(texturePath: path));
               },
               onClear: stair.texturePath == null
                   ? null
