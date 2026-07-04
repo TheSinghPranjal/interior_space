@@ -8,6 +8,7 @@ import '../providers/company_profile_provider.dart';
 import '../providers/pdf_export_settings_provider.dart';
 import '../providers/room_design_provider.dart';
 import '../widgets/company/company_image.dart';
+import 'material_library/material_library_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -103,6 +104,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           'Your company details are saved automatically and available across the app.',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _SectionCard(
+          title: 'Material Library',
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.grid_view, color: theme.colorScheme.primary),
+            title: const Text('Browse Materials'),
+            subtitle: const Text(
+              'Floor, wall, ceiling & furniture textures — add your own and reuse anywhere',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.push<void>(
+                context,
+                MaterialPageRoute(builder: (_) => const MaterialLibraryScreen()),
+              );
+            },
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
