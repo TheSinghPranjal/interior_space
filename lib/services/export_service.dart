@@ -23,6 +23,7 @@ import '../models/wall_tv_unit_config.dart';
 import '../models/window_config.dart';
 import 'blueprint_image_exporter.dart';
 import '../sketch/data/sketch_composite_exporter.dart';
+import 'pdf_export_theme.dart';
 import 'public_download_saver.dart';
 
 class ExportService {
@@ -114,20 +115,21 @@ class ExportService {
         build: (context) => [
           pw.Header(
             level: 0,
-            child: pw.Text(
-              reportTitle,
-              style: pw.TextStyle(fontSize: 26, fontWeight: pw.FontWeight.bold),
-            ),
+            child: pw.Text(reportTitle, style: PdfTextStyles.reportTitle()),
           ),
-          pw.Text('Interior Space Design Report', style: const pw.TextStyle(fontSize: 14)),
+          pw.Text(
+            'Interior Space Design Report',
+            style: PdfTextStyles.reportSubtitle(),
+          ),
           pw.SizedBox(height: 6),
-          pw.Text('Generated: $generatedAt'),
-          pw.Text('Total rooms: ${rooms.length}'),
+          pw.Text('Generated: $generatedAt', style: PdfTextStyles.body()),
+          pw.Text('Total rooms: ${rooms.length}', style: PdfTextStyles.body()),
           if (!singleRoomExport && includeApartmentSections) ...[
             pw.SizedBox(height: 4),
             pw.Text(
-              'Apartment size: ${apartmentLayout.widthFt.toStringAsFixed(1)} × '
+              'Apartment size: ${apartmentLayout.widthFt.toStringAsFixed(1)} x '
               '${apartmentLayout.lengthFt.toStringAsFixed(1)} ft',
+              style: PdfTextStyles.body(),
             ),
           ],
           if (!singleRoomExport &&
@@ -261,7 +263,7 @@ class ExportService {
 
     return [
       _sectionTitle('Apartment Information'),
-      _detailTable(
+      styledTable(
         headers: const ['Field', 'Value'],
         rows: rows,
       ),
@@ -284,13 +286,16 @@ class ExportService {
         level: 1,
         child: pw.Text(
           'Room ${roomIndex + 1}: ${room.name}',
-          style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+          style: PdfTextStyles.roomHeading(),
         ),
       ),
       pw.SizedBox(height: 8),
       _sectionTitle('Room Dimensions'),
-      pw.Text('Width: ${d.width} ft  •  Length: ${d.length} ft  •  Height: ${d.height} ft'),
-      pw.Text('Floor area: $floorArea sq ft'),
+      pw.Text(
+        'Width: ${d.width} ft  •  Length: ${d.length} ft  •  Height: ${d.height} ft',
+        style: PdfTextStyles.body(),
+      ),
+      pw.Text('Floor area: $floorArea sq ft', style: PdfTextStyles.body()),
       pw.SizedBox(height: 12),
       _sectionTitle('Floor Plan'),
       pw.Center(
@@ -304,7 +309,7 @@ class ExportService {
         pw.SizedBox(height: 12),
         _sectionTitle('3D Preview'),
         if (pdfSettings.includeFrontView && render3dImages.front != null) ...[
-          pw.Text('Front view', style: const pw.TextStyle(fontSize: 10)),
+          pw.Text('Front view', style: PdfTextStyles.caption()),
           pw.SizedBox(height: 4),
           pw.Center(
             child: pw.Image(
@@ -316,7 +321,7 @@ class ExportService {
         ],
         if (pdfSettings.includeTopView && render3dImages.top != null) ...[
           pw.SizedBox(height: 8),
-          pw.Text('Top view', style: const pw.TextStyle(fontSize: 10)),
+          pw.Text('Top view', style: PdfTextStyles.caption()),
           pw.SizedBox(height: 4),
           pw.Center(
             child: pw.Image(
@@ -352,22 +357,32 @@ class ExportService {
       _sectionTitle('Floor'),
       pw.Text(
         'Material: ${room.floor.material.name}  •  Color: ${room.floor.color}',
+        style: PdfTextStyles.body(),
       ),
       pw.Text(
-        'Floor dimensions: ${d.width.toStringAsFixed(1)} × ${d.length.toStringAsFixed(1)} ft',
+        'Floor dimensions: ${d.width.toStringAsFixed(1)} x ${d.length.toStringAsFixed(1)} ft',
+        style: PdfTextStyles.body(),
       ),
       pw.Text(
-        'Tile size: ${room.floor.tileWidth.toStringAsFixed(1)} × ${room.floor.tileLength.toStringAsFixed(1)} ft  •  Pattern: ${room.floor.pattern.name}',
+        'Tile size: ${room.floor.tileWidth.toStringAsFixed(1)} x ${room.floor.tileLength.toStringAsFixed(1)} ft  •  Pattern: ${room.floor.pattern.name}',
+        style: PdfTextStyles.body(),
       ),
       pw.SizedBox(height: 10),
       _sectionTitle('Ceiling'),
-      pw.Text('Material: ${room.ceiling.material.name}  •  Color: ${room.ceiling.color}'),
-      pw.Text('Ceiling height: ${d.height.toStringAsFixed(1)} ft'),
+      pw.Text(
+        'Material: ${room.ceiling.material.name}  •  Color: ${room.ceiling.color}',
+        style: PdfTextStyles.body(),
+      ),
+      pw.Text(
+        'Ceiling height: ${d.height.toStringAsFixed(1)} ft',
+        style: PdfTextStyles.body(),
+      ),
       if (room.ceiling.falseCeilingEnabled)
         pw.Text(
           'False ceiling: ${room.ceiling.falseCeilingType.name}  •  '
           'Depth: ${room.ceiling.falseCeilingDepth.toStringAsFixed(1)} ft  •  '
           'Thickness: ${room.ceiling.falseCeilingThickness.toStringAsFixed(1)} ft',
+          style: PdfTextStyles.body(),
         ),
       if (room.doors.isNotEmpty) ...[
         pw.SizedBox(height: 10),
@@ -449,11 +464,8 @@ class ExportService {
 
   pw.Widget _sectionTitle(String text) {
     return pw.Padding(
-      padding: const pw.EdgeInsets.only(bottom: 4),
-      child: pw.Text(
-        text,
-        style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
-      ),
+      padding: const pw.EdgeInsets.only(bottom: 4, top: 4),
+      child: pw.Text(text, style: PdfTextStyles.sectionTitle()),
     );
   }
 
@@ -461,18 +473,7 @@ class ExportService {
     required List<String> headers,
     required List<List<String>> rows,
   }) {
-    return pw.TableHelper.fromTextArray(
-      headers: headers,
-      data: rows,
-      headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
-      cellStyle: const pw.TextStyle(fontSize: 9),
-      headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
-      cellAlignment: pw.Alignment.centerLeft,
-      columnWidths: {
-        for (var i = 0; i < headers.length; i++)
-          i: const pw.FlexColumnWidth(),
-      },
-    );
+    return styledTable(headers: headers, rows: rows);
   }
 
   List<String> _doorRow(DoorConfig door) => [
