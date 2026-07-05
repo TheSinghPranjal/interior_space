@@ -138,73 +138,81 @@ class ExportService {
             pw.SizedBox(height: 12),
             ..._buildApartmentDetailsSection(apartmentLayout.details),
           ],
-          pw.SizedBox(height: 8),
-          pw.Divider(),
-          if (!singleRoomExport &&
-              includeApartmentSections &&
-              apartmentBlueprintImage != null) ...[
-            _sectionTitle('Apartment Floor Plan'),
-            pw.Center(
-              child: pw.Image(
-                pw.MemoryImage(apartmentBlueprintImage),
-                fit: pw.BoxFit.contain,
-                height: 420,
-              ),
-            ),
-            pw.SizedBox(height: 12),
-          ],
-          if (!singleRoomExport &&
-              includeApartmentSections &&
-              pdfSettings.shouldCapture3d &&
-              apartmentTopView3d != null) ...[
-            _sectionTitle('Apartment 3D Top View'),
-            pw.Center(
-              child: pw.Image(
-                pw.MemoryImage(apartmentTopView3d),
-                fit: pw.BoxFit.contain,
-                height: 320,
-              ),
-            ),
-            pw.SizedBox(height: 12),
-          ],
-          if (!singleRoomExport &&
-              includeApartmentSections &&
-              pdfSettings.shouldCapture3d &&
-              apartmentFrontView3d != null) ...[
-            _sectionTitle('Apartment 3D Front View'),
-            pw.Center(
-              child: pw.Image(
-                pw.MemoryImage(apartmentFrontView3d),
-                fit: pw.BoxFit.contain,
-                height: 320,
-              ),
-            ),
-            pw.SizedBox(height: 12),
-          ],
-          if (!singleRoomExport &&
-              includeApartmentSections &&
-              (apartmentBlueprintImage != null ||
-                  apartmentTopView3d != null ||
-                  apartmentFrontView3d != null))
-            pw.Divider(),
-          ...rooms.asMap().entries.expand((entry) {
-            final index = entry.key;
-            final room = entry.value;
-            final room3dImages = pdfSettings.shouldCapture3d &&
-                    render3dImagesByRoomIndex != null
-                ? render3dImagesByRoomIndex[index]
-                : null;
-            return _buildRoomSection(
-              room: room,
-              roomIndex: index,
-              blueprintImage: blueprintImages[index]!,
-              render3dImages: room3dImages,
-              pdfSettings: pdfSettings,
-            );
-          }),
         ],
       ),
     );
+
+    if (!singleRoomExport &&
+        includeApartmentSections &&
+        apartmentBlueprintImage != null) {
+      final floorPlanImage = apartmentBlueprintImage;
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (context) => pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+            children: [
+              _sectionTitle('Apartment Floor Plan'),
+              pw.SizedBox(height: 16),
+              pw.Expanded(
+                child: pw.Center(
+                  child: pw.Image(
+                    pw.MemoryImage(floorPlanImage),
+                    fit: pw.BoxFit.contain,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    for (final entry in rooms.asMap().entries) {
+      final index = entry.key;
+      final room = entry.value;
+      final room3dImages = pdfSettings.shouldCapture3d &&
+              render3dImagesByRoomIndex != null
+          ? render3dImagesByRoomIndex[index]
+          : null;
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (context) => _buildRoomSection(
+            room: room,
+            roomIndex: index,
+            blueprintImage: blueprintImages[index]!,
+            render3dImages: room3dImages,
+            pdfSettings: pdfSettings,
+            standalonePage: true,
+          ),
+        ),
+      );
+    }
+
+    if (!singleRoomExport &&
+        includeApartmentSections &&
+        pdfSettings.shouldCapture3d) {
+      if (apartmentTopView3d != null) {
+        pdf.addPage(
+          _buildApartmentImagePage(
+            title: 'Apartment 3D Top View',
+            image: apartmentTopView3d,
+          ),
+        );
+      }
+      if (apartmentFrontView3d != null) {
+        pdf.addPage(
+          _buildApartmentImagePage(
+            title: 'Apartment 3D Front View',
+            image: apartmentFrontView3d,
+          ),
+        );
+      }
+    }
 
     for (final sketchPage in sketchPages) {
       pdf.addPage(
@@ -276,12 +284,13 @@ class ExportService {
     required Uint8List blueprintImage,
     Room3DExportImages? render3dImages,
     PdfExportSettings pdfSettings = const PdfExportSettings(),
+    bool standalonePage = false,
   }) {
     final d = room.dimensions;
     final floorArea = (d.width * d.length).toStringAsFixed(1);
 
     return [
-      pw.SizedBox(height: 20),
+      if (!standalonePage) pw.SizedBox(height: 20),
       pw.Header(
         level: 1,
         child: pw.Text(
@@ -457,9 +466,36 @@ class ExportService {
           rows: room.fans.map(_fanRow).toList(),
         ),
       ],
-      pw.SizedBox(height: 8),
-      pw.Divider(),
+      if (!standalonePage) ...[
+        pw.SizedBox(height: 8),
+        pw.Divider(),
+      ],
     ];
+  }
+
+  pw.Page _buildApartmentImagePage({
+    required String title,
+    required Uint8List image,
+  }) {
+    return pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(32),
+      build: (context) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+        children: [
+          _sectionTitle(title),
+          pw.SizedBox(height: 16),
+          pw.Expanded(
+            child: pw.Center(
+              child: pw.Image(
+                pw.MemoryImage(image),
+                fit: pw.BoxFit.contain,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   pw.Widget _sectionTitle(String text) {
