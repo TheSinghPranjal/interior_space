@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/constants/room_constants.dart';
 import '../core/utils/polygon_room_geometry.dart';
 import '../core/utils/room_geometry.dart';
 import '../models/enums.dart';
@@ -186,10 +187,11 @@ class RoomSceneBuilder {
 
     final dims = design.dimensions;
     final geometry = RoomGeometry.fromDimensions(dims);
-    final floorPolygon = dims.isPolygon
-        ? dims.normalizedPolygonVertices
-            .map((c) => {'x': c.x, 'y': c.y})
-            .toList()
+    final polygonVerts = dims.polygonVertices.length >= RoomConstants.minPolygonWalls
+        ? PolygonRoomGeometry.normalizeToOrigin(dims.polygonVertices)
+        : null;
+    final floorPolygon = polygonVerts != null
+        ? polygonVerts.map((c) => {'x': c.x, 'y': c.y}).toList()
         : (dims.useCustomWallLengths && geometry.isValid
             ? geometry.corners.map((c) => {'x': c.x, 'y': c.y}).toList()
             : null);
@@ -214,13 +216,13 @@ class RoomSceneBuilder {
         'wallCount': design.walls.length,
         'wallLengths': {
           for (final wall in design.walls)
-            'wall_${wall.wallIndex}': dims.isPolygon
+            'wall_${wall.wallIndex}': polygonVerts != null
                 ? PolygonRoomGeometry.edgeLengthFt(
-                    dims.normalizedPolygonVertices,
+                    polygonVerts,
                     wall.wallIndex,
                   )
                 : dims.lengthForWall(wall.id),
-          if (!dims.isPolygon)
+          if (polygonVerts == null)
             for (final wall in WallId.values) wall.name: dims.lengthForWall(wall),
         },
       },
