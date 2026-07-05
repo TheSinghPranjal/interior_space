@@ -7418,6 +7418,39 @@
         return;
       }
 
+      const wallIds = Object.keys(this.wallMeshes);
+      const hasPolygonFacing = wallIds.some((id) => {
+        const mesh = this.wallMeshes[id];
+        return mesh && mesh.userData.wallOutwardX != null;
+      });
+
+      if (hasPolygonFacing) {
+        let hideId = null;
+        let maxDot = -Infinity;
+        wallIds.forEach((id) => {
+          const mesh = this.wallMeshes[id];
+          if (!mesh || mesh.userData.wallOutwardX == null) return;
+          const ox = mesh.userData.wallOutwardX;
+          const oz = mesh.userData.wallOutwardZ;
+          const wx = mesh.userData.wallMidX != null ? mesh.userData.wallMidX : mesh.position.x;
+          const wz = mesh.userData.wallMidZ != null ? mesh.userData.wallMidZ : mesh.position.z;
+          const toCamX = dx - wx;
+          const toCamZ = dz - wz;
+          const dist = Math.hypot(toCamX, toCamZ) || 1;
+          const dot = (ox * toCamX + oz * toCamZ) / dist;
+          if (dot > maxDot) {
+            maxDot = dot;
+            hideId = id;
+          }
+        });
+        wallIds.forEach((id) => {
+          const mesh = this.wallMeshes[id];
+          if (!mesh) return;
+          mesh.visible = id !== hideId;
+        });
+        return;
+      }
+
       let hiddenWall;
       if (this.cameraMode === 'front') hiddenWall = 'front';
       else if (this.cameraMode === 'side') hiddenWall = dx >= 0 ? 'right' : 'left';
@@ -7427,7 +7460,7 @@
         hiddenWall = dz > 0 ? 'back' : 'front';
       }
 
-      Object.keys(this.wallMeshes).forEach((id) => {
+      wallIds.forEach((id) => {
         const mesh = this.wallMeshes[id];
         if (!mesh) return;
         mesh.visible = id !== hiddenWall;
@@ -7601,9 +7634,14 @@
       const w = (room.effectiveWidth ?? room.width) * FT;
       const l = (room.effectiveLength ?? room.length) * FT;
       let polygon = null;
-      if (room.floorPolygon && room.floorPolygon.length >= 3 &&
+      const rawPolygon = (room.floorPolygon && room.floorPolygon.length >= 3)
+        ? room.floorPolygon
+        : (room.polygonVertices && room.polygonVertices.length >= 3
+          ? room.polygonVertices
+          : null);
+      if (rawPolygon &&
           (room.shapeMode === 'polygon' || room.useCustomWallLengths)) {
-        polygon = this._centerPolygon(room.floorPolygon);
+        polygon = this._preparePolygon(rawPolygon);
       }
       return {
         w, l, h, wallLengths, polygon,
@@ -7658,24 +7696,71 @@
       return Math.abs(front - back) < 0.05 && Math.abs(left - right) < 0.05;
     }
 
-    _centerPolygon(floorPolygon) {
-      const pts = floorPolygon.map(p => ({ x: p.x * FT, z: p.y * FT }));
-      const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
-      const cz = pts.reduce((s, p) => s + p.z, 0) / pts.length;
-      return pts.map(p => ({ x: p.x - cx, z: p.z - cz }));
+    /** Match Flutter normalizedPolygonVertices: min-corner origin, then bbox center at world origin. */
+    _preparePolygon(rawPoints) {
+      const pts = rawPoints.map(p => ({
+        x: Number(p.x) * FT,
+        z: Number(p.y != null ? p.y : p.z) * FT,
+      }));
+      let minX = Infinity;
+      let minZ = Infinity;
+      let maxX = -Infinity;
+      let maxZ = -Infinity;
+      pts.forEach((p) => {
+        minX = Math.min(minX, p.x);
+        minZ = Math.min(minZ, p.z);
+        maxX = Math.max(maxX, p.x);
+        maxZ = Math.max(maxZ, p.z);
+      });
+      let poly = pts.map(p => ({
+        x: p.x - minX - (maxX - minX) / 2,
+        z: p.z - minZ - (maxZ - minZ) / 2,
+      }));
+      let area = 0;
+      for (let i = 0; i < poly.length; i++) {
+        const a = poly[i];
+        const b = poly[(i + 1) % poly.length];
+        area += a.x * b.z - b.x * a.z;
+      }
+      if (area < 0) poly = poly.slice().reverse();
+      return poly;
+    }
+
+    _polygonShape(polygon, flipZ) {
+      const shape = new THREE.Shape();
+      const shapeY = (p) => (flipZ ? -p.z : p.z);
+      shape.moveTo(polygon[0].x, shapeY(polygon[0]));
+      for (let i = 1; i < polygon.length; i++) {
+        shape.lineTo(polygon[i].x, shapeY(polygon[i]));
+      }
+      return shape;
+    }
+
+    _polygonBoundsMeters(polygon) {
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minZ = Infinity;
+      let maxZ = -Infinity;
+      polygon.forEach((p) => {
+        minX = Math.min(minX, p.x);
+        maxX = Math.max(maxX, p.x);
+        minZ = Math.min(minZ, p.z);
+        maxZ = Math.max(maxZ, p.z);
+      });
+      return { w: maxX - minX, l: maxZ - minZ };
     }
 
     _buildPolygonFloor(polygon, floor) {
-      const shape = new THREE.Shape();
-      shape.moveTo(polygon[0].x, polygon[0].z);
-      for (let i = 1; i < polygon.length; i++) shape.lineTo(polygon[i].x, polygon[i].z);
-      shape.lineTo(polygon[0].x, polygon[0].z);
+      // rotateX(-PI/2) mirrors Z; negate shape Y so footprint matches ceiling and walls.
+      const shape = this._polygonShape(polygon, true);
       const geo = new THREE.ShapeGeometry(shape);
       geo.rotateX(-Math.PI / 2);
+      const { w, l } = this._polygonBoundsMeters(polygon);
       const matProps = this._materialProps(floor.material);
       const mat = this._makeMaterial(
         floor.color, matProps.roughness, matProps.metalness,
-        this._resolveTextureUrl(floor.textureDataUrl, floor.texturePath), null, 2, 2
+        this._resolveTextureUrl(floor.textureDataUrl, floor.texturePath), null,
+        w / (floor.tileWidth * FT), l / (floor.tileLength * FT)
       );
       const mesh = new THREE.Mesh(geo, mat);
       mesh.receiveShadow = true;
@@ -7683,10 +7768,7 @@
     }
 
     _buildPolygonCeiling(polygon, h, ceiling) {
-      const shape = new THREE.Shape();
-      shape.moveTo(polygon[0].x, polygon[0].z);
-      for (let i = 1; i < polygon.length; i++) shape.lineTo(polygon[i].x, polygon[i].z);
-      shape.lineTo(polygon[0].x, polygon[0].z);
+      const shape = this._polygonShape(polygon);
       const geo = new THREE.ShapeGeometry(shape);
       geo.rotateX(Math.PI / 2);
       const matProps = this._ceilingMaterialProps(ceiling.material);
@@ -7697,6 +7779,13 @@
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.y = h;
       this.roomGroup.add(mesh);
+    }
+
+    _tagWallFacingData(obj, midX, midZ, outwardX, outwardZ) {
+      obj.userData.wallMidX = midX;
+      obj.userData.wallMidZ = midZ;
+      obj.userData.wallOutwardX = outwardX;
+      obj.userData.wallOutwardZ = outwardZ;
     }
 
     _buildPolygonWalls(layout, h, cfg) {
@@ -7803,10 +7892,8 @@
 
     _buildRoom() {
       const cfg = this.config;
-      const w = cfg.room.width * FT;
-      const l = cfg.room.length * FT;
-      const h = cfg.room.height * FT;
-      this.roomSize = { w, l, h };
+      const layout = this._resolveRoomLayout(cfg);
+      this.roomSize = { w: layout.w, l: layout.l, h: layout.h };
 
       this._addSceneLights();
       this._buildRoomContents(cfg, this.roomGroup);
@@ -8076,7 +8163,8 @@
 
       const midX = startX + (dx / len) * visLen / 2;
       const midZ = startZ + (dz / len) * visLen / 2;
-      const inset = 0.04;
+      const outwardX = dz / len;
+      const outwardZ = -dx / len;
       const group = new THREE.Group();
 
       if (barrierType === 'fence') {
@@ -8087,13 +8175,10 @@
         return null;
       }
 
-      group.position.set(
-        midX + (-dz / len) * inset,
-        0,
-        midZ + (dx / len) * inset
-      );
+      group.position.set(midX, 0, midZ);
       group.rotation.y = Math.atan2(-dz, dx);
       group.userData.wallId = id;
+      this._tagWallFacingData(group, midX, midZ, outwardX, outwardZ);
       group.traverse((c) => {
         if (c.isMesh) {
           c.castShadow = true;
@@ -8127,17 +8212,15 @@
 
       const midX = startX + (dx / len) * visLen / 2;
       const midZ = startZ + (dz / len) * visLen / 2;
-      const inset = 0.04;
+      const outwardX = dz / len;
+      const outwardZ = -dx / len;
 
       const geo = new THREE.PlaneGeometry(visLen, h);
       const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(
-        midX + (-dz / len) * inset,
-        h / 2,
-        midZ + (dx / len) * inset
-      );
+      mesh.position.set(midX, h / 2, midZ);
       mesh.rotation.y = Math.atan2(-dz, dx);
       mesh.userData.wallId = id;
+      this._tagWallFacingData(mesh, midX, midZ, outwardX, outwardZ);
       mesh.receiveShadow = true;
       return mesh;
     }
