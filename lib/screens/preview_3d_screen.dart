@@ -169,9 +169,10 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  path != null
-                      ? 'Screenshot saved to ${PublicDownloadSaver.displayPath(path)}'
-                      : 'Could not save screenshot to Downloads. Check storage permission.',
+                  PublicDownloadSaver.saveSuccessMessage(
+                    path,
+                    fileKind: 'screenshot',
+                  ),
                 ),
               ),
             );
