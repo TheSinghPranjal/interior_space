@@ -565,9 +565,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          path != null
-              ? 'PDF saved to ${PublicDownloadSaver.displayPath(path)}'
-              : 'Could not save PDF. Check storage permission.',
+          PublicDownloadSaver.saveSuccessMessage(path, fileKind: 'PDF'),
         ),
       ),
     );
@@ -623,9 +621,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          path != null
-              ? 'PDF saved to ${PublicDownloadSaver.displayPath(path)}'
-              : 'Could not save PDF. Check storage permission.',
+          PublicDownloadSaver.saveSuccessMessage(path, fileKind: 'PDF'),
         ),
       ),
     );
@@ -672,9 +668,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          path != null
-              ? 'PDF saved to ${PublicDownloadSaver.displayPath(path)}'
-              : 'Could not save PDF. Check storage permission.',
+          PublicDownloadSaver.saveSuccessMessage(path, fileKind: 'PDF'),
         ),
       ),
     );
