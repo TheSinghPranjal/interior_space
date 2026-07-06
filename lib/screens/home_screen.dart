@@ -8,6 +8,7 @@ import '../models/app_nav_settings.dart';
 import '../models/room_3d_export_images.dart';
 import '../providers/apartment_placement_history_provider.dart';
 import '../providers/app_mode_provider.dart';
+import '../providers/company_profile_provider.dart';
 import '../providers/app_nav_settings_provider.dart';
 import '../providers/pdf_export_settings_provider.dart';
 import '../providers/project_provider.dart';
@@ -277,6 +278,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     const double appBarHeight = 56.0;
     final screenWidth = MediaQuery.sizeOf(context).width;
     final compactToggle = screenWidth < 720;
+    final hasCompanyLogo = ref.watch(companyProfileProvider).hasLogo;
 
     return PreferredSize(
       preferredSize: const Size.fromHeight(appBarHeight),
@@ -306,8 +308,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       width: (screenWidth * 0.34).clamp(120, 240),
                       child: Row(
                         children: [
-                          const CompanyLogoSquare(size: 32),
-                          const SizedBox(width: 8),
+                          if (hasCompanyLogo) ...[
+                            const CompanyLogoSquare(size: 32),
+                            const SizedBox(width: 8),
+                          ],
                           Expanded(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
