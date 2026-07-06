@@ -155,7 +155,7 @@ class _DoorCardState extends ConsumerState<_DoorCard> {
               'Wall length: ${door.wallLengthFt(design.dimensions).toStringAsFixed(1)} ft',
             ),
             DropdownButtonFormField<DoorSwingDirection>(
-              initialValue: door.swingDirection,
+              value: door.swingDirection,
               decoration: const InputDecoration(labelText: 'Open direction'),
               items: DoorSwingDirection.values
                   .map((d) => DropdownMenuItem(value: d, child: Text(d.label)))
@@ -166,9 +166,9 @@ class _DoorCardState extends ConsumerState<_DoorCard> {
                     }
                   : null,
             ),
-            SizedBox(height: 10,),
+            const SizedBox(height: 10),
             DropdownButtonFormField<DoorHingeSide>(
-              initialValue: door.hingeSide,
+              value: door.hingeSide,
               decoration: const InputDecoration(labelText: 'Hinge side'),
               items: DoorHingeSide.values
                   .map((h) => DropdownMenuItem(value: h, child: Text(h.label)))
@@ -177,6 +177,14 @@ class _DoorCardState extends ConsumerState<_DoorCard> {
                   ? (h) {
                       if (h != null) notifier.updateDoor(door.copyWith(hingeSide: h));
                     }
+                  : null,
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Show swing arc on blueprint'),
+              value: door.showSwingArc,
+              onChanged: enabled
+                  ? (v) => notifier.updateDoor(door.copyWith(showSwingArc: v))
                   : null,
             ),
             ColorPickerField(
