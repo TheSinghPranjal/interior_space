@@ -15,6 +15,7 @@ class DoorConfig {
     this.texturePath,
     this.swingDirection = DoorSwingDirection.inward,
     this.hingeSide = DoorHingeSide.start,
+    this.showSwingArc = true,
   });
 
   final String id;
@@ -28,6 +29,7 @@ class DoorConfig {
   final String? texturePath;
   final DoorSwingDirection swingDirection;
   final DoorHingeSide hingeSide;
+  final bool showSwingArc;
 
   double wallLengthFt(RoomDimensions dims) => dims.lengthForWall(wall);
 
@@ -54,6 +56,7 @@ class DoorConfig {
     bool clearTexture = false,
     DoorSwingDirection? swingDirection,
     DoorHingeSide? hingeSide,
+    bool? showSwingArc,
   }) {
     return DoorConfig(
       id: id,
@@ -67,6 +70,7 @@ class DoorConfig {
       texturePath: clearTexture ? null : (texturePath ?? this.texturePath),
       swingDirection: swingDirection ?? this.swingDirection,
       hingeSide: hingeSide ?? this.hingeSide,
+      showSwingArc: showSwingArc ?? this.showSwingArc,
     );
   }
 
@@ -82,6 +86,7 @@ class DoorConfig {
         'texturePath': texturePath,
         'swingDirection': swingDirection.name,
         'hingeSide': hingeSide.name,
+        'showSwingArc': showSwingArc,
       };
 
   factory DoorConfig.fromJson(Map<String, dynamic> json) {
@@ -107,6 +112,7 @@ class DoorConfig {
         (h) => h.name == json['hingeSide'],
         orElse: () => DoorHingeSide.start,
       ),
+      showSwingArc: json['showSwingArc'] as bool? ?? true,
     );
   }
 }
