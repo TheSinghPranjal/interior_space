@@ -314,7 +314,7 @@ class ExportService {
       pw.SizedBox(height: 8),
       _sectionTitle('Room Dimensions'),
       pw.Text(
-        'Width: ${d.width} ft  •  Length: ${d.length} ft  •  Height: ${d.height} ft',
+        'Width: ${d.width} ft     Length: ${d.length} ft     Height: ${d.height} ft',
         style: PdfTextStyles.body(),
       ),
       pw.Text('Floor area: $floorArea sq ft', style: PdfTextStyles.body()),
@@ -378,7 +378,7 @@ class ExportService {
       pw.SizedBox(height: 10),
       _sectionTitle('Floor'),
       pw.Text(
-        'Material: ${room.floor.material.name}  •  Color: ${room.floor.color}',
+        'Material: ${room.floor.material.name}     Color: ${room.floor.color}',
         style: PdfTextStyles.body(),
       ),
       pw.Text(
@@ -386,13 +386,13 @@ class ExportService {
         style: PdfTextStyles.body(),
       ),
       pw.Text(
-        'Tile size: ${room.floor.tileWidth.toStringAsFixed(1)} x ${room.floor.tileLength.toStringAsFixed(1)} ft  •  Pattern: ${room.floor.pattern.name}',
+        'Tile size: ${room.floor.tileWidth.toStringAsFixed(1)} x ${room.floor.tileLength.toStringAsFixed(1)} ft     Pattern: ${room.floor.pattern.name}',
         style: PdfTextStyles.body(),
       ),
       pw.SizedBox(height: 10),
       _sectionTitle('Ceiling'),
       pw.Text(
-        'Material: ${room.ceiling.material.name}  •  Color: ${room.ceiling.color}',
+        'Material: ${room.ceiling.material.name}     Color: ${room.ceiling.color}',
         style: PdfTextStyles.body(),
       ),
       pw.Text(
@@ -401,8 +401,8 @@ class ExportService {
       ),
       if (room.ceiling.falseCeilingEnabled)
         pw.Text(
-          'False ceiling: ${room.ceiling.falseCeilingType.name}  •  '
-          'Depth: ${room.ceiling.falseCeilingDepth.toStringAsFixed(1)} ft  •  '
+          'False ceiling: ${room.ceiling.falseCeilingType.name}     '
+          'Depth: ${room.ceiling.falseCeilingDepth.toStringAsFixed(1)} ft     '
           'Thickness: ${room.ceiling.falseCeilingThickness.toStringAsFixed(1)} ft',
           style: PdfTextStyles.body(),
         ),
