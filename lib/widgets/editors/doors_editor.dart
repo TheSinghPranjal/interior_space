@@ -166,6 +166,7 @@ class _DoorCardState extends ConsumerState<_DoorCard> {
                     }
                   : null,
             ),
+            SizedBox(height: 10,),
             DropdownButtonFormField<DoorHingeSide>(
               initialValue: door.hingeSide,
               decoration: const InputDecoration(labelText: 'Hinge side'),
