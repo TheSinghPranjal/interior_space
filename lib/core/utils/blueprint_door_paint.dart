@@ -8,9 +8,6 @@ import '../../models/enums.dart';
 class BlueprintDoorPaint {
   static const _stripDepth = 6.0;
 
-  /// One third of a quarter circle (30°).
-  static const _arcSweep = math.pi / 6;
-
   static void draw({
     required Canvas canvas,
     required Rect roomRect,
@@ -51,6 +48,8 @@ class BlueprintDoorPaint {
       );
     }
 
+    if (!door.showSwingArc) return;
+
     final geom = _geometry(
       roomRect: roomRect,
       scale: scale,
@@ -63,12 +62,13 @@ class BlueprintDoorPaint {
       ..style = PaintingStyle.stroke
       ..strokeWidth = selected ? 1.4 : 1.1
       ..strokeCap = StrokeCap.round;
+
     _drawDottedArc(
       canvas: canvas,
       center: geom.hinge,
-      radius: r,
+      radius: geom.radius,
       startAngle: geom.arcStart,
-      sweepAngle: _arcSweep,
+      sweepAngle: geom.arcSweep,
       paint: arcPaint,
     );
   }
@@ -95,57 +95,77 @@ class BlueprintDoorPaint {
     required double scale,
     required DoorConfig door,
   }) {
-    final r = door.width * scale;
+    final radius = door.width * scale;
+    if (radius <= 0) return null;
+
     final offset = door.positionFromEdge * scale;
     final hingeAtStart = door.hingeSide == DoorHingeSide.start;
     final inward = door.swingDirection == DoorSwingDirection.inward;
 
-    switch (door.wall) {
-      case WallId.front:
-        final y = roomRect.top;
-        final x0 = roomRect.left + offset;
-        final x1 = x0 + r;
-        final hinge = hingeAtStart ? Offset(x0, y) : Offset(x1, y);
-        return _DoorGeom(
-          hinge: hinge,
-          arcStart: hingeAtStart
-              ? (inward ? 0.0 : -math.pi / 2)
-              : (inward ? math.pi : math.pi / 2),
-        );
-      case WallId.back:
-        final y = roomRect.bottom;
-        final x0 = roomRect.left + offset;
-        final x1 = x0 + r;
-        final hinge = hingeAtStart ? Offset(x0, y) : Offset(x1, y);
-        return _DoorGeom(
-          hinge: hinge,
-          arcStart: hingeAtStart
-              ? (inward ? math.pi : math.pi / 2)
-              : (inward ? 0.0 : -math.pi / 2),
-        );
-      case WallId.left:
-        final x = roomRect.left;
-        final y0 = roomRect.top + offset;
-        final y1 = y0 + r;
-        final hinge = hingeAtStart ? Offset(x, y0) : Offset(x, y1);
-        return _DoorGeom(
-          hinge: hinge,
-          arcStart: hingeAtStart
-              ? (inward ? -math.pi / 2 : math.pi)
-              : (inward ? math.pi / 2 : 0.0),
-        );
-      case WallId.right:
-        final x = roomRect.right;
-        final y0 = roomRect.top + offset;
-        final y1 = y0 + r;
-        final hinge = hingeAtStart ? Offset(x, y0) : Offset(x, y1);
-        return _DoorGeom(
-          hinge: hinge,
-          arcStart: hingeAtStart
-              ? (inward ? math.pi / 2 : 0.0)
-              : (inward ? -math.pi / 2 : math.pi),
-        );
-    }
+    final opening = _openingJambs(
+      roomRect: roomRect,
+      offset: offset,
+      span: radius,
+      wall: door.wall,
+    );
+    final hinge = hingeAtStart ? opening.start : opening.end;
+    final freeJamb = hingeAtStart ? opening.end : opening.start;
+
+    final intoRoom = _intoRoomUnit(door.wall);
+    final swingInto = inward ? intoRoom : -intoRoom;
+
+    final closedAngle = math.atan2(
+      freeJamb.dy - hinge.dy,
+      freeJamb.dx - hinge.dx,
+    );
+
+    // Rotate the closed leaf direction 90° toward the swing side.
+    final closedDx = math.cos(closedAngle);
+    final closedDy = math.sin(closedAngle);
+    final cross = closedDx * swingInto.dy - closedDy * swingInto.dx;
+    final arcSweep = cross >= 0 ? math.pi / 2 : -math.pi / 2;
+
+    return _DoorGeom(
+      hinge: hinge,
+      radius: radius,
+      arcStart: closedAngle,
+      arcSweep: arcSweep,
+    );
+  }
+
+  static ({Offset start, Offset end}) _openingJambs({
+    required Rect roomRect,
+    required double offset,
+    required double span,
+    required WallId wall,
+  }) {
+    return switch (wall) {
+      WallId.front => (
+          start: Offset(roomRect.left + offset, roomRect.top),
+          end: Offset(roomRect.left + offset + span, roomRect.top),
+        ),
+      WallId.back => (
+          start: Offset(roomRect.left + offset, roomRect.bottom),
+          end: Offset(roomRect.left + offset + span, roomRect.bottom),
+        ),
+      WallId.left => (
+          start: Offset(roomRect.left, roomRect.top + offset),
+          end: Offset(roomRect.left, roomRect.top + offset + span),
+        ),
+      WallId.right => (
+          start: Offset(roomRect.right, roomRect.top + offset),
+          end: Offset(roomRect.right, roomRect.top + offset + span),
+        ),
+    };
+  }
+
+  static Offset _intoRoomUnit(WallId wall) {
+    return switch (wall) {
+      WallId.front => const Offset(0, 1),
+      WallId.back => const Offset(0, -1),
+      WallId.left => const Offset(1, 0),
+      WallId.right => const Offset(-1, 0),
+    };
   }
 
   static void _drawDottedArc({
@@ -156,7 +176,9 @@ class BlueprintDoorPaint {
     required double sweepAngle,
     required Paint paint,
   }) {
-    const dashCount = 5;
+    if (radius <= 0 || sweepAngle.abs() < 0.01) return;
+
+    const dashCount = 8;
     final dashSweep = sweepAngle / (dashCount * 2);
     for (var i = 0; i < dashCount; i++) {
       final a0 = startAngle + i * 2 * dashSweep;
@@ -171,9 +193,13 @@ class BlueprintDoorPaint {
 class _DoorGeom {
   const _DoorGeom({
     required this.hinge,
+    required this.radius,
     required this.arcStart,
+    required this.arcSweep,
   });
 
   final Offset hinge;
+  final double radius;
   final double arcStart;
+  final double arcSweep;
 }
