@@ -15,7 +15,12 @@ class CompanyLogoSquare extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final logoPath = ref.watch(companyProfileProvider).logoPath;
+    final profile = ref.watch(companyProfileProvider);
+    if (!profile.hasLogo) {
+      return const SizedBox.shrink();
+    }
+
+    final logoPath = profile.logoPath;
     final cs = Theme.of(context).colorScheme;
 
     return Container(
