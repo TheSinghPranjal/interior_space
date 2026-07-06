@@ -23,6 +23,8 @@ import '../models/wall_tv_unit_config.dart';
 import '../models/window_config.dart';
 import 'blueprint_image_exporter.dart';
 import '../sketch/data/sketch_composite_exporter.dart';
+import '../widgets/company/company_image.dart';
+import 'company_profile_storage_service.dart';
 import 'pdf_export_theme.dart';
 import 'public_download_saver.dart';
 
@@ -83,7 +85,17 @@ class ExportService {
         : includeApartmentSections
             ? apartmentName
             : '$apartmentName — All Rooms';
-    final generatedAt = DateFormat('MMMM d, yyyy • h:mm a').format(DateTime.now());
+    final generatedAt = DateFormat('MMMM d, yyyy  h:mm a').format(DateTime.now());
+
+    final companyProfile = await CompanyProfileStorageService().load();
+    pw.MemoryImage? companyLogoImage;
+    if (companyProfile.hasLogo) {
+      final logoBytes =
+          await CompanyImageLoader.loadBytes(companyProfile.logoPath!);
+      if (logoBytes != null) {
+        companyLogoImage = pw.MemoryImage(logoBytes);
+      }
+    }
 
     final blueprintImages = <int, Uint8List>{};
     for (var i = 0; i < rooms.length; i++) {
@@ -113,6 +125,7 @@ class ExportService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(32),
         build: (context) => [
+          ..._buildCoverLogo(companyLogoImage),
           pw.Header(
             level: 0,
             child: pw.Text(reportTitle, style: PdfTextStyles.reportTitle()),
@@ -632,6 +645,25 @@ class ExportService {
     }
 
     return pages;
+  }
+
+  List<pw.Widget> _buildCoverLogo(pw.MemoryImage? logo) {
+    if (logo == null) return const [];
+
+    return [
+      pw.Center(
+        child: pw.Container(
+          width: 120,
+          height: 120,
+          alignment: pw.Alignment.center,
+          child: pw.Image(
+            logo,
+            fit: pw.BoxFit.contain,
+          ),
+        ),
+      ),
+      pw.SizedBox(height: 20),
+    ];
   }
 }
 
