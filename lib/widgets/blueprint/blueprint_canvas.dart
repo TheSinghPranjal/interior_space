@@ -1336,18 +1336,15 @@ class _DoorSymbolPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.save();
-    canvas.translate(-hitRect.left, -hitRect.top);
     BlueprintDoorPaint.draw(
       canvas: canvas,
-      roomRect: roomRect,
+      roomRect: roomRect.shift(Offset(-hitRect.left, -hitRect.top)),
       scale: scale,
       door: door,
       fillColor: ColorUtils.fromHex(door.color),
       strokeColor: selected ? AppTheme.primary : ColorUtils.fromHex(door.color),
       selected: selected || dragging,
     );
-    canvas.restore();
   }
 
   @override
