@@ -103,7 +103,7 @@ class PremiumCatalogPanel extends StatelessWidget {
             child: GridView.builder(
               padding: const EdgeInsets.all(AppSpacing.sm),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
+                crossAxisCount: 5,
                 mainAxisSpacing: AppSpacing.sm,
                 crossAxisSpacing: AppSpacing.sm,
                 childAspectRatio: 0.72,
