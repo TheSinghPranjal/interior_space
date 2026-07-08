@@ -401,6 +401,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 ],
                               ),
                             ),
+
                             const PopupMenuDivider(),
                             if (!isApartment) ...[
                               PopupMenuItem(
