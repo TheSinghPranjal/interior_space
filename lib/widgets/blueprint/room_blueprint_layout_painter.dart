@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -28,7 +27,7 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
     this.showWallLabels = true,
     this.showDimensions = false,
     this.premiumFurniture = false,
-    this.premiumBedImage,
+    this.premiumImages,
   });
 
   final RoomDesign design;
@@ -38,7 +37,7 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
   final bool showWallLabels;
   final bool showDimensions;
   final bool premiumFurniture;
-  final ui.Image? premiumBedImage;
+  final BlueprintPremiumImages? premiumImages;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -285,15 +284,15 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
     if (rect.width < 2 || rect.height < 2) return;
 
     if (item != null &&
-        BlueprintPremiumAssets.shouldDrawPremiumBed(
+        BlueprintPremiumAssets.shouldDrawPremium(
           premiumFurniture: premiumFurniture,
           item: item,
-          bedImage: premiumBedImage,
+          images: premiumImages,
         )) {
-      BlueprintPremiumPaint.drawBed(
+      BlueprintPremiumPaint.drawFurniture(
         canvas: canvas,
         rect: rect,
-        image: premiumBedImage!,
+        image: premiumImages!.forItem(item)!,
       );
       return;
     }
@@ -422,5 +421,5 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
       oldDelegate.scale != scale ||
       oldDelegate.isSelected != isSelected ||
       oldDelegate.premiumFurniture != premiumFurniture ||
-      oldDelegate.premiumBedImage != premiumBedImage;
+      oldDelegate.premiumImages != premiumImages;
 }
