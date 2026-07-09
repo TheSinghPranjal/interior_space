@@ -139,8 +139,8 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
   Widget build(BuildContext context) {
     final design = ref.watch(roomDesignProvider);
     final premiumFurniture = ref.watch(premiumFurnitureProvider);
-    final premiumBedImage = ref.watch(blueprintPremiumBedImageProvider).valueOrNull;
-    ref.watch(blueprintPremiumBedImageProvider);
+    final premiumImagesAsync = ref.watch(blueprintPremiumImagesProvider);
+    final premiumImages = premiumImagesAsync.valueOrNull;
     _clearStaleSelection(design);
 
     return LayoutBuilder(
@@ -204,7 +204,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
                 roomRect: roomRect,
                 scale: scale,
                 premiumFurniture: premiumFurniture,
-                premiumBedImage: premiumBedImage,
+                premiumImages: premiumImages,
               );
             }),
             ...design.furniture.where((f) => f.isWallMounted).map((item) {
@@ -583,7 +583,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     required Rect roomRect,
     required double scale,
     required bool premiumFurniture,
-    required ui.Image? premiumBedImage,
+    required BlueprintPremiumImages? premiumImages,
   }) {
     final bx = (_isDragging && _selectedId == item.id && _tempBlueprintX != null)
         ? _tempBlueprintX!
@@ -623,7 +623,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       rotation: item.rotation,
       item: item,
       premiumFurniture: premiumFurniture,
-      premiumBedImage: premiumBedImage,
+      premiumImages: premiumImages,
       design: design,
       roomRect: roomRect,
       scale: scale,
@@ -1222,7 +1222,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     required double rotation,
     FurnitureItem? item,
     bool premiumFurniture = false,
-    ui.Image? premiumBedImage,
+    BlueprintPremiumImages? premiumImages,
     required RoomDesign design,
     required Rect roomRect,
     required double scale,
@@ -1235,13 +1235,8 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     final isDragging = isSelected && _isDragging;
     final innerW = innerWidth ?? width;
     final innerH = innerHeight ?? height;
-    final showPremiumBed = premiumFurniture &&
-        item != null &&
-        BlueprintPremiumAssets.shouldDrawPremiumBed(
-          premiumFurniture: premiumFurniture,
-          item: item,
-          bedImage: premiumBedImage,
-        );
+    final premiumImage = item != null ? premiumImages?.forItem(item) : null;
+    final showPremiumSprite = premiumFurniture && premiumImage != null;
 
     final itemCenter = Offset(left + width / 2, top + height / 2);
 
@@ -1298,11 +1293,11 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
               alignment: Alignment.center,
               child: Transform.rotate(
                 angle: rotation * math.pi / 180,
-                child: showPremiumBed
-                    ? _PremiumBedBlueprintTile(
+                child: showPremiumSprite
+                    ? _PremiumFurnitureBlueprintTile(
                         width: innerW,
                         height: innerH,
-                        bedImage: premiumBedImage!,
+                        image: premiumImage,
                         isSelected: isSelected,
                         isDragging: isDragging,
                       )
@@ -1348,18 +1343,18 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
   }
 }
 
-class _PremiumBedBlueprintTile extends StatelessWidget {
-  const _PremiumBedBlueprintTile({
+class _PremiumFurnitureBlueprintTile extends StatelessWidget {
+  const _PremiumFurnitureBlueprintTile({
     required this.width,
     required this.height,
-    required this.bedImage,
+    required this.image,
     required this.isSelected,
     required this.isDragging,
   });
 
   final double width;
   final double height;
-  final ui.Image bedImage;
+  final ui.Image image;
   final bool isSelected;
   final bool isDragging;
 
@@ -1389,7 +1384,7 @@ class _PremiumBedBlueprintTile extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: RawImage(
-        image: bedImage,
+        image: image,
         width: width,
         height: height,
         fit: BoxFit.fill,
