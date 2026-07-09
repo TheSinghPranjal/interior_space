@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/blueprint_viewport_fit.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/blueprint_placement.dart';
+import '../../core/utils/blueprint_premium_assets.dart';
 import '../../models/apartment_layout.dart';
 import '../../models/project_design.dart';
 import '../../models/room_design.dart';
@@ -116,8 +116,7 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
     final project = ref.watch(projectProvider);
     final selectedIds = ref.watch(apartmentBlueprintSelectionProvider);
     final premiumFurniture = ref.watch(premiumFurnitureProvider);
-    final premiumBedImage = ref.watch(blueprintPremiumBedImageProvider).valueOrNull;
-    ref.watch(blueprintPremiumBedImageProvider);
+    final premiumImages = ref.watch(blueprintPremiumImagesProvider).valueOrNull;
     _clearStaleSelection(project);
     final layout = project.apartmentLayout;
 
@@ -181,7 +180,7 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
                     selectedIds: selectedIds,
                     project: project,
                     premiumFurniture: premiumFurniture,
-                    premiumBedImage: premiumBedImage,
+                    premiumImages: premiumImages,
                   );
                 }),
                 if (selectedIds.isNotEmpty)
@@ -209,7 +208,7 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
     required Set<String> selectedIds,
     required ProjectDesign project,
     required bool premiumFurniture,
-    required ui.Image? premiumBedImage,
+    required BlueprintPremiumImages? premiumImages,
   }) {
     final (bx, by) = _displayPosition(placement);
     final isSelected = selectedIds.contains(placement.id);
@@ -318,7 +317,7 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
                       isSelected: isSelected,
                       showWallLabels: pixelLayout.innerW >= 70,
                       premiumFurniture: premiumFurniture,
-                      premiumBedImage: premiumBedImage,
+                      premiumImages: premiumImages,
                     ),
                   ),
                 ),
