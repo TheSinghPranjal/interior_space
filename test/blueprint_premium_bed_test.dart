@@ -12,6 +12,7 @@ void main() {
     final images = await BlueprintPremiumAssets.loadAll();
     expect(images.bed, isNotNull, reason: 'Bed image failed to decode');
     expect(images.sofa, isNotNull, reason: 'Sofa image failed to decode');
+    expect(images.wardrobe, isNotNull, reason: 'Wardrobe image failed to decode');
     expect(images.bed!.width, greaterThan(0));
     expect(images.sofa!.height, greaterThan(0));
   });
@@ -23,10 +24,10 @@ void main() {
     }
   });
 
-  test('sofa maps to two seater asset', () {
+  test('wardrobe maps to three door cupboard asset', () {
     expect(
-      BlueprintPremiumAssets.assetPaths[FurnitureType.sofa],
-      BlueprintPremiumAssets.twoSeaterSofaAsset,
+      BlueprintPremiumAssets.assetPaths[FurnitureType.wardrobe],
+      BlueprintPremiumAssets.threeDoorCupboardAsset,
     );
   });
 }

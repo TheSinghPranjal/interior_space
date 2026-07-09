@@ -19,6 +19,8 @@ class BlueprintPremiumImages {
 
   ui.Image? get sofa => _images[FurnitureType.sofa];
 
+  ui.Image? get wardrobe => _images[FurnitureType.wardrobe];
+
   bool get isEmpty => _images.isEmpty;
 }
 
@@ -26,10 +28,13 @@ class BlueprintPremiumImages {
 abstract final class BlueprintPremiumAssets {
   static const bedTopAsset = 'assets/blueprint/premium_bed_top.png';
   static const twoSeaterSofaAsset = 'assets/blueprint/premium_two_seater_sofa.png';
+  static const threeDoorCupboardAsset =
+      'assets/blueprint/premium_three_door_cupboard.png';
 
   static const Map<FurnitureType, String> assetPaths = {
     FurnitureType.bed: bedTopAsset,
     FurnitureType.sofa: twoSeaterSofaAsset,
+    FurnitureType.wardrobe: threeDoorCupboardAsset,
   };
 
   static Future<BlueprintPremiumImages>? _loadFuture;
