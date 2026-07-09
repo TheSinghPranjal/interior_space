@@ -46,6 +46,7 @@ class BlueprintView extends ConsumerWidget {
                   style: theme.textTheme.bodySmall,
                 ),
               ),
+              _BlueprintPremiumToggle(),
               IconButton(
                 icon: const Icon(Icons.fullscreen, size: 18),
                 tooltip: 'Full screen blueprint',
@@ -289,5 +290,32 @@ class _BlueprintActionButton extends StatelessWidget {
     }
 
     return Tooltip(message: label, child: button);
+  }
+}
+
+class _BlueprintPremiumToggle extends ConsumerWidget {
+  const _BlueprintPremiumToggle();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final premiumFurniture = ref.watch(premiumFurnitureProvider);
+    final theme = Theme.of(context);
+
+    return IconButton(
+      visualDensity: VisualDensity.compact,
+      tooltip: premiumFurniture
+          ? 'Disable premium blueprint furniture'
+          : 'Enable premium blueprint furniture',
+      onPressed: () {
+        ref.read(premiumFurnitureProvider.notifier).state = !premiumFurniture;
+      },
+      icon: Icon(
+        Icons.auto_awesome,
+        size: 18,
+        color: premiumFurniture
+            ? Colors.amber.shade700
+            : theme.colorScheme.onSurface.withValues(alpha: 0.55),
+      ),
+    );
   }
 }
