@@ -1,6 +1,10 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+
+import '../../core/utils/blueprint_premium_assets.dart';
+import '../../core/utils/blueprint_premium_paint.dart';
 
 import '../../core/utils/polygon_room_geometry.dart';
 import '../../core/theme/app_theme.dart';
@@ -23,6 +27,8 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
     this.isSelected = false,
     this.showWallLabels = true,
     this.showDimensions = false,
+    this.premiumFurniture = false,
+    this.premiumBedImage,
   });
 
   final RoomDesign design;
@@ -31,6 +37,8 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
   final bool isSelected;
   final bool showWallLabels;
   final bool showDimensions;
+  final bool premiumFurniture;
+  final ui.Image? premiumBedImage;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -218,6 +226,7 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
           ),
           label,
           color,
+          item: item,
         );
       } else {
         BlueprintFurniturePaint.drawFloorItem(
@@ -227,7 +236,8 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
           item: item,
           label: label,
           color: color,
-          drawItemBox: _drawItemBox,
+          drawItemBox: (canvas, rect, label, color) =>
+              _drawItemBox(canvas, rect, label, color, item: item),
         );
       }
     }
@@ -265,8 +275,28 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
     }
   }
 
-  void _drawItemBox(Canvas canvas, Rect rect, String label, Color color) {
+  void _drawItemBox(
+    Canvas canvas,
+    Rect rect,
+    String label,
+    Color color, {
+    FurnitureItem? item,
+  }) {
     if (rect.width < 2 || rect.height < 2) return;
+
+    if (item != null &&
+        BlueprintPremiumAssets.shouldDrawPremiumBed(
+          premiumFurniture: premiumFurniture,
+          item: item,
+          bedImage: premiumBedImage,
+        )) {
+      BlueprintPremiumPaint.drawBed(
+        canvas: canvas,
+        rect: rect,
+        image: premiumBedImage!,
+      );
+      return;
+    }
 
     final fill = Paint()
       ..color = color.withValues(alpha: 0.82)
@@ -390,5 +420,7 @@ class RoomBlueprintLayoutPainter extends CustomPainter {
       oldDelegate.design != design ||
       oldDelegate.roomRect != roomRect ||
       oldDelegate.scale != scale ||
-      oldDelegate.isSelected != isSelected;
+      oldDelegate.isSelected != isSelected ||
+      oldDelegate.premiumFurniture != premiumFurniture ||
+      oldDelegate.premiumBedImage != premiumBedImage;
 }
