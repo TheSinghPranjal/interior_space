@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -21,6 +22,8 @@ import '../../models/room_design.dart';
 import '../../models/stair_config.dart';
 import '../../models/wall_tv_unit_config.dart';
 import '../../models/window_config.dart';
+import '../../core/utils/blueprint_premium_assets.dart';
+import '../../providers/blueprint_premium_assets_provider.dart';
 import '../../providers/room_design_provider.dart';
 
 class BlueprintCanvas extends ConsumerStatefulWidget {
@@ -135,6 +138,9 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
   @override
   Widget build(BuildContext context) {
     final design = ref.watch(roomDesignProvider);
+    final premiumFurniture = ref.watch(premiumFurnitureProvider);
+    final premiumBedImage = ref.watch(blueprintPremiumBedImageProvider).valueOrNull;
+    ref.watch(blueprintPremiumBedImageProvider);
     _clearStaleSelection(design);
 
     return LayoutBuilder(
@@ -197,6 +203,8 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
                 design: design,
                 roomRect: roomRect,
                 scale: scale,
+                premiumFurniture: premiumFurniture,
+                premiumBedImage: premiumBedImage,
               );
             }),
             ...design.furniture.where((f) => f.isWallMounted).map((item) {
@@ -574,6 +582,8 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     required RoomDesign design,
     required Rect roomRect,
     required double scale,
+    required bool premiumFurniture,
+    required ui.Image? premiumBedImage,
   }) {
     final bx = (_isDragging && _selectedId == item.id && _tempBlueprintX != null)
         ? _tempBlueprintX!
@@ -611,6 +621,9 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
       label: FurnitureItem.displayLabel(design.furniture, item),
       color: ColorUtils.fromHex(item.color),
       rotation: item.rotation,
+      item: item,
+      premiumFurniture: premiumFurniture,
+      premiumBedImage: premiumBedImage,
       design: design,
       roomRect: roomRect,
       scale: scale,
@@ -1207,6 +1220,9 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     required String label,
     required Color color,
     required double rotation,
+    FurnitureItem? item,
+    bool premiumFurniture = false,
+    ui.Image? premiumBedImage,
     required RoomDesign design,
     required Rect roomRect,
     required double scale,
@@ -1219,6 +1235,13 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     final isDragging = isSelected && _isDragging;
     final innerW = innerWidth ?? width;
     final innerH = innerHeight ?? height;
+    final showPremiumBed = premiumFurniture &&
+        item != null &&
+        BlueprintPremiumAssets.shouldDrawPremiumBed(
+          premiumFurniture: premiumFurniture,
+          item: item,
+          bedImage: premiumBedImage,
+        );
 
     final itemCenter = Offset(left + width / 2, top + height / 2);
 
@@ -1275,43 +1298,102 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
               alignment: Alignment.center,
               child: Transform.rotate(
                 angle: rotation * math.pi / 180,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 120),
-                  curve: Curves.easeOut,
-                  width: innerW,
-                  height: innerH,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: isDragging ? 0.9 : 0.75),
-                    border: Border.all(
-                      color: isSelected ? AppTheme.primary : Colors.black54,
-                      width: isSelected ? 2.5 : 1,
-                    ),
-                    borderRadius: BorderRadius.circular(4),
-                    boxShadow: isDragging
-                        ? [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.25),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
+                child: showPremiumBed
+                    ? _PremiumBedBlueprintTile(
+                        width: innerW,
+                        height: innerH,
+                        bedImage: premiumBedImage!,
+                        isSelected: isSelected,
+                        isDragging: isDragging,
+                      )
+                    : AnimatedContainer(
+                        duration: const Duration(milliseconds: 120),
+                        curve: Curves.easeOut,
+                        width: innerW,
+                        height: innerH,
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: isDragging ? 0.9 : 0.75),
+                          border: Border.all(
+                            color: isSelected ? AppTheme.primary : Colors.black54,
+                            width: isSelected ? 2.5 : 1,
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                          boxShadow: isDragging
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.25),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          label,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _PremiumBedBlueprintTile extends StatelessWidget {
+  const _PremiumBedBlueprintTile({
+    required this.width,
+    required this.height,
+    required this.bedImage,
+    required this.isSelected,
+    required this.isDragging,
+  });
+
+  final double width;
+  final double height;
+  final ui.Image bedImage;
+  final bool isSelected;
+  final bool isDragging;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 120),
+      curve: Curves.easeOut,
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEDE6DC),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: isSelected ? AppTheme.primary : Colors.black54,
+          width: isSelected ? 2.5 : 1,
+        ),
+        boxShadow: isDragging
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: RawImage(
+        image: bedImage,
+        width: width,
+        height: height,
+        fit: BoxFit.fill,
+        filterQuality: FilterQuality.high,
       ),
     );
   }
