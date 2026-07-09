@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
@@ -14,7 +15,9 @@ import '../../models/project_design.dart';
 import '../../models/room_design.dart';
 import '../../providers/apartment_blueprint_selection_provider.dart';
 import '../../providers/apartment_placement_history_provider.dart';
+import '../../providers/blueprint_premium_assets_provider.dart';
 import '../../providers/project_provider.dart';
+import '../../providers/room_design_provider.dart';
 import '../blueprint/room_blueprint_layout_painter.dart';
 
 class ApartmentCanvas extends ConsumerStatefulWidget {
@@ -112,6 +115,9 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
   Widget build(BuildContext context) {
     final project = ref.watch(projectProvider);
     final selectedIds = ref.watch(apartmentBlueprintSelectionProvider);
+    final premiumFurniture = ref.watch(premiumFurnitureProvider);
+    final premiumBedImage = ref.watch(blueprintPremiumBedImageProvider).valueOrNull;
+    ref.watch(blueprintPremiumBedImageProvider);
     _clearStaleSelection(project);
     final layout = project.apartmentLayout;
 
@@ -174,6 +180,8 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
                     scale: scale,
                     selectedIds: selectedIds,
                     project: project,
+                    premiumFurniture: premiumFurniture,
+                    premiumBedImage: premiumBedImage,
                   );
                 }),
                 if (selectedIds.isNotEmpty)
@@ -200,6 +208,8 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
     required double scale,
     required Set<String> selectedIds,
     required ProjectDesign project,
+    required bool premiumFurniture,
+    required ui.Image? premiumBedImage,
   }) {
     final (bx, by) = _displayPosition(placement);
     final isSelected = selectedIds.contains(placement.id);
@@ -307,6 +317,8 @@ class _ApartmentCanvasState extends ConsumerState<ApartmentCanvas> {
                       scale: scale,
                       isSelected: isSelected,
                       showWallLabels: pixelLayout.innerW >= 70,
+                      premiumFurniture: premiumFurniture,
+                      premiumBedImage: premiumBedImage,
                     ),
                   ),
                 ),
