@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_spacing.dart';
+import '../../core/utils/blueprint_premium_assets.dart';
+import '../../providers/blueprint_premium_assets_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../providers/room_design_provider.dart';
 import '../../screens/fullscreen_blueprint_screen.dart';
@@ -307,7 +309,10 @@ class _BlueprintPremiumToggle extends ConsumerWidget {
           ? 'Disable premium blueprint furniture'
           : 'Enable premium blueprint furniture',
       onPressed: () {
-        ref.read(premiumFurnitureProvider.notifier).state = !premiumFurniture;
+        final next = !premiumFurniture;
+        ref.read(premiumFurnitureProvider.notifier).state = next;
+        BlueprintPremiumAssets.clearCache();
+        ref.invalidate(blueprintPremiumImagesProvider);
       },
       icon: Icon(
         Icons.auto_awesome,

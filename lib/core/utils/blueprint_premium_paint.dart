@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 /// Draws premium top-down furniture sprites in blueprint painters.
 abstract final class BlueprintPremiumPaint {
-  static void drawBed({
+  static void drawFurniture({
     required Canvas canvas,
     required Rect rect,
     required ui.Image image,
