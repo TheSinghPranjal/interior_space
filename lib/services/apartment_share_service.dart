@@ -15,6 +15,7 @@ import '../models/room_design.dart';
 import '../sketch/data/sketch_composite_exporter.dart';
 import '../sketch/data/sketch_image_storage.dart';
 import 'texture_service.dart';
+import 'public_download_saver.dart';
 
 class ApartmentShareException implements Exception {
   ApartmentShareException(this.message);
@@ -54,28 +55,19 @@ class ApartmentShareService {
 
   final TextureService _textureService;
 
-  Future<void> shareApartment({
+  /// Exports the apartment and saves it to the device Downloads folder.
+  /// On web, opens the system share sheet instead.
+  Future<String?> shareApartment({
     required ApartmentLayout apartment,
     required List<RoomDesign> rooms,
   }) async {
     final exported = await exportApartment(apartment: apartment, rooms: rooms);
 
     if (!kIsWeb) {
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/${exported.fileName}');
-      await file.writeAsBytes(exported.bytes);
-      await Share.shareXFiles(
-        [
-          XFile(
-            file.path,
-            name: exported.fileName,
-            mimeType: mimeType,
-          ),
-        ],
-        subject: apartment.name,
-        text: 'Interior Space apartment design: ${apartment.name}',
+      return PublicDownloadSaver.saveBytes(
+        bytes: exported.bytes,
+        fileName: exported.fileName,
       );
-      return;
     }
 
     await Share.shareXFiles(
@@ -89,6 +81,7 @@ class ApartmentShareService {
       subject: apartment.name,
       text: 'Interior Space apartment design: ${apartment.name}',
     );
+    return null;
   }
 
   Future<ApartmentShareExportResult> exportApartment({
