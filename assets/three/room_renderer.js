@@ -157,6 +157,9 @@
       this._cachedMaterials = new Set();
       this.isApartmentMode = false;
       this.cameraMode = 'orbit';
+      this.walkthrough = typeof WalkthroughController !== 'undefined'
+        ? new WalkthroughController(this)
+        : null;
       this.walkVelocity = new THREE.Vector3();
       this.walkKeys = { forward: false, backward: false, left: false, right: false };
       this.clock = new THREE.Clock();
@@ -232,6 +235,12 @@
           this._buildRoom();
         }
         this._applyCameraMode(this.cameraMode);
+        if (this.walkthrough) {
+          this.walkthrough.rebuildCollision();
+          if (this.cameraMode === 'walkthrough') {
+            this.walkthrough.repositionAtStart();
+          }
+        }
         requestAnimationFrame(() => {
           this._onResize();
           this._applyCameraMode(this.cameraMode);
@@ -244,14 +253,48 @@
     }
 
     setCameraMode(mode) {
+      const previousMode = this.cameraMode;
       this.cameraMode = mode;
+
+      if (mode === 'walkthrough' && this.walkthrough) {
+        if (previousMode !== 'walkthrough') {
+          this.walkthrough.enter(previousMode);
+        } else {
+          this.walkthrough.repositionAtStart();
+        }
+        return;
+      }
+
+      if (previousMode === 'walkthrough' && this.walkthrough) {
+        this.walkthrough.exit(mode);
+        return;
+      }
+
       this._applyCameraMode(mode);
     }
 
     setWalkInput(key, active) {
+      if (this.walkthrough && this.cameraMode === 'walkthrough') {
+        this.walkthrough.setWalkInput(key, active);
+        return;
+      }
       if (this.walkKeys.hasOwnProperty(key)) {
         this.walkKeys[key] = active;
       }
+    }
+
+    setWalkInputs(inputs) {
+      if (this.walkthrough && this.cameraMode === 'walkthrough') {
+        this.walkthrough.setWalkInputs(inputs);
+      }
+    }
+
+    setWalkRunActive(active) {
+      if (this.walkthrough) this.walkthrough.setRunActive(!!active);
+    }
+
+    getWalkthroughHeading() {
+      return this.walkthrough ? this.walkthrough.getHeadingDegrees() : 0;
     }
 
     _orbitZoom(scale) {
@@ -342,6 +385,7 @@
       const eyeY = h * 0.4;
 
       this.controls.enabled = mode === 'orbit' || mode === 'isometric';
+      if (mode === 'walkthrough') return;
       this.controls.minDistance = Math.min(w, l) * 0.25;
       this.controls.maxDistance = Math.max(w, l) * 4;
 
@@ -3551,7 +3595,12 @@
         });
       }
 
-      this.controls.update();
+      if (this.walkthrough) {
+        this.walkthrough.update(delta);
+      }
+      if (this.cameraMode !== 'walkthrough') {
+        this.controls.update();
+      }
       if (!this.isApartmentMode) this._updateWallVisibility();
       this.renderer.render(this.scene, this.camera);
     }
@@ -3596,6 +3645,19 @@
 
   window.setWalkInput = function (key, active) {
     if (window.roomRenderer) window.roomRenderer.setWalkInput(key, active);
+  };
+
+  window.setWalkInputs = function (inputs) {
+    if (window.roomRenderer) window.roomRenderer.setWalkInputs(inputs);
+  };
+
+  window.setWalkRunActive = function (active) {
+    if (window.roomRenderer) window.roomRenderer.setWalkRunActive(active);
+  };
+
+  window.getWalkthroughHeading = function () {
+    if (window.roomRenderer) return window.roomRenderer.getWalkthroughHeading();
+    return 0;
   };
 
   window.orbitZoomIn = function () {
