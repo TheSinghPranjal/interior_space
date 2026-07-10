@@ -1082,9 +1082,9 @@
   'use strict';
 
   const FT = 0.3048;
-  const EYE_HEIGHT = 5 * FT;
-  const WALK_SPEED = 2.5 * FT;
-  const RUN_SPEED = 5 * FT;
+  const DEFAULT_EYE_HEIGHT_FT = 5;
+  const DEFAULT_WALK_SPEED_FT = 6;
+  const DEFAULT_RUN_SPEED_FT = 12;
   const WALL_CLEARANCE = 0.3 * FT;
   const PLAYER_RADIUS = 0.25 * FT;
   const FOV_DEFAULT = 60;
@@ -1092,7 +1092,8 @@
   const FOV_MAX = 75;
   const PITCH_MIN = THREE.MathUtils.degToRad(-70);
   const PITCH_MAX = THREE.MathUtils.degToRad(70);
-  const ACCEL_TIME = 0.15;
+  const ACCEL_TIME = 0.06;
+  const MAX_DELTA = 1 / 45;
   const FOV_RESET_MS = 400;
   const MODE_TRANSITION_MS = 600;
 
@@ -1279,6 +1280,9 @@
       this.active = false;
       this.yaw = 0;
       this.pitch = 0;
+      this.eyeHeightFt = DEFAULT_EYE_HEIGHT_FT;
+      this.walkSpeedFt = DEFAULT_WALK_SPEED_FT;
+      this.runSpeedFt = DEFAULT_RUN_SPEED_FT;
       this.moveVel = { forward: 0, right: 0 };
       this.walkKeys = { forward: false, backward: false, left: false, right: false };
       this.runActive = false;
@@ -1331,6 +1335,34 @@
 
     getHeadingDegrees() {
       return THREE.MathUtils.radToDeg(this.yaw);
+    }
+
+    getEyeHeightMeters() {
+      return this.eyeHeightFt * FT;
+    }
+
+    getWalkSpeedMeters() {
+      return this.walkSpeedFt * FT;
+    }
+
+    getRunSpeedMeters() {
+      return this.runSpeedFt * FT;
+    }
+
+    setSettings(settings) {
+      if (!settings || typeof settings !== 'object') return;
+      if (typeof settings.eyeHeightFt === 'number') {
+        this.eyeHeightFt = clamp(settings.eyeHeightFt, 2, 8);
+      }
+      if (typeof settings.walkSpeedFt === 'number') {
+        this.walkSpeedFt = Math.max(1, settings.walkSpeedFt);
+      }
+      if (typeof settings.runSpeedFt === 'number') {
+        this.runSpeedFt = Math.max(2, settings.runSpeedFt);
+      }
+      if (this.active) {
+        this.renderer.camera.position.y = this.getEyeHeightMeters();
+      }
     }
 
     _isMoving() {
@@ -1436,7 +1468,7 @@
 
     _applyWalkCamera(x, z, yaw, pitch, fov) {
       const cam = this.renderer.camera;
-      cam.position.set(x, EYE_HEIGHT, z);
+      cam.position.set(x, this.getEyeHeightMeters(), z);
       cam.rotation.order = 'YXZ';
       cam.rotation.y = yaw;
       cam.rotation.x = pitch;
@@ -1457,6 +1489,12 @@
 
     enter(previousMode) {
       this.active = true;
+      this._savedShadows = this.renderer.renderer.shadowMap.enabled;
+      this._savedPixelRatio = this.renderer.renderer.getPixelRatio();
+      this.renderer.renderer.shadowMap.enabled = false;
+      this.renderer.renderer.setPixelRatio(
+        Math.min(window.devicePixelRatio, 1.75)
+      );
       this.rebuildCollision();
       const spawn = this._findSpawnPosition();
       this.yaw = this._defaultYaw();
@@ -1470,7 +1508,7 @@
 
       const from = this._captureCameraState();
       const to = {
-        position: new THREE.Vector3(spawn.x, EYE_HEIGHT, spawn.z),
+        position: new THREE.Vector3(spawn.x, this.getEyeHeightMeters(), spawn.z),
         rotation: new THREE.Euler(0, this.yaw, 0, 'YXZ'),
         fov: FOV_DEFAULT,
       };
@@ -1487,6 +1525,17 @@
       };
 
       this._bindPointerEvents();
+    }
+
+    _restoreRendererPerformance() {
+      if (this._savedShadows != null) {
+        this.renderer.renderer.shadowMap.enabled = this._savedShadows;
+        this._savedShadows = null;
+      }
+      if (this._savedPixelRatio != null) {
+        this.renderer.renderer.setPixelRatio(this._savedPixelRatio);
+        this._savedPixelRatio = null;
+      }
     }
 
     repositionAtStart() {
@@ -1530,6 +1579,7 @@
         to,
         onComplete: () => {
           this.modeTransition = null;
+          this._restoreRendererPerformance();
           renderer._applyCameraMode(targetMode);
           renderer.controls.update();
           renderer._updateWallVisibility();
@@ -1737,7 +1787,8 @@
 
       this._updateFov(now);
 
-      const speed = this.runActive ? RUN_SPEED : WALK_SPEED;
+      const stepDelta = Math.min(Math.max(delta, 0), MAX_DELTA);
+      const speed = this.runActive ? this.getRunSpeedMeters() : this.getWalkSpeedMeters();
       let targetForward = 0;
       let targetRight = 0;
       if (this.walkKeys.forward) targetForward += speed;
@@ -1745,7 +1796,7 @@
       if (this.walkKeys.left) targetRight -= speed;
       if (this.walkKeys.right) targetRight += speed;
 
-      const blend = 1 - Math.exp(-delta / ACCEL_TIME);
+      const blend = 1 - Math.exp(-stepDelta / ACCEL_TIME);
       this.moveVel.forward += (targetForward - this.moveVel.forward) * blend;
       this.moveVel.right += (targetRight - this.moveVel.right) * blend;
 
@@ -1762,9 +1813,9 @@
       const dx = this._tmpForward.x * this.moveVel.forward + this._tmpRight.x * this.moveVel.right;
       const dz = this._tmpForward.z * this.moveVel.forward + this._tmpRight.z * this.moveVel.right;
 
-      cam.position.x += dx * delta;
-      cam.position.z += dz * delta;
-      cam.position.y = EYE_HEIGHT;
+      cam.position.x += dx * stepDelta;
+      cam.position.z += dz * stepDelta;
+      cam.position.y = this.getEyeHeightMeters();
     }
   }
 
@@ -8158,6 +8209,10 @@
       return this.walkthrough ? this.walkthrough.getHeadingDegrees() : 0;
     }
 
+    setWalkthroughSettings(settings) {
+      if (this.walkthrough) this.walkthrough.setSettings(settings);
+    }
+
     _orbitZoom(scale) {
       if (!this.controls.enabled) return;
       const offset = new THREE.Vector3();
@@ -11519,6 +11574,10 @@
   window.getWalkthroughHeading = function () {
     if (window.roomRenderer) return window.roomRenderer.getWalkthroughHeading();
     return 0;
+  };
+
+  window.setWalkthroughSettings = function (settings) {
+    if (window.roomRenderer) window.roomRenderer.setWalkthroughSettings(settings);
   };
 
   window.orbitZoomIn = function () {
