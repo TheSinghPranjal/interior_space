@@ -1,10 +1,8 @@
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:media_store_plus/media_store_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 /// Saves exported files to a user-visible location (Android Downloads, iOS Files).
 class PublicDownloadSaver {
@@ -13,7 +11,6 @@ class PublicDownloadSaver {
   static Future<String?> saveBytes({
     required Uint8List bytes,
     required String fileName,
-    Rect? sharePositionOrigin,
   }) async {
     if (kIsWeb) return null;
 
@@ -24,11 +21,7 @@ class PublicDownloadSaver {
     }
 
     if (Platform.isIOS) {
-      return _saveOnIos(
-        bytes,
-        sanitized,
-        sharePositionOrigin: sharePositionOrigin,
-      );
+      return _saveOnIos(bytes, sanitized);
     }
 
     return _saveToDownloadsDirectory(bytes, sanitized);
@@ -84,9 +77,8 @@ class PublicDownloadSaver {
 
   static Future<String?> _saveOnIos(
     Uint8List bytes,
-    String fileName, {
-    Rect? sharePositionOrigin,
-  }) async {
+    String fileName,
+  ) async {
     try {
       final documents = await getApplicationDocumentsDirectory();
       final downloadsDir = Directory('${documents.path}/Downloads');
@@ -97,22 +89,7 @@ class PublicDownloadSaver {
       final file = File('${downloadsDir.path}/$fileName');
       await file.writeAsBytes(bytes, flush: true);
 
-      // iOS has no public Downloads folder API. Share sheet lets the user
-      // tap "Save to Files" and pick Downloads (same UX as most iOS export flows).
-      await Share.shareXFiles(
-        [
-          XFile(
-            file.path,
-            mimeType: _mimeTypeForFileName(fileName),
-            name: fileName,
-          ),
-        ],
-        subject: fileName,
-        sharePositionOrigin:
-            sharePositionOrigin ?? const Rect.fromLTWH(0, 0, 1, 1),
-      );
-
-      return 'Downloads/$fileName';
+      return file.path;
     } catch (e) {
       debugPrint('iOS save failed: $e');
       return null;
@@ -142,14 +119,6 @@ class PublicDownloadSaver {
     return name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
   }
 
-  static String? _mimeTypeForFileName(String fileName) {
-    final lower = fileName.toLowerCase();
-    if (lower.endsWith('.pdf')) return 'application/pdf';
-    if (lower.endsWith('.png')) return 'image/png';
-    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
-    return null;
-  }
-
   static String displayPath(String? path) {
     if (path == null) return 'Downloads';
 
@@ -177,8 +146,7 @@ class PublicDownloadSaver {
 
     if (!kIsWeb && Platform.isIOS) {
       return '${fileKind[0].toUpperCase()}${fileKind.substring(1)} saved. '
-          'Use Save to Files → Downloads in the share sheet, or find it under '
-          'Files → On My iPhone → Abode Home → Downloads.';
+          'Find it in Files → On My iPhone → Abode Home → Downloads.';
     }
 
     return '${fileKind[0].toUpperCase()}${fileKind.substring(1)} saved to ${displayPath(path)}';
