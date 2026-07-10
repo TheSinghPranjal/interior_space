@@ -12,6 +12,7 @@ import '../../providers/apartment_blueprint_selection_provider.dart';
 import '../../providers/apartment_placement_history_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../services/apartment_share_service.dart';
+import '../../services/public_download_saver.dart';
 import '../common/dimension_control.dart';
 import 'apartment_details_dialog.dart';
 import 'apartment_canvas.dart';
@@ -157,10 +158,21 @@ class ApartmentSpaceView extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      await ref.read(apartmentShareServiceProvider).shareApartment(
+      final path = await ref.read(apartmentShareServiceProvider).shareApartment(
             apartment: layout,
             rooms: rooms,
           );
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            PublicDownloadSaver.saveSuccessMessage(
+              path,
+              fileKind: 'apartment file',
+            ),
+          ),
+        ),
+      );
     } on ApartmentShareException catch (e) {
       if (!context.mounted) return;
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
