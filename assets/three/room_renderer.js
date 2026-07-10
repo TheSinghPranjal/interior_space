@@ -297,6 +297,10 @@
       return this.walkthrough ? this.walkthrough.getHeadingDegrees() : 0;
     }
 
+    setWalkthroughSettings(settings) {
+      if (this.walkthrough) this.walkthrough.setSettings(settings);
+    }
+
     _orbitZoom(scale) {
       if (!this.controls.enabled) return;
       const offset = new THREE.Vector3();
@@ -3658,6 +3662,10 @@
   window.getWalkthroughHeading = function () {
     if (window.roomRenderer) return window.roomRenderer.getWalkthroughHeading();
     return 0;
+  };
+
+  window.setWalkthroughSettings = function (settings) {
+    if (window.roomRenderer) window.roomRenderer.setWalkthroughSettings(settings);
   };
 
   window.orbitZoomIn = function () {
