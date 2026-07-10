@@ -700,10 +700,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      await ref.read(apartmentShareServiceProvider).shareApartment(
+      final path = await ref.read(apartmentShareServiceProvider).shareApartment(
             apartment: layout,
             rooms: rooms,
           );
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            PublicDownloadSaver.saveSuccessMessage(
+              path,
+              fileKind: 'apartment file',
+            ),
+          ),
+        ),
+      );
     } on ApartmentShareException catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
