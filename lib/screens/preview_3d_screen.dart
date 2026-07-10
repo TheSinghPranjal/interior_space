@@ -39,6 +39,7 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
   Widget build(BuildContext context) {
     final isApartment = widget.apartmentMode ||
         ref.watch(appSpaceModeProvider) == AppSpaceMode.apartment;
+    final cameraMode = ref.watch(cameraModeProvider);
     final design = ref.watch(roomDesignProvider);
     final project = ref.watch(projectProvider);
     final title = isApartment ? project.apartmentLayout.name : design.name;
@@ -95,9 +96,13 @@ class _Preview3DScreenState extends ConsumerState<Preview3DScreen> {
               Icon(Icons.touch_app_outlined, size: 12, color: Colors.white.withValues(alpha: 0.45)),
               const SizedBox(width: 6),
               Text(
-                isApartment
-                    ? 'Pinch to zoom · Swipe to rotate · Tap info for dimensions'
-                    : 'Pinch to zoom · Swipe to rotate',
+                cameraMode == CameraMode.walkthrough
+                    ? (isApartment
+                        ? 'Drag to look · Pinch to zoom · Use arrows to walk'
+                        : 'Drag to look · Pinch to zoom · Use arrows to walk')
+                    : (isApartment
+                        ? 'Pinch to zoom · Swipe to rotate · Tap info for dimensions'
+                        : 'Pinch to zoom · Swipe to rotate'),
                 style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 12),
               ),
             ],
