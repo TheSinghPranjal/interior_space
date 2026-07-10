@@ -492,7 +492,7 @@
       return [
         'bed', 'chair', 'table', 'diningTable', 'flowerPot',
         'storageUnit', 'fridge', 'washingMachine', 'shoeRack',
-        'sink', 'kitchenChimney', 'car',
+        'sink', 'kitchenChimney', 'car', 'wardrobe', 'cupboard',
       ].indexOf(type) >= 0;
     }
 
@@ -1725,7 +1725,7 @@
         const cw = c.width * FT;
         const ch = c.height * FT;
         const cd = c.depth * FT;
-        const group = this._buildWardrobeGroup(cw, ch, cd, c.color, c.textureDataUrl);
+        const group = this._buildStandardWardrobeGroup(cw, ch, cd, c.color, c.textureDataUrl);
 
         const x = ((c.blueprintX ?? 0.5) - 0.5) * w;
         const z = ((c.blueprintY ?? 0.5) - 0.5) * l;
@@ -1735,9 +1735,30 @@
       });
     }
 
-    _buildWardrobeGroup(width, height, depth, color, textureUrl) {
+    _buildWardrobeGroup(item, textureUrl) {
+      if (this._isPremiumFurniture() && typeof PremiumWardrobeBuilder !== 'undefined') {
+        return PremiumWardrobeBuilder.build(this, item, textureUrl);
+      }
+      return this._buildStandardWardrobeGroup(
+        item.width * FT,
+        item.height * FT,
+        item.depth * FT,
+        item.color,
+        textureUrl
+      );
+    }
+
+    _buildStandardWardrobeGroup(width, height, depth, color, textureUrl) {
       const group = new THREE.Group();
-      const bodyMat = this._makeMaterial(color, 0.55, 0.05, textureUrl, 'wood', 1, 1);
+      const bodyMat = this._makeMaterial(
+        color,
+        0.55,
+        0.05,
+        textureUrl,
+        textureUrl ? null : 'wood',
+        1,
+        1
+      );
       const trimMat = new THREE.MeshStandardMaterial({
         color: 0x2c2c2c,
         roughness: 0.4,
@@ -1941,13 +1962,7 @@
             break;
           case 'wardrobe':
           case 'cupboard':
-            group = this._buildWardrobeGroup(
-              item.width * FT,
-              item.height * FT,
-              item.depth * FT,
-              item.color,
-              tex
-            );
+            group = this._buildWardrobeGroup(item, tex);
             break;
           case 'sofa':
             group = this._buildSofaGroup(item, tex);
