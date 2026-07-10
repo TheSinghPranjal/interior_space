@@ -13,6 +13,7 @@ import '../../models/room_3d_export_images.dart';
 import '../../providers/app_mode_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../providers/room_design_provider.dart';
+import '../../providers/walkthrough_settings_provider.dart';
 import '../../services/room_scene_builder.dart';
 import '../../services/room_viewer_html_loader.dart';
 
@@ -198,6 +199,15 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     );
   }
 
+  Future<void> _pushWalkthroughSettings() async {
+    if (_controller == null) return;
+    final settings = ref.read(walkthroughSettingsProvider);
+    await _controller!.evaluateJavascript(
+      source:
+          'setWalkthroughSettings({eyeHeightFt:${settings.clampedEyeHeightFt}});',
+    );
+  }
+
   Future<void> _syncWalkInputs({
     bool forward = false,
     bool backward = false,
@@ -208,13 +218,6 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     await _controller!.evaluateJavascript(
       source:
           'setWalkInputs({forward:$forward,backward:$backward,left:$left,right:$right});',
-    );
-  }
-
-  Future<void> _setWalkInput(String key, bool active) async {
-    if (_controller == null) return;
-    await _controller!.evaluateJavascript(
-      source: "setWalkInput('$key', ${active ? 'true' : 'false'});",
     );
   }
 
@@ -367,8 +370,6 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
   @override
   Widget build(BuildContext context) {
     final cameraMode = ref.watch(cameraModeProvider);
-    final isApartment = widget.apartmentMode ||
-        ref.watch(appSpaceModeProvider) == AppSpaceMode.apartment;
     final showWallLabels = ref.watch(showWallDimensionLabelsProvider);
     final premiumFurniture = ref.watch(premiumFurnitureProvider);
 
@@ -399,6 +400,10 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
 
     ref.listen(premiumFurnitureProvider, (_, _) {
       if (_isReady) _pushScene();
+    });
+
+    ref.listen(walkthroughSettingsProvider, (_, _) {
+      if (_isReady) _pushWalkthroughSettings();
     });
 
     if (_loadError != null) {
@@ -483,6 +488,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
                   });
                 }
                 _setCameraMode(ref.read(cameraModeProvider));
+                _pushWalkthroughSettings();
                 _notifyCaptureReady();
                 return null;
               },
@@ -495,6 +501,7 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
             if (mounted) {
               await Future.delayed(const Duration(milliseconds: 150));
               await _setCameraMode(ref.read(cameraModeProvider));
+              await _pushWalkthroughSettings();
               _notifyCaptureReady();
             }
           },
