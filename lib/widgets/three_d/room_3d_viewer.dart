@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -197,6 +198,50 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
     );
   }
 
+  Future<void> _syncWalkInputs({
+    bool forward = false,
+    bool backward = false,
+    bool left = false,
+    bool right = false,
+  }) async {
+    if (_controller == null) return;
+    await _controller!.evaluateJavascript(
+      source:
+          'setWalkInputs({forward:$forward,backward:$backward,left:$left,right:$right});',
+    );
+  }
+
+  Future<void> _setWalkInput(String key, bool active) async {
+    if (_controller == null) return;
+    await _controller!.evaluateJavascript(
+      source: "setWalkInput('$key', ${active ? 'true' : 'false'});",
+    );
+  }
+
+  Future<void> _releaseWalkInputs() async {
+    await _syncWalkInputs();
+    await _setWalkRunActive(false);
+  }
+
+  Future<void> _setWalkRunActive(bool active) async {
+    if (_controller == null) return;
+    await _controller!.evaluateJavascript(
+      source: 'setWalkRunActive(${active ? 'true' : 'false'});',
+    );
+  }
+
+  Future<double> _getWalkthroughHeading() async {
+    if (_controller == null) return 0;
+    try {
+      final result = await _controller!.evaluateJavascript(
+        source: 'getWalkthroughHeading();',
+      );
+      return double.tryParse(result?.toString() ?? '') ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   Future<void> _orbitZoom({required bool zoomIn}) async {
     if (_controller == null) return;
     await _controller!.evaluateJavascript(
@@ -322,6 +367,8 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
   @override
   Widget build(BuildContext context) {
     final cameraMode = ref.watch(cameraModeProvider);
+    final isApartment = widget.apartmentMode ||
+        ref.watch(appSpaceModeProvider) == AppSpaceMode.apartment;
     final showWallLabels = ref.watch(showWallDimensionLabelsProvider);
     final premiumFurniture = ref.watch(premiumFurnitureProvider);
 
@@ -337,8 +384,13 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
       if (_isReady && isApartment) _scheduleApartmentScenePush();
     });
 
-    ref.listen(cameraModeProvider, (_, next) {
-      if (_isReady) _setCameraMode(next);
+    ref.listen(cameraModeProvider, (previous, next) {
+      if (_isReady) {
+        _setCameraMode(next);
+        if (next != CameraMode.walkthrough) {
+          unawaited(_releaseWalkInputs());
+        }
+      }
     });
 
     ref.listen(showWallDimensionLabelsProvider, (_, _) {
@@ -549,6 +601,28 @@ class _Room3DViewerState extends ConsumerState<Room3DViewer> {
               bottom: 80,
               child: _OrbitZoomControls(onZoom: _orbitZoom),
             ),
+          if (cameraMode == CameraMode.walkthrough) ...[
+            Positioned(
+              top: 56,
+              right: 12,
+              child: _WalkthroughCompass(
+                headingProvider: _getWalkthroughHeading,
+              ),
+            ),
+            Positioned(
+              right: 16,
+              bottom: 24,
+              child: _WalkthroughMovePad(
+                onSync: _syncWalkInputs,
+                onRunChanged: _setWalkRunActive,
+              ),
+            ),
+            Positioned(
+              left: 12,
+              bottom: 24,
+              child: _WalkthroughModeBadge(),
+            ),
+          ],
         ],
       ],
     );
@@ -580,6 +654,7 @@ class _CameraModeBar extends StatelessWidget {
 
   String _label(CameraMode mode) => switch (mode) {
         CameraMode.orbit => 'Orbit',
+        CameraMode.walkthrough => 'Walk',
         CameraMode.top => 'Top',
         CameraMode.front => 'Front',
         CameraMode.side => 'Side',
@@ -639,6 +714,262 @@ class _ZoomButton extends StatelessWidget {
             height: 44,
             child: Icon(icon, color: Colors.white, size: 20),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WalkthroughModeBadge extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.directions_walk, color: Colors.white, size: 16),
+            SizedBox(width: 6),
+            Text(
+              'Walkthrough',
+              style: TextStyle(color: Colors.white, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WalkthroughCompass extends StatefulWidget {
+  const _WalkthroughCompass({required this.headingProvider});
+
+  final Future<double> Function() headingProvider;
+
+  @override
+  State<_WalkthroughCompass> createState() => _WalkthroughCompassState();
+}
+
+class _WalkthroughCompassState extends State<_WalkthroughCompass> {
+  Timer? _timer;
+  double _heading = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(milliseconds: 80), (_) async {
+      final heading = await widget.headingProvider();
+      if (mounted) setState(() => _heading = heading);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.rotate(
+      angle: -_heading * math.pi / 180,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.55),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+        child: const SizedBox(
+          width: 52,
+          height: 52,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Positioned(top: 6, child: Text('N', style: TextStyle(color: Colors.white70, fontSize: 10))),
+              Positioned(right: 8, child: Text('E', style: TextStyle(color: Colors.white38, fontSize: 9))),
+              Positioned(bottom: 6, child: Text('S', style: TextStyle(color: Colors.white38, fontSize: 9))),
+              Positioned(left: 8, child: Text('W', style: TextStyle(color: Colors.white38, fontSize: 9))),
+              Icon(Icons.navigation, color: Colors.white, size: 18),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WalkthroughMovePad extends StatefulWidget {
+  const _WalkthroughMovePad({
+    required this.onSync,
+    required this.onRunChanged,
+  });
+
+  final Future<void> Function({
+    bool forward,
+    bool backward,
+    bool left,
+    bool right,
+  }) onSync;
+  final Future<void> Function(bool active) onRunChanged;
+
+  @override
+  State<_WalkthroughMovePad> createState() => _WalkthroughMovePadState();
+}
+
+class _WalkthroughMovePadState extends State<_WalkthroughMovePad> {
+  bool _forward = false;
+  bool _backward = false;
+  bool _left = false;
+  bool _right = false;
+  bool _runActive = false;
+  Timer? _runTimer;
+
+  @override
+  void dispose() {
+    _runTimer?.cancel();
+    unawaited(widget.onSync());
+    super.dispose();
+  }
+
+  void _pushInputs() {
+    unawaited(widget.onSync(
+      forward: _forward,
+      backward: _backward,
+      left: _left,
+      right: _right,
+    ));
+  }
+
+  void _setDirection({
+    bool? forward,
+    bool? backward,
+    bool? left,
+    bool? right,
+  }) {
+    setState(() {
+      if (forward != null) _forward = forward;
+      if (backward != null) _backward = backward;
+      if (left != null) _left = left;
+      if (right != null) _right = right;
+    });
+    _pushInputs();
+  }
+
+  void _clearDirection(String direction) {
+    switch (direction) {
+      case 'forward':
+        _setDirection(forward: false);
+        if (_runActive) {
+          _runActive = false;
+          unawaited(widget.onRunChanged(false));
+        }
+        _runTimer?.cancel();
+      case 'backward':
+        _setDirection(backward: false);
+      case 'left':
+        _setDirection(left: false);
+      case 'right':
+        _setDirection(right: false);
+    }
+  }
+
+  void _pressDirection(String direction) {
+    switch (direction) {
+      case 'forward':
+        _setDirection(forward: true);
+        _runTimer?.cancel();
+        _runTimer = Timer(const Duration(milliseconds: 450), () {
+          if (!mounted || !_forward) return;
+          _runActive = true;
+          unawaited(widget.onRunChanged(true));
+        });
+      case 'backward':
+        _setDirection(backward: true);
+      case 'left':
+        _setDirection(left: true);
+      case 'right':
+        _setDirection(right: true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _WalkPadButton(
+          icon: Icons.keyboard_arrow_up,
+          onPress: () => _pressDirection('forward'),
+          onRelease: () => _clearDirection('forward'),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _WalkPadButton(
+              icon: Icons.keyboard_arrow_left,
+              onPress: () => _pressDirection('left'),
+              onRelease: () => _clearDirection('left'),
+            ),
+            const SizedBox(width: 48),
+            _WalkPadButton(
+              icon: Icons.keyboard_arrow_right,
+              onPress: () => _pressDirection('right'),
+              onRelease: () => _clearDirection('right'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        _WalkPadButton(
+          icon: Icons.keyboard_arrow_down,
+          onPress: () => _pressDirection('backward'),
+          onRelease: () => _clearDirection('backward'),
+        ),
+      ],
+    );
+  }
+}
+
+class _WalkPadButton extends StatelessWidget {
+  const _WalkPadButton({
+    required this.icon,
+    required this.onPress,
+    required this.onRelease,
+  });
+
+  final IconData icon;
+  final VoidCallback onPress;
+  final VoidCallback onRelease;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => onPress(),
+      onTapUp: (_) => onRelease(),
+      onTapCancel: onRelease,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.85),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: SizedBox(
+          width: 56,
+          height: 56,
+          child: Icon(icon, color: Colors.black87, size: 30),
         ),
       ),
     );
