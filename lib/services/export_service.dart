@@ -406,6 +406,7 @@ class ExportService {
           'Thickness: ${room.ceiling.falseCeilingThickness.toStringAsFixed(1)} ft',
           style: PdfTextStyles.body(),
         ),
+
       if (room.doors.isNotEmpty) ...[
         pw.SizedBox(height: 10),
         _sectionTitle('Doors (${room.doors.length})'),
