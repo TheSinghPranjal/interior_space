@@ -937,6 +937,7 @@ class _BlueprintCanvasState extends ConsumerState<BlueprintCanvas> {
     );
   }
 
+
   Widget _buildWallTvUnitItem({
     required WallTvUnitConfig unit,
     required RoomDesign design,
